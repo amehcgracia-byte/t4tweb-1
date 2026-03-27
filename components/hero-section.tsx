@@ -34,7 +34,8 @@ export function HeroSection() {
           className="object-cover"
           priority
         />
-        <div className="absolute inset-0 bg-black/45" />
+        {/* Improved overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/55" />
       </div>
 
       {/* Background gradients - subtle */}
@@ -77,7 +78,7 @@ export function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
-          className="font-serif text-4xl sm:text-5xl md:text-7xl text-foreground mb-4 text-balance"
+          className="font-serif text-4xl sm:text-5xl md:text-7xl text-foreground mb-2 md:mb-3 text-balance leading-tight"
         >
           Tales for the Tillerman
         </motion.h1>
@@ -87,17 +88,17 @@ export function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-          className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
+          className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 md:mb-12 max-w-2xl mx-auto"
         >
           World music, funk, and soul from Berlin
         </motion.p>
 
-        {/* CTA Buttons */}
+        {/* Primary & Secondary CTAs */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
-          className="flex flex-col sm:flex-row gap-4 justify-center"
+          className="flex flex-col sm:flex-row gap-4 justify-center mb-10 md:mb-12"
         >
           <motion.a
             whileHover={{ scale: 1.05, y: -4 }}
@@ -121,25 +122,61 @@ export function HeroSection() {
           </motion.a>
         </motion.div>
 
-        {/* Social Links */}
+        {/* Secondary Links - Social Networks (Discrete Chips) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
-          className="flex justify-center gap-6 mt-12"
+          className="flex justify-center gap-3 flex-wrap"
         >
-          <SocialLink href="https://open.spotify.com/intl-es/artist/0FHjK3O0k8HQMrJsF7KQwF" label="Spotify">
+          <motion.a
+            href="https://open.spotify.com/intl-es/artist/0FHjK3O0k8HQMrJsF7KQwF"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Listen on Spotify"
+            whileHover={{ scale: 1.1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="chip-social"
+          >
             <SpotifyIcon />
-          </SocialLink>
-          <SocialLink href="https://www.instagram.com/tales4tillerman" label="Instagram">
+            <span>Spotify</span>
+          </motion.a>
+          <motion.a
+            href="https://www.instagram.com/tales4tillerman"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Follow on Instagram"
+            whileHover={{ scale: 1.1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="chip-social"
+          >
             <InstagramIcon />
-          </SocialLink>
-          <SocialLink href="https://www.youtube.com/channel/UCiSLr9s4NLC1kzHBqJirsrQ" label="YouTube">
+            <span>Instagram</span>
+          </motion.a>
+          <motion.a
+            href="https://www.youtube.com/channel/UCiSLr9s4NLC1kzHBqJirsrQ"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Watch on YouTube"
+            whileHover={{ scale: 1.1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="chip-social"
+          >
             <YouTubeIcon />
-          </SocialLink>
-          <SocialLink href="https://linktr.ee/tales4tillerman" label="Linktree">
+            <span>YouTube</span>
+          </motion.a>
+          <motion.a
+            href="https://linktr.ee/tales4tillerman"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="All links - Linktree"
+            whileHover={{ scale: 1.1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="chip-social"
+          >
             <LinktreeIcon />
-          </SocialLink>
+            <span>Linktree</span>
+          </motion.a>
         </motion.div>
       </motion.div>
 
