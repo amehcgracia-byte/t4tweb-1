@@ -93,8 +93,10 @@ export function AboutSection() {
                 custom={index}
                 initial="hidden"
                 whileInView="visible"
+                whileHover={{ y: -4, scale: 1.02 }}
                 variants={statsVariants}
-                className="p-4 md:p-5 bg-card/90 backdrop-blur-sm rounded-2xl border border-border text-center"
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="p-4 md:p-5 bg-card/90 backdrop-blur-sm rounded-2xl border border-border text-center shadow-lg hover:shadow-xl hover:border-primary/50 transition-all"
               >
                 <div className="font-serif text-3xl md:text-4xl text-primary mb-3">
                   {stat.number}

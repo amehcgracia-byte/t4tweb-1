@@ -100,9 +100,14 @@ export function PressKitSection() {
             <a
               href="/PressKit T40 2025.26_compressed.pdf"
               download="PressKit T40 2025.26_compressed.pdf"
-              className="inline-flex items-center gap-3 px-10 py-5 bg-primary text-primary-foreground rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all hover:scale-105 shadow-lg shadow-primary/25"
+              className="inline-flex items-center gap-3 px-10 py-5 bg-primary text-primary-foreground rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/25"
             >
-              <DownloadIcon className="w-6 h-6" />
+              <motion.span
+                whileHover={{ scale: 1.1, rotate: 20 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              >
+                <DownloadIcon className="w-6 h-6" />
+              </motion.span>
               Press Kit
             </a>
           </div>
@@ -114,8 +119,9 @@ export function PressKitSection() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0 }}
-            className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-500 hover:scale-[1.02] overflow-hidden backdrop-blur-sm"
+            whileHover={{ y: -4, scale: 1.02 }}
+            transition={{ duration: 0.6, delay: 0, type: "spring", stiffness: 300, damping: 20 }}
+            className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 overflow-hidden backdrop-blur-sm shadow-lg hover:shadow-xl"
           >
             <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
               <img
@@ -135,11 +141,13 @@ export function PressKitSection() {
               initial="hidden"
               whileInView="visible"
               variants={resourceVariants}
+              whileHover={{ y: -4, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
               href={resource.href}
               target={resource.download ? undefined : "_blank"}
               rel={resource.download ? undefined : "noopener noreferrer"}
               download={resource.download}
-              className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-500 hover:scale-[1.02] backdrop-blur-sm"
+              className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 backdrop-blur-sm shadow-lg hover:shadow-xl"
             >
               <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-secondary text-muted-foreground group-hover:text-foreground transition-colors">
                 <resource.icon />

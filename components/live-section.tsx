@@ -160,8 +160,9 @@ export function LiveSection() {
                       key={index}
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: index * 0.03 }}
-                      className="p-5 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all duration-300 group"
+                      whileHover={{ y: -2, scale: 1.01 }}
+                      transition={{ duration: 0.4, delay: index * 0.03, type: "spring", stiffness: 300, damping: 20 }}
+                      className="p-5 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all duration-300 group shadow-lg hover:shadow-xl"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                         {/* Date */}
@@ -211,11 +212,12 @@ export function LiveSection() {
                       key={platform.name}
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, delay: index * 0.1 }}
+                      whileHover={{ y: -4, scale: 1.02 }}
+                      transition={{ duration: 0.4, delay: index * 0.1, type: "spring", stiffness: 300, damping: 20 }}
                       href={platform.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={`flex items-center gap-4 px-6 py-5 bg-secondary border border-border rounded-xl text-foreground transition-all duration-300 hover:border-transparent hover:text-white hover:scale-[1.02] ${platform.color}`}
+                      className={`flex items-center gap-4 px-6 py-5 bg-secondary border border-border rounded-xl text-foreground transition-all duration-300 hover:border-transparent hover:text-white shadow-lg hover:shadow-xl ${platform.color}`}
                     >
                       <platform.icon />
                       <span className="font-medium text-lg">{platform.name}</span>

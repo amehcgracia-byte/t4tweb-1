@@ -78,11 +78,12 @@ export function ContactSection() {
               key={method.title}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 + index * 0.1 }}
+              whileHover={{ y: -4, scale: 1.02 }}
+              transition={{ duration: 0.6, delay: 0.1 + index * 0.1, type: "spring", stiffness: 300, damping: 20 }}
               href={method.href}
               target={method.internal ? undefined : "_blank"}
               rel={method.internal ? undefined : "noopener noreferrer"}
-              className="group p-10 bg-card/90 backdrop-blur-sm rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 hover:scale-[1.02] text-center"
+              className="group p-10 bg-card/90 backdrop-blur-sm rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 text-center shadow-lg hover:shadow-xl"
             >
               <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
                 <method.icon className="w-10 h-10 text-primary" />
@@ -120,13 +121,21 @@ export function ContactSection() {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="text-center mb-8"
         >
-          <a
+          <motion.a
+            whileHover={{ scale: 1.05, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
             href="mailto:talesforthetillerman@gmail.com?subject=Booking%20Inquiry"
-            className="inline-flex items-center gap-4 px-14 py-7 bg-primary text-primary-foreground rounded-xl font-semibold text-2xl hover:bg-primary/90 transition-all hover:scale-105 shadow-xl shadow-primary/25"
+            className="inline-flex items-center gap-4 px-14 py-7 bg-primary text-primary-foreground rounded-xl font-semibold text-2xl hover:bg-primary/90 transition-all shadow-xl shadow-primary/25"
           >
-            <CalendarIcon className="w-8 h-8" />
+            <motion.span
+              whileHover={{ rotate: 20 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            >
+              <CalendarIcon className="w-8 h-8" />
+            </motion.span>
             Book Now
-          </a>
+          </motion.a>
         </motion.div>
 
         {/* Management Note */}

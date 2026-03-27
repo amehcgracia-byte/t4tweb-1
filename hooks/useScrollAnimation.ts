@@ -126,3 +126,40 @@ export function useContentAnimation(
 
   return { opacity, y, scrollYProgress }
 }
+
+/**
+ * Hook para parallax de fondo (zoom leve)
+ * Usado en imágenes de sección para crear movimiento vivo
+ */
+export function useParallaxZoom(
+  ref: React.RefObject<HTMLElement | null>
+) {
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ['start end', 'end start'],
+  })
+
+  // Scale progresivo: zoom muy leve sin ser agresivo
+  const scale = useTransform(
+    scrollYProgress,
+    [0, 0.5, 1],
+    [1, 1.02, 1.04]
+  )
+
+  // Opacity suave
+  const opacity = useTransform(
+    scrollYProgress,
+    [0, 0.2, 0.8, 1],
+    [0.8, 1, 1, 0.8]
+  )
+
+  return { scale, opacity }
+}
+
+/**
+ * Hook para stagger animations en listas
+ * Devuelve delay apropiado basado en índice
+ */
+export function useStaggerDelay(index: number, baseDelay = 0.05) {
+  return baseDelay * index
+}

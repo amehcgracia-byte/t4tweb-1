@@ -118,9 +118,9 @@ export function BandMembersSection() {
                 animate={
                   activeIndex === index
                     ? { opacity: 1, scale: 1 }
-                    : { opacity: 0, scale: 1.05 }
+                    : { opacity: 0, scale: 1.02 }
                 }
-                transition={{ duration: 0.4, ease: "easeInOut" }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
                 className={`absolute inset-0 ${
                   activeIndex !== index && "pointer-events-none"
                 }`}
@@ -166,6 +166,8 @@ export function BandMembersSection() {
                 variants={memberVariants}
                 onClick={() => setActiveIndex(index)}
                 onMouseEnter={() => setActiveIndex(index)}
+                whileHover={{ scale: 1.02, y: -2 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 className={`w-full text-left p-5 md:p-6 rounded-2xl border transition-all duration-300 group ${
                   activeIndex === index
                     ? "bg-secondary border-primary/50 shadow-lg"

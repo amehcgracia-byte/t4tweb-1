@@ -99,18 +99,24 @@ export function HeroSection() {
           transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
           className="flex flex-col sm:flex-row gap-4 justify-center"
         >
-          <a
+          <motion.a
+            whileHover={{ scale: 1.05, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
             href="#press-kit"
-            className="px-11 py-6 bg-primary text-primary-foreground rounded-lg text-lg md:text-xl font-semibold hover:bg-primary/90 transition-all hover:scale-105 shadow-lg shadow-primary/30"
+            className="px-11 py-6 bg-primary text-primary-foreground rounded-lg text-lg md:text-xl font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/30"
           >
             View Press Kit
-          </a>
-          <a
+          </motion.a>
+          <motion.a
+            whileHover={{ scale: 1.05, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
             href="#contact"
-            className="px-11 py-6 bg-secondary text-secondary-foreground rounded-lg text-lg md:text-xl font-semibold hover:bg-secondary/80 transition-all hover:scale-105 border border-border shadow-lg shadow-secondary/30"
+            className="px-11 py-6 bg-secondary text-secondary-foreground rounded-lg text-lg md:text-xl font-semibold hover:bg-secondary/80 transition-all border border-border shadow-lg shadow-secondary/30"
           >
             Book the Band
-          </a>
+          </motion.a>
         </motion.div>
 
         {/* Social Links */}
