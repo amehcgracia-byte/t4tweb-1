@@ -260,8 +260,9 @@ export function LiveSection() {
                         href={platform.href}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={`Listen on ${platform.name}`}
                         title={platform.name}
-                        className={`flex flex-col items-center justify-center p-4 bg-secondary/50 border border-border rounded-xl text-foreground transition-all duration-300 hover:border-transparent hover:text-white shadow-lg hover:shadow-xl ${platform.color}`}
+                        className={`flex flex-col items-center justify-center p-4 bg-secondary/50 border border-border rounded-xl text-foreground transition-all duration-300 hover:border-transparent hover:text-white shadow-lg hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${platform.color}`}
                       >
                         <platform.icon />
                         <span className="text-xs font-medium text-center mt-2">{platform.name}</span>
@@ -307,8 +308,17 @@ export function LiveSection() {
             >
               <h3 className="font-serif text-2xl text-foreground mb-6 text-center">Upcoming Shows</h3>
               {loading ? (
-                <div className="text-center py-12">
-                  <div className="text-muted-foreground">Loading concerts...</div>
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-24 bg-secondary/20 rounded-xl animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : concerts.length === 0 ? (
+                <div className="text-center py-16">
+                  <p className="text-muted-foreground">No concerts scheduled at the moment. Follow us for updates!</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -319,7 +329,7 @@ export function LiveSection() {
                       whileInView={{ opacity: 1, y: 0 }}
                       whileHover={{ y: -2, scale: 1.01 }}
                       transition={{ duration: 0.4, delay: index * 0.03, type: "spring", stiffness: 300, damping: 20 }}
-                      className="p-5 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all duration-300 group shadow-lg hover:shadow-xl"
+                      className="p-5 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all duration-300 group shadow-lg hover:shadow-xl min-h-[80px] flex items-center"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                         {/* Date */}

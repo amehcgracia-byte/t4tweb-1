@@ -104,7 +104,8 @@ export function HeroSection() {
             whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             href="#press-kit"
-            className="px-11 py-6 bg-primary text-primary-foreground rounded-lg text-lg md:text-xl font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/30"
+            aria-label="View band press kit"
+            className="px-11 py-6 bg-primary text-primary-foreground rounded-lg text-lg md:text-xl font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             View Press Kit
           </motion.a>
@@ -113,7 +114,8 @@ export function HeroSection() {
             whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             href="#contact"
-            className="px-11 py-6 bg-secondary text-secondary-foreground rounded-lg text-lg md:text-xl font-semibold hover:bg-secondary/80 transition-all border border-border shadow-lg shadow-secondary/30"
+            aria-label="Book Tales for the Tillerman"
+            className="px-11 py-6 bg-secondary text-secondary-foreground rounded-lg text-lg md:text-xl font-semibold hover:bg-secondary/80 transition-all border border-border shadow-lg shadow-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Book the Band
           </motion.a>
@@ -173,15 +175,17 @@ function SocialLink({
   children: React.ReactNode
 }) {
   return (
-    <a
+    <motion.a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="w-16 h-16 flex items-center justify-center rounded-full bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all hover:scale-110"
+      whileHover={{ scale: 1.1, y: -3 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className="w-16 h-16 flex items-center justify-center rounded-full bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       {children}
-    </a>
+    </motion.a>
   )
 }
 

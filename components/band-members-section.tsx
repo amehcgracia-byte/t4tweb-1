@@ -75,7 +75,7 @@ export function BandMembersSection() {
         {/* Header */}
         <motion.div
           style={{ opacity, y }}
-          className="text-center mb-12"
+          className="text-center mb-16"
         >
           <motion.span
             initial={{ opacity: 0 }}
@@ -168,10 +168,10 @@ export function BandMembersSection() {
                 onMouseEnter={() => setActiveIndex(index)}
                 whileHover={{ scale: 1.02, y: -2 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className={`w-full text-left p-5 md:p-6 rounded-2xl border transition-all duration-300 group ${
+                className={`w-full text-left p-5 md:p-6 rounded-2xl border transition-all duration-300 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                   activeIndex === index
-                    ? "bg-secondary border-primary/50 shadow-lg"
-                    : "bg-secondary/30 border-border hover:border-muted hover:bg-secondary/50"
+                    ? "bg-secondary border-primary/50 shadow-lg ring-2 ring-primary/20"
+                    : "bg-secondary/30 border-border hover:border-primary/30 hover:bg-secondary/50"
                 }`}
               >
                 <div className="flex items-center justify-between">
