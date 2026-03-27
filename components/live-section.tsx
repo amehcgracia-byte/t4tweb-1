@@ -97,7 +97,7 @@ export function LiveSection() {
   ]
 
   return (
-    <section id="live" ref={sectionRef} className="relative py-24 md:py-28 overflow-hidden">
+    <section id="live" ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/sections/live-bg.jpg"
@@ -112,7 +112,7 @@ export function LiveSection() {
           {/* Header */}
           <motion.div
             style={{ opacity, y }}
-            className="text-center mb-16"
+            className="text-center mb-12"
           >
             <motion.span
               initial={{ opacity: 0 }}

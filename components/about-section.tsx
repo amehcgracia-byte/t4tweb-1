@@ -30,7 +30,7 @@ export function AboutSection() {
   ]
 
   return (
-    <section id="about" ref={sectionRef} className="relative py-24 md:py-28 overflow-hidden">
+    <section id="about" ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/sections/about-bg.jpg"
@@ -44,7 +44,7 @@ export function AboutSection() {
         <div className="mx-auto max-w-4xl">
           <motion.div
             style={{ opacity, y }}
-            className="flex flex-col items-center mb-14"
+            className="flex flex-col items-center mb-10"
           >
             <div className="text-center max-w-3xl">
               <motion.span

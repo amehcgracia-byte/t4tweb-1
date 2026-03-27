@@ -24,7 +24,7 @@ export function HeroSection() {
   }
 
   return (
-    <section className="relative min-h-screen pt-20 pb-28 flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-screen pt-16 pb-20 md:pt-20 md:pb-24 flex items-center justify-center overflow-hidden">
       {/* Background image - hero (unique, no repetir) */}
       <div className="absolute inset-0 -z-10">
         <Image

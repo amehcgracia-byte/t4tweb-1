@@ -40,13 +40,13 @@ export function SceneSection({
     <section
       ref={sectionRef}
       id={id}
-      className={`relative min-h-[200vh] ${className}`}
+      className={`relative min-h-screen ${className}`}
     >
       {/* ===== GLOBAL BACKGROUND ALT (sin fondo por sección) ===== */}
-      <div className="absolute inset-0 -z-10 bg-black/20" />
+      <div className="absolute inset-0 -z-10 bg-black/5" />
 
-      {/* ===== CONTENT WRAPPER (100vh scrolleable) ===== */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16">
+      {/* ===== CONTENT WRAPPER (optimizado para flujo visual) ===== */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 md:py-16">
         <motion.div
           style={{
             opacity: contentAnimations.opacity,

@@ -29,7 +29,7 @@ export function ContactSection() {
   ]
 
   return (
-    <section id="contact" ref={sectionRef} className="relative py-24 md:py-28 min-h-[90vh] overflow-hidden">
+    <section id="contact" ref={sectionRef} className="relative py-16 md:py-20 min-h-screen overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/sections/contact-bg.jpg"
@@ -43,7 +43,7 @@ export function ContactSection() {
         {/* Header */}
         <motion.div
           style={{ opacity, y }}
-          className="text-center mb-14"
+          className="text-center mb-10"
         >
           <motion.span
             initial={{ opacity: 0 }}
@@ -72,7 +72,7 @@ export function ContactSection() {
         </motion.div>
 
         {/* Contact Options */}
-        <div className="grid sm:grid-cols-2 gap-8 mb-14">
+        <div className="grid sm:grid-cols-2 gap-8 mb-10">
           {contactMethods.map((method, index) => (
             <motion.a
               key={method.title}
@@ -118,7 +118,7 @@ export function ContactSection() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="text-center mb-12"
+          className="text-center mb-8"
         >
           <a
             href="mailto:talesforthetillerman@gmail.com?subject=Booking%20Inquiry"
@@ -134,7 +134,7 @@ export function ContactSection() {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-center text-muted-foreground text-lg mt-10"
+          className="text-center text-muted-foreground text-lg mt-6"
         >
           Management: Momo Garcia
         </motion.p>

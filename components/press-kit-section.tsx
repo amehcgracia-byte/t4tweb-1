@@ -38,7 +38,7 @@ export function PressKitSection() {
   }
 
   return (
-    <section id="press-kit" ref={sectionRef} className="relative py-24 md:py-28 overflow-hidden">
+    <section id="press-kit" ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/sections/press-bg.jpg"
@@ -52,7 +52,7 @@ export function PressKitSection() {
         {/* Header */}
         <motion.div
           style={{ opacity, y }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <motion.span
             initial={{ opacity: 0 }}
@@ -85,7 +85,7 @@ export function PressKitSection() {
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="mb-16"
+          className="mb-12"
         >
           <div className="bg-card/33 border border-border rounded-3xl p-8 md:p-12 text-center backdrop-blur-sm">
             <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary/20 flex items-center justify-center">

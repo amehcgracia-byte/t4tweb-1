@@ -69,13 +69,13 @@ export function BandMembersSection() {
     <section
       id="band"
       ref={sectionRef}
-      className="py-24 md:py-28 bg-background relative overflow-hidden"
+      className="py-16 md:py-20 bg-background relative overflow-hidden"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           style={{ opacity, y }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <motion.span
             initial={{ opacity: 0 }}
