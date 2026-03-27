@@ -3,6 +3,39 @@ import Image from "next/image"
 export function Footer() {
   const currentYear = new Date().getFullYear()
 
+  const streamingPlatforms = [
+    {
+      name: "Spotify",
+      href: "https://open.spotify.com/intl-es/artist/0FHjK3O0k8HQMrJsF7KQwF",
+      icon: SpotifyIcon,
+    },
+    {
+      name: "Apple Music",
+      href: "https://music.apple.com/us/artist/tales-for-the-tillerman/1819840222",
+      icon: AppleMusicIcon,
+    },
+    {
+      name: "YouTube Music",
+      href: "https://music.youtube.com/channel/UCiSLr9s4NLC1kzHBqJirsrQ",
+      icon: YouTubeIcon,
+    },
+    {
+      name: "Amazon Music",
+      href: "https://music.amazon.co.uk/artists/B0FCNWCSZC/tales-for-the-tillerman",
+      icon: AmazonIcon,
+    },
+    {
+      name: "Bandcamp",
+      href: "https://talesforthetillerman.bandcamp.com/",
+      icon: BandcampIcon,
+    },
+    {
+      name: "Bandsintown",
+      href: "https://www.bandsintown.com/a/15468933-tales-for-the-tillerman",
+      icon: BandsinTownIcon,
+    },
+  ]
+
   const socialLinks = [
     {
       name: "Spotify",
@@ -34,41 +67,75 @@ export function Footer() {
   return (
     <footer className="bg-black border-t border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex flex-col items-center">
-          {/* QR Logo */}
-          <div className="mb-8">
-            <Image
-              src="/images/logo-qr.png"
-              alt="Tales for the Tillerman"
-              width={120}
-              height={120}
-              className="opacity-90"
-            />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+          {/* Left: Logo & Info */}
+          <div className="flex flex-col items-center md:items-start">
+            <div className="mb-4">
+              <Image
+                src="/images/logo-qr.png"
+                alt="Tales for the Tillerman"
+                width={100}
+                height={100}
+                className="opacity-90"
+              />
+            </div>
+            <span className="font-serif text-xl text-white mb-4">
+              Tales for the Tillerman
+            </span>
+            <p className="text-sm text-gray-400 text-center md:text-left">
+              Berlin-based world music collective blending funk, soul, and reggae.
+            </p>
           </div>
 
-          {/* Band Name */}
-          <span className="font-serif text-2xl text-white mb-6">
-            Tales for the Tillerman
-          </span>
-
-          {/* Social Links */}
-          <div className="flex items-center gap-4 mb-10">
-            {socialLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={link.name}
-                className="w-11 h-11 flex items-center justify-center rounded-full bg-secondary text-white hover:text-white hover:bg-gray-700 transition-colors"
-              >
-                <link.icon />
-              </a>
-            ))}
+          {/* Center: Booking Contact */}
+          <div className="flex flex-col items-center">
+            <h4 className="text-white font-semibold mb-4">Booking & Info</h4>
+            <div className="space-y-3 text-sm text-center">
+              <div>
+                <p className="text-gray-300">Manager</p>
+                <a href="mailto:talesforthetillerman@gmail.com" className="text-primary hover:text-primary/80 transition-colors">
+                  Momo Garcia
+                </a>
+              </div>
+              <div>
+                <p className="text-gray-300">Quick Booking</p>
+                <a href="https://t.me/Janoschpuhe" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 transition-colors">
+                  @Janoschpuhe
+                </a>
+              </div>
+              <div>
+                <p className="text-gray-300">All Links</p>
+                <a href="https://linktr.ee/tales4tillerman" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 transition-colors">
+                  Linktree
+                </a>
+              </div>
+            </div>
           </div>
 
-          {/* Links */}
-          <div className="flex flex-wrap justify-center gap-8 mb-10 text-sm">
+          {/* Right: Stream & Follow */}
+          <div className="flex flex-col items-center md:items-end">
+            <h4 className="text-white font-semibold mb-4">Stream Our Music</h4>
+            <div className="flex items-center gap-2 flex-wrap justify-center md:justify-end">
+              {streamingPlatforms.map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={link.name}
+                  title={link.name}
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-secondary text-white hover:bg-primary transition-colors"
+                >
+                  <link.icon />
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Links */}
+        <div className="border-t border-border/20 pt-8">
+          <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm">
             <a href="#about" className="text-gray-300 hover:text-white transition-colors">
               About
             </a>
@@ -78,16 +145,35 @@ export function Footer() {
             <a href="#band" className="text-gray-300 hover:text-white transition-colors">
               Band
             </a>
+            <a href="#live" className="text-gray-300 hover:text-white transition-colors">
+              Shows
+            </a>
             <a href="#contact" className="text-gray-300 hover:text-white transition-colors">
               Contact
             </a>
           </div>
 
-          {/* Copyright */}
-          <div className="text-center text-sm text-gray-400">
-            <p>&copy; {currentYear} Tales for the Tillerman. All rights reserved.</p>
-            <p className="mt-1">Berlin, Germany</p>
+          {/* Social Links */}
+          <div className="flex items-center justify-center gap-4 mb-8">
+            {socialLinks.map((link) => (
+              <a
+                key={link.name}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={link.name}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-secondary text-white hover:bg-primary transition-colors"
+              >
+                <link.icon />
+              </a>
+            ))}
           </div>
+        </div>
+
+        {/* Copyright */}
+        <div className="border-t border-border/20 pt-8 text-center text-sm text-gray-400">
+          <p>&copy; {currentYear} Tales for the Tillerman. All rights reserved.</p>
+          <p className="mt-1">Berlin, Germany</p>
         </div>
       </div>
     </footer>
@@ -130,6 +216,38 @@ function LinktreeIcon() {
   return (
     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
       <path d="M7.953 15.066l-.038-4.295h4.147v4.295H7.953zm0-12.066l4.109 4.128-2.07 2.093 2.07 2.093-4.109 4.128V3zm8.094 0v12.442l-4.109-4.128 2.07-2.093-2.07-2.093L16.047 3zM16.047 15.066v4.295h-4.147v-4.295h4.147z" />
+    </svg>
+  )
+}
+
+function AppleMusicIcon() {
+  return (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M19.098 10.638c0-1.1.08-2.267.244-3.57 0-.603.528-1.1 1.117-1.1.59 0 1.12.497 1.12 1.1-.206 1.303-.326 2.47-.326 3.57 0 8.998 5.291 16.594 12.061 20.15h-.003c.4.23.654.668.654 1.15 0 .744-.603 1.346-1.345 1.346-.527 0-.996-.31-1.212-.744-.259-.528-.528-1.057-.806-1.646h-1.923c-.28.59-.548 1.12-.806 1.646-.216.435-.685.744-1.212.744-.742 0-1.345-.603-1.345-1.346 0-.482.254-.92.654-1.15 6.77-3.556 12.061-11.152 12.061-20.15zm-6.055 1.104c0 .836.68 1.516 1.516 1.516.835 0 1.515-.68 1.515-1.516 0-.835-.68-1.515-1.515-1.515-.836 0-1.516.68-1.516 1.515zm8.993 6.057c-.683 0-1.237.554-1.237 1.237 0 .683.554 1.238 1.237 1.238.684 0 1.238-.555 1.238-1.238 0-.683-.554-1.237-1.238-1.237zm-14.22-8.76c1.1 1.1 1.897 2.678 1.897 4.45 0 3.553-2.898 6.451-6.452 6.451-3.553 0-6.451-2.898-6.451-6.451 0-1.772.797-3.35 1.897-4.45C-2.09 8.537-2.696 6.264-2.696 3.76c0-5.516 4.48-9.996 9.996-9.996 5.516 0 9.996 4.48 9.996 9.996 0 2.504-.607 4.777-1.59 6.825z" />
+    </svg>
+  )
+}
+
+function AmazonIcon() {
+  return (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M3.5 10.5c0-.8.7-1.5 1.5-1.5h14c.8 0 1.5.7 1.5 1.5v1H3.5v-1zm0 3h17v4c0 .8-.7 1.5-1.5 1.5H5c-.8 0-1.5-.7-1.5-1.5v-4z" />
+    </svg>
+  )
+}
+
+function BandcampIcon() {
+  return (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M5.51 2H2.72A1.97 1.97 0 0 0 .75 3.97v16.06A1.97 1.97 0 0 0 2.72 22h16.06a1.97 1.97 0 0 0 1.97-1.97V3.97A1.97 1.97 0 0 0 18.78 2H5.51zm5.96 11.37l-4.15 5.54h4.15V13.37z" />
+    </svg>
+  )
+}
+
+function BandsinTownIcon() {
+  return (
+    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm3-10c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm-2 0c0-1.105-.895-2-2-2s-2 .895-2 2 .895 2 2 2 2-.895 2-2z" />
     </svg>
   )
 }

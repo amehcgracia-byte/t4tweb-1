@@ -1,5 +1,6 @@
 import Image from "next/image"
 import { HeroSection } from "@/components/hero-section"
+import { QuickActionsSection } from "@/components/quick-actions-section"
 import { SectionDivider } from "@/components/section-divider"
 import { AboutSection } from "@/components/about-section"
 import { PressKitSection } from "@/components/press-kit-section"
@@ -13,29 +14,33 @@ import { SceneSection } from "@/components/scene-section"
 export default function Home() {
   return (
     <main className="relative bg-black">
-      {/* Global fixed background (single active layer) */}
-      <div className="fixed inset-0 -z-20 opacity-0 animate-fade-in">
-        <Image
-          src="/images/banner.gif"
-          alt="Tales for the Tillerman base animated banner"
-          fill
-          className="object-cover"
-          unoptimized
-        />
-        <div className="absolute inset-0 bg-black/30" />
-      </div>
-
       <Navigation />
 
       <SceneSection id="hero" imageSrc="/images/t4t-1.jpg" imageAlt="Band hero scene">
         <HeroSection />
       </SceneSection>
 
+      <QuickActionsSection />
+
       <SectionDivider />
 
       <SceneSection id="about" imageSrc="/images/t4t-2.jpg" imageAlt="About band scene">
         <AboutSection />
       </SceneSection>
+
+      <SectionDivider />
+
+      {/* Banner Section - Between About and Press Kit */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 via-primary/3 to-black" style={{ minHeight: "200px", clipPath: "inset(47% 0 0 0)" }}>
+        <Image
+          src="/images/banner.gif"
+          alt="Tales for the Tillerman animated banner"
+          width={1200}
+          height={300}
+          className="w-full h-auto object-cover"
+          unoptimized
+        />
+      </section>
 
       <SectionDivider />
 
@@ -62,6 +67,18 @@ export default function Home() {
       </SceneSection>
 
       <Footer />
+
+      {/* Banner Footer - After Footer */}
+      <section className="relative w-full overflow-hidden bg-gradient-to-b from-primary/5 via-primary/3 to-black" style={{ minHeight: "150px", clipPath: "inset(47% 0 0 0)" }}>
+        <Image
+          src="/images/banner.gif"
+          alt="Tales for the Tillerman animated banner"
+          width={1200}
+          height={200}
+          className="w-full h-auto object-cover"
+          unoptimized
+        />
+      </section>
     </main>
   )
 }
