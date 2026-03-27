@@ -1,120 +1,124 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef } from "react"
+import { motion } from "framer-motion"
 import Image from "next/image"
+import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 
 export function ContactSection() {
   const sectionRef = useRef<HTMLElement>(null)
-  const [isVisible, setIsVisible] = useState(false)
+  const { opacity, y } = useScrollAnimation(sectionRef)
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-        }
-      },
-      { threshold: 0.15, rootMargin: "-50px" }
-    )
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, [])
+  const contactMethods = [
+    {
+      title: "Email Us",
+      description: "For booking inquiries and collaborations",
+      icon: EmailIcon,
+      href: "mailto:talesforthetillerman@gmail.com",
+      label: "talesforthetillerman@gmail.com",
+      internal: true,
+    },
+    {
+      title: "Telegram",
+      description: "Quick response for urgent matters",
+      icon: TelegramIcon,
+      href: "https://t.me/talesforthetillerman",
+      label: "@talesforthetillerman",
+      internal: false,
+    },
+  ]
 
   return (
-    <section
-      id="contact"
-      ref={sectionRef}
-      className="py-28 md:py-40 relative overflow-hidden min-h-[90vh] flex items-center"
-    >
-      {/* Background Image with blur and reduced opacity */}
-      <div className="absolute inset-0 z-0">
+    <section id="contact" ref={sectionRef} className="relative py-24 md:py-28 min-h-[90vh] overflow-hidden">
+      <div className="absolute inset-0 -z-10">
         <Image
-          src="/images/Momo Garcia Manager.png"
-          alt=""
+          src="/images/sections/contact-bg.jpg"
+          alt="Contact section background"
           fill
-          className="object-cover object-center blur-md scale-105"
+          className="object-cover"
         />
-        {/* Dark overlay to ensure text readability - matching About section style */}
-        <div className="absolute inset-0 bg-background/85" />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-transparent to-background/50" />
+        <div className="absolute inset-0 bg-black/55" />
       </div>
-
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
         {/* Header */}
-        <div
-          className={`text-center mb-14 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-          }`}
+        <motion.div
+          style={{ opacity, y }}
+          className="text-center mb-14"
         >
-          <span className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block">
+          <motion.span
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block"
+          >
             Let&apos;s Work Together
-          </span>
-          <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-6 text-balance">
+          </motion.span>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-6 text-balance"
+          >
             Book the Band
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-xl">
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-muted-foreground max-w-2xl mx-auto text-xl"
+          >
             Ready to bring the groove to your event? Get in touch with our management for bookings and inquiries.
-          </p>
+          </motion.p>
+        </motion.div>
+
+        {/* Contact Options */}
+        <div className="grid sm:grid-cols-2 gap-8 mb-14">
+          {contactMethods.map((method, index) => (
+            <motion.a
+              key={method.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 + index * 0.1 }}
+              href={method.href}
+              target={method.internal ? undefined : "_blank"}
+              rel={method.internal ? undefined : "noopener noreferrer"}
+              className="group p-10 bg-card/90 backdrop-blur-sm rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 hover:scale-[1.02] text-center"
+            >
+              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                <method.icon className="w-10 h-10 text-primary" />
+              </div>
+              <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-3">
+                {method.title}
+              </h3>
+              <p className="text-muted-foreground text-lg mb-5">
+                {method.description}
+              </p>
+              <span className="inline-flex items-center gap-2 text-primary font-medium text-lg">
+                {method.label}
+                <svg
+                  className="w-5 h-5 group-hover:translate-x-1 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 8l4 4m0 0l-4 4m4-4H3"
+                  />
+                </svg>
+              </span>
+            </motion.a>
+          ))}
         </div>
 
-        {/* Contact Options - Larger and more prominent */}
-        <div
-          className={`grid sm:grid-cols-2 gap-8 mb-14 transition-all duration-700 delay-200 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-          }`}
-        >
-          {/* Email */}
-          <a
-            href="mailto:talesforthetillerman@gmail.com"
-            className="group p-10 bg-card/90 backdrop-blur-sm rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 hover:scale-[1.02] text-center"
-          >
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
-              <EmailIcon className="w-10 h-10 text-primary" />
-            </div>
-            <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-3">Email Us</h3>
-            <p className="text-muted-foreground text-lg mb-5">
-              For booking inquiries and collaborations
-            </p>
-            <span className="inline-flex items-center gap-2 text-primary font-medium text-lg">
-              talesforthetillerman@gmail.com
-              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </span>
-          </a>
-
-          {/* Telegram */}
-          <a
-            href="https://t.me/talesforthetillerman"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group p-10 bg-card/90 backdrop-blur-sm rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 hover:scale-[1.02] text-center"
-          >
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
-              <TelegramIcon className="w-10 h-10 text-primary" />
-            </div>
-            <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-3">Telegram</h3>
-            <p className="text-muted-foreground text-lg mb-5">
-              Quick response for urgent matters
-            </p>
-            <span className="inline-flex items-center gap-2 text-primary font-medium text-lg">
-              @talesforthetillerman
-              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            </span>
-          </a>
-        </div>
-
-        {/* Main CTA Button - Much larger */}
-        <div
-          className={`text-center mb-12 transition-all duration-700 delay-300 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-          }`}
+        {/* Main CTA Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="text-center mb-12"
         >
           <a
             href="mailto:talesforthetillerman@gmail.com?subject=Booking%20Inquiry"
@@ -123,34 +127,17 @@ export function ContactSection() {
             <CalendarIcon className="w-8 h-8" />
             Book Now
           </a>
-        </div>
-
-        {/* Animated Banner/GIF - Moved from Live section */}
-        <div
-          className={`transition-all duration-700 delay-400 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-          }`}
-        >
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl max-w-2xl mx-auto">
-            <Image
-              src="/images/banner.gif"
-              alt="Tales for the Tillerman animated banner"
-              width={600}
-              height={200}
-              className="w-full"
-              unoptimized
-            />
-          </div>
-        </div>
+        </motion.div>
 
         {/* Management Note */}
-        <p
-          className={`text-center text-muted-foreground text-lg mt-10 transition-all duration-700 delay-500 ease-out ${
-            isVisible ? "opacity-100" : "opacity-0"
-          }`}
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="text-center text-muted-foreground text-lg mt-10"
         >
           Management: Momo Garcia
-        </p>
+        </motion.p>
       </div>
     </section>
   )
@@ -158,7 +145,12 @@ export function ContactSection() {
 
 function EmailIcon({ className }: { className?: string }) {
   return (
-    <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className={className || "w-6 h-6"}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -171,7 +163,11 @@ function EmailIcon({ className }: { className?: string }) {
 
 function TelegramIcon({ className }: { className?: string }) {
   return (
-    <svg className={className || "w-6 h-6"} fill="currentColor" viewBox="0 0 24 24">
+    <svg
+      className={className || "w-6 h-6"}
+      fill="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
     </svg>
   )
@@ -179,7 +175,12 @@ function TelegramIcon({ className }: { className?: string }) {
 
 function CalendarIcon({ className }: { className?: string }) {
   return (
-    <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className={className || "w-6 h-6"}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

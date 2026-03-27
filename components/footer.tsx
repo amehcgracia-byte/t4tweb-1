@@ -32,7 +32,7 @@ export function Footer() {
   ]
 
   return (
-    <footer className="bg-card border-t border-border">
+    <footer className="bg-black border-t border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="flex flex-col items-center">
           {/* QR Logo */}
@@ -47,7 +47,7 @@ export function Footer() {
           </div>
 
           {/* Band Name */}
-          <span className="font-serif text-2xl text-foreground mb-6">
+          <span className="font-serif text-2xl text-white mb-6">
             Tales for the Tillerman
           </span>
 
@@ -60,7 +60,7 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={link.name}
-                className="w-11 h-11 flex items-center justify-center rounded-full bg-secondary text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="w-11 h-11 flex items-center justify-center rounded-full bg-secondary text-white hover:text-white hover:bg-gray-700 transition-colors"
               >
                 <link.icon />
               </a>
@@ -69,22 +69,22 @@ export function Footer() {
 
           {/* Links */}
           <div className="flex flex-wrap justify-center gap-8 mb-10 text-sm">
-            <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">
+            <a href="#about" className="text-gray-300 hover:text-white transition-colors">
               About
             </a>
-            <a href="#press-kit" className="text-muted-foreground hover:text-foreground transition-colors">
+            <a href="#press-kit" className="text-gray-300 hover:text-white transition-colors">
               Press Kit
             </a>
-            <a href="#band" className="text-muted-foreground hover:text-foreground transition-colors">
+            <a href="#band" className="text-gray-300 hover:text-white transition-colors">
               Band
             </a>
-            <a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">
+            <a href="#contact" className="text-gray-300 hover:text-white transition-colors">
               Contact
             </a>
           </div>
 
           {/* Copyright */}
-          <div className="text-center text-sm text-muted-foreground">
+          <div className="text-center text-sm text-gray-400">
             <p>&copy; {currentYear} Tales for the Tillerman. All rights reserved.</p>
             <p className="mt-1">Berlin, Germany</p>
           </div>

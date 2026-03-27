@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { motion } from "framer-motion"
 import Image from "next/image"
+import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 
 interface Concert {
   venue: string
@@ -48,26 +50,9 @@ function formatDate(dateStr: string): string {
 
 export function LiveSection() {
   const sectionRef = useRef<HTMLElement>(null)
-  const [isVisible, setIsVisible] = useState(false)
   const [concerts, setConcerts] = useState<Concert[]>([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-        }
-      },
-      { threshold: 0.1, rootMargin: "-50px" }
-    )
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, [])
+  const { opacity, y } = useScrollAnimation(sectionRef)
 
   // Fetch and parse CSV data
   useEffect(() => {
@@ -112,49 +97,57 @@ export function LiveSection() {
   ]
 
   return (
-    <section
-      id="live"
-      ref={sectionRef}
-      className="relative py-28 md:py-40 bg-card"
-    >
-      {/* Background Image with subtle overlay */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
+    <section id="live" ref={sectionRef} className="relative py-24 md:py-28 overflow-hidden">
+      <div className="absolute inset-0 -z-10">
         <Image
-          src="/images/DSC_4710.JPG"
-          alt="Tales for the Tillerman live performance"
+          src="/images/sections/live-bg.jpg"
+          alt="Live section background"
           fill
-          className="object-cover opacity-10"
+          className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-card via-card/95 to-card" />
+        <div className="absolute inset-0 bg-black/50" />
       </div>
-
-      {/* Content */}
       <div className="relative z-10 w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
-          <div
-            className={`text-center mb-16 transition-all duration-700 ease-out ${
-              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-            }`}
+          <motion.div
+            style={{ opacity, y }}
+            className="text-center mb-16"
           >
-            <span className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block">
+            <motion.span
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block"
+            >
               Experience
-            </span>
-          <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-6 text-balance">
-            Our Show History
-          </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+            </motion.span>
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-6 text-balance"
+            >
+              Our Show History
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="text-muted-foreground max-w-2xl mx-auto text-lg"
+            >
               From intimate club shows to festival main stages, Tales for the Tillerman 
               delivers an unforgettable live experience.
-            </p>
-          </div>
+            </motion.p>
+          </motion.div>
 
           <div className="grid lg:grid-cols-3 gap-12">
             {/* Concert List */}
-            <div
-              className={`lg:col-span-2 transition-all duration-700 delay-200 ease-out ${
-                isVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-16"
-              }`}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="lg:col-span-2"
             >
               {loading ? (
                 <div className="text-center py-12">
@@ -163,8 +156,11 @@ export function LiveSection() {
               ) : (
                 <div className="space-y-3">
                   {concerts.map((concert, index) => (
-                    <div
+                    <motion.div
                       key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: index * 0.03 }}
                       className="p-5 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all duration-300 group"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
@@ -193,26 +189,29 @@ export function LiveSection() {
                           </span>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               )}
-            </div>
+            </motion.div>
 
             {/* Platform Links Sidebar */}
-            <div
-              className={`transition-all duration-700 delay-300 ease-out ${
-                isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-16"
-              }`}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
             >
               <div className="sticky top-32">
                 <h3 className="font-serif text-2xl text-foreground mb-6">
                   Stream Our Music
                 </h3>
                 <div className="space-y-4">
-                  {platforms.map((platform) => (
-                    <a
+                  {platforms.map((platform, index) => (
+                    <motion.a
                       key={platform.name}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: index * 0.1 }}
                       href={platform.href}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -220,11 +219,11 @@ export function LiveSection() {
                     >
                       <platform.icon />
                       <span className="font-medium text-lg">{platform.name}</span>
-                    </a>
+                    </motion.a>
                   ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>

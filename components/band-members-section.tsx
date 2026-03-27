@@ -1,7 +1,9 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
+import { motion } from "framer-motion"
 import Image from "next/image"
+import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 
 const members = [
   {
@@ -10,7 +12,6 @@ const members = [
     fullName: "Janosch Puhe",
     role: "Main Vocals",
     image: "/images/members/Janosch Puhe2.JPG",
-    fallbackImage: "/images/band-collage.jpg",
     color: "from-amber-500/30",
   },
   {
@@ -19,7 +20,6 @@ const members = [
     fullName: "J.Ma Garcia Lopez",
     role: "Keys and Synth",
     image: "/images/members/J.Ma Garcia Lopez2.JPG",
-    fallbackImage: "/images/band-collage.jpg",
     color: "from-teal-500/30",
   },
   {
@@ -28,7 +28,6 @@ const members = [
     fullName: "Otto Lorenz Contreras",
     role: "Drums",
     image: "/images/members/Otto Lorenz Contreras.JPG",
-    fallbackImage: "/images/band-collage.jpg",
     color: "from-indigo-500/30",
   },
   {
@@ -37,7 +36,6 @@ const members = [
     fullName: "Robii Crowford",
     role: "E Guit",
     image: "/images/members/Robii Crowford.JPG",
-    fallbackImage: "/images/band-collage.jpg",
     color: "from-rose-500/30",
   },
   {
@@ -46,85 +44,98 @@ const members = [
     fullName: "Tarik Benatmane",
     role: "E Bass",
     image: "/images/members/Tarik Benatmane.JPG",
-    fallbackImage: "/images/band-collage.jpg",
     color: "from-orange-500/30",
   },
 ]
 
 export function BandMembersSection() {
   const sectionRef = useRef<HTMLElement>(null)
-  const [isVisible, setIsVisible] = useState(false)
   const [activeIndex, setActiveIndex] = useState<number>(0)
-  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
+  const { opacity, y } = useScrollAnimation(sectionRef)
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-        }
+  const memberVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (custom: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: custom * 0.05,
+        duration: 0.5,
       },
-      { threshold: 0.1, rootMargin: "-50px" }
-    )
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, [])
-
-  const handleImageError = (index: number) => {
-    setImageErrors((prev) => new Set(prev).add(index))
+    }),
   }
 
   return (
     <section
       id="band"
       ref={sectionRef}
-      className="py-28 md:py-40 bg-card relative overflow-hidden"
+      className="py-24 md:py-28 bg-background relative overflow-hidden"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div
-          className={`text-center mb-16 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-          }`}
+        <motion.div
+          style={{ opacity, y }}
+          className="text-center mb-16"
         >
-          <span className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block">
+          <motion.span
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block"
+          >
             The Musicians
-          </span>
-          <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-4 text-balance">
+          </motion.span>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-4 text-balance"
+          >
             Meet the Band
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-muted-foreground max-w-2xl mx-auto text-lg"
+          >
             Five musicians from diverse backgrounds, united by a passion for rhythm and groove.
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
 
         {/* Interactive Member Display */}
-        <div
-          className={`grid lg:grid-cols-2 gap-8 lg:gap-12 items-start transition-all duration-700 delay-200 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-          }`}
-        >
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
           {/* Member Photo Display */}
-          <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary order-2 lg:order-1">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6 }}
+            className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary order-2 lg:order-1"
+          >
             {members.map((member, index) => (
-              <div
+              <motion.div
                 key={member.id}
-                className={`absolute inset-0 transition-all duration-500 ease-in-out ${
+                animate={
                   activeIndex === index
-                    ? "opacity-100 scale-100"
-                    : "opacity-0 scale-105 pointer-events-none"
+                    ? { opacity: 1, scale: 1 }
+                    : { opacity: 0, scale: 1.05 }
+                }
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className={`absolute inset-0 ${
+                  activeIndex !== index && "pointer-events-none"
                 }`}
               >
                 <Image
-                  src={imageErrors.has(index) ? member.fallbackImage : member.image}
+                  src={member.image}
                   alt={member.fullName}
                   fill
                   className="object-cover"
-                  onError={() => handleImageError(index)}
+                  onError={(e) => {
+                    // Si la imagen falla, mostrar un gradiente
+                    if (e.currentTarget.parentElement) {
+                      e.currentTarget.style.display = "none"
+                    }
+                  }}
                 />
                 {/* Gradient overlay at bottom */}
                 <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-card to-transparent" />
@@ -135,25 +146,24 @@ export function BandMembersSection() {
                   </h3>
                   <p className="text-muted-foreground">{member.role}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
-            
-            {/* Fallback background */}
-            <div className="absolute inset-0 flex items-center justify-center bg-secondary -z-10">
-              <Image
-                src="/images/band-collage.jpg"
-                alt="Band collage"
-                fill
-                className="object-cover opacity-50"
-              />
-            </div>
-          </div>
+          </motion.div>
 
           {/* Member Names List - Interactive */}
-          <div className="space-y-3 order-1 lg:order-2">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="space-y-3 order-1 lg:order-2"
+          >
             {members.map((member, index) => (
-              <button
+              <motion.button
                 key={member.id}
+                custom={index}
+                initial="hidden"
+                whileInView="visible"
+                variants={memberVariants}
                 onClick={() => setActiveIndex(index)}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={`w-full text-left p-5 md:p-6 rounded-2xl border transition-all duration-300 group ${
@@ -207,9 +217,9 @@ export function BandMembersSection() {
                     </svg>
                   </div>
                 </div>
-              </button>
+              </motion.button>
             ))}
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

@@ -1,28 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef } from "react"
+import { motion } from "framer-motion"
 import Image from "next/image"
+import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 
 export function PressKitSection() {
   const sectionRef = useRef<HTMLElement>(null)
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-        }
-      },
-      { threshold: 0.15, rootMargin: "-50px" }
-    )
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, [])
+  const { opacity, y } = useScrollAnimation(sectionRef)
 
   const resources = [
     {
@@ -33,13 +18,6 @@ export function PressKitSection() {
       download: true,
     },
     {
-      title: "Animated Banner",
-      description: "GIF for social media",
-      icon: VideoIcon,
-      href: "/images/banner.gif",
-      download: true,
-    },
-    {
       title: "Linktree",
       description: "All links in one place",
       icon: LinkIcon,
@@ -47,48 +25,69 @@ export function PressKitSection() {
     },
   ]
 
+  const resourceVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (custom: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: custom * 0.1,
+        duration: 0.5,
+      },
+    }),
+  }
+
   return (
-    <section
-      id="press-kit"
-      ref={sectionRef}
-      className="py-28 md:py-40 bg-background relative overflow-hidden"
-    >
-      {/* Background image with low opacity */}
-      <div className="absolute inset-0 z-0">
+    <section id="press-kit" ref={sectionRef} className="relative py-24 md:py-28 overflow-hidden">
+      <div className="absolute inset-0 -z-10">
         <Image
-          src="/images/press-section.png"
-          alt=""
+          src="/images/sections/press-bg.jpg"
+          alt="Press kit background"
           fill
-          className="object-cover opacity-10"
+          className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-background/95 to-background" />
+        <div className="absolute inset-0 bg-black/50" />
       </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Header - More prominent */}
-        <div
-          className={`text-center mb-16 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-          }`}
+        {/* Header */}
+        <motion.div
+          style={{ opacity, y }}
+          className="text-center mb-16"
         >
-          <span className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block">
+          <motion.span
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block"
+          >
             Media Resources
-          </span>
-          <h2 className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-6 text-balance">
+          </motion.span>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-6 text-balance"
+          >
             Professional Press Materials
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-muted-foreground max-w-2xl mx-auto text-lg"
+          >
             Everything you need for press coverage, event promotion, and booking information.
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
 
-        {/* Main Download CTA - Much more prominent */}
-        <div
-          className={`mb-16 transition-all duration-700 delay-200 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-          }`}
+        {/* Main Download CTA */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="mb-16"
         >
-          <div className="bg-card border border-border rounded-3xl p-8 md:p-12 text-center">
+          <div className="bg-card/33 border border-border rounded-3xl p-8 md:p-12 text-center backdrop-blur-sm">
             <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary/20 flex items-center justify-center">
               <FolderIcon className="w-10 h-10 text-primary" />
             </div>
@@ -99,37 +98,55 @@ export function PressKitSection() {
               Download our full press kit including high-quality photos, biography, technical rider, and more.
             </p>
             <a
-              href="https://drive.google.com/drive/folders/1opYzf-h9UcNptgOeoGEchdkd0VkqYJPH?usp=drive_link"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/PressKit T40 2025.26_compressed.pdf"
+              download="PressKit T40 2025.26_compressed.pdf"
               className="inline-flex items-center gap-3 px-10 py-5 bg-primary text-primary-foreground rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all hover:scale-105 shadow-lg shadow-primary/25"
             >
               <DownloadIcon className="w-6 h-6" />
-              Download Kit
+              Press Kit
             </a>
           </div>
-        </div>
+        </motion.div>
 
         {/* Additional Resources Grid */}
         <div className="grid sm:grid-cols-3 gap-6">
+          {/* Manager Card with Blur Effect */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0 }}
+            className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-500 hover:scale-[1.02] overflow-hidden backdrop-blur-sm"
+          >
+            <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
+              <img
+                src="/images/Momo Garcia Manager.png"
+                alt="Momo Garcia Manager"
+                className="w-full h-full object-cover blur-sm group-hover:blur-none transition-all duration-300"
+              />
+            </div>
+            <h3 className="font-medium text-foreground mb-1">Manager</h3>
+            <p className="text-sm text-muted-foreground">Momo Garcia - Band Management</p>
+          </motion.div>
+
           {resources.map((resource, index) => (
-            <a
+            <motion.a
               key={resource.title}
+              custom={index}
+              initial="hidden"
+              whileInView="visible"
+              variants={resourceVariants}
               href={resource.href}
               target={resource.download ? undefined : "_blank"}
               rel={resource.download ? undefined : "noopener noreferrer"}
               download={resource.download}
-              className={`group p-6 bg-card rounded-2xl border border-border hover:border-primary/50 transition-all duration-500 hover:scale-[1.02] ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
-              }`}
-              style={{ transitionDelay: `${400 + index * 100}ms` }}
+              className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-500 hover:scale-[1.02] backdrop-blur-sm"
             >
               <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-secondary text-muted-foreground group-hover:text-foreground transition-colors">
                 <resource.icon />
               </div>
               <h3 className="font-medium text-foreground mb-1">{resource.title}</h3>
               <p className="text-sm text-muted-foreground">{resource.description}</p>
-            </a>
+            </motion.a>
           ))}
         </div>
       </div>
@@ -163,19 +180,6 @@ function ImageIcon() {
   )
 }
 
-function VideoIcon() {
-  return (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-      />
-    </svg>
-  )
-}
-
 function LinkIcon() {
   return (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,7 +187,7 @@ function LinkIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.5}
-        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
       />
     </svg>
   )
@@ -191,7 +195,7 @@ function LinkIcon() {
 
 function DownloadIcon({ className }: { className?: string }) {
   return (
-    <svg className={className || "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className={className || "w-6 h-6"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
