@@ -115,13 +115,41 @@ export function PressKitSection() {
 
         {/* Additional Resources Grid */}
         <div className="grid sm:grid-cols-3 gap-6">
-          {/* Manager Card with Blur Effect */}
-          <motion.div
+          {/* Band Logo Card - First */}
+          {resources.length > 0 && (() => {
+            const BandLogoIcon = resources[0].icon;
+            return (
+              <motion.a
+                key={resources[0].title}
+                custom={0}
+                initial="hidden"
+                whileInView="visible"
+                variants={resourceVariants}
+                whileHover={{ y: -4, scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                href={resources[0].href}
+                target={resources[0].download ? undefined : "_blank"}
+                rel={resources[0].download ? undefined : "noopener noreferrer"}
+                download={resources[0].download}
+                className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 backdrop-blur-sm shadow-lg hover:shadow-xl"
+              >
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-secondary text-muted-foreground group-hover:text-foreground transition-colors">
+                  <BandLogoIcon />
+                </div>
+                <h3 className="font-medium text-foreground mb-1">{resources[0].title}</h3>
+                <p className="text-sm text-muted-foreground">{resources[0].description}</p>
+              </motion.a>
+            );
+          })()}
+
+          {/* Manager Card - Second */}
+          <motion.a
+            href="mailto:talesforthetillerman@gmail.com"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             whileHover={{ y: -4, scale: 1.02 }}
-            transition={{ duration: 0.6, delay: 0, type: "spring", stiffness: 300, damping: 20 }}
-            className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 overflow-hidden backdrop-blur-sm shadow-lg hover:shadow-xl"
+            transition={{ duration: 0.6, delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
+            className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 overflow-hidden backdrop-blur-sm shadow-lg hover:shadow-xl cursor-pointer"
           >
             <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
               <img
@@ -132,30 +160,34 @@ export function PressKitSection() {
             </div>
             <h3 className="font-medium text-foreground mb-1">Manager</h3>
             <p className="text-sm text-muted-foreground">Momo Garcia - Band Management</p>
-          </motion.div>
+          </motion.a>
 
-          {resources.map((resource, index) => (
-            <motion.a
-              key={resource.title}
-              custom={index}
-              initial="hidden"
-              whileInView="visible"
-              variants={resourceVariants}
-              whileHover={{ y: -4, scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              href={resource.href}
-              target={resource.download ? undefined : "_blank"}
-              rel={resource.download ? undefined : "noopener noreferrer"}
-              download={resource.download}
-              className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 backdrop-blur-sm shadow-lg hover:shadow-xl"
-            >
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-secondary text-muted-foreground group-hover:text-foreground transition-colors">
-                <resource.icon />
-              </div>
-              <h3 className="font-medium text-foreground mb-1">{resource.title}</h3>
-              <p className="text-sm text-muted-foreground">{resource.description}</p>
-            </motion.a>
-          ))}
+          {/* Linktree Card - Third */}
+          {resources.length > 1 && (() => {
+            const LinktreeIcon = resources[1].icon;
+            return (
+              <motion.a
+                key={resources[1].title}
+                custom={1}
+                initial="hidden"
+                whileInView="visible"
+                variants={resourceVariants}
+                whileHover={{ y: -4, scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                href={resources[1].href}
+                target={resources[1].download ? undefined : "_blank"}
+                rel={resources[1].download ? undefined : "noopener noreferrer"}
+                download={resources[1].download}
+                className="group p-6 bg-card/33 rounded-2xl border border-border hover:border-primary/50 transition-all duration-300 backdrop-blur-sm shadow-lg hover:shadow-xl"
+              >
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-secondary text-muted-foreground group-hover:text-foreground transition-colors">
+                  <LinktreeIcon />
+                </div>
+                <h3 className="font-medium text-foreground mb-1">{resources[1].title}</h3>
+                <p className="text-sm text-muted-foreground">{resources[1].description}</p>
+              </motion.a>
+            );
+          })()}
         </div>
       </div>
     </section>

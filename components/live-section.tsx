@@ -78,21 +78,94 @@ export function LiveSection() {
   const platforms = [
     {
       name: "Spotify",
-      href: "https://open.spotify.com/intl-es/artist/0FHjK3O0k8HQMrJsF7KQwF",
+      href: "https://open.spotify.com/artist/0FHjK3O0k8HQMrJsF7KQwF",
       icon: SpotifyIcon,
       color: "hover:bg-[#1DB954]",
+      category: "streaming",
+    },
+    {
+      name: "Apple Music",
+      href: "https://music.apple.com/us/artist/tales-for-the-tillerman/1819840222",
+      icon: AppleMusicIcon,
+      color: "hover:bg-[#FA243C]",
+      category: "streaming",
+    },
+    {
+      name: "YouTube Music",
+      href: "https://music.youtube.com/channel/UCiSLr9s4NLC1kzHBqJirsrQ",
+      icon: YouTubeIcon,
+      color: "hover:bg-[#FF0000]",
+      category: "streaming",
+    },
+    {
+      name: "SoundCloud",
+      href: "https://soundcloud.com/tales-for-the-tillerman",
+      icon: SoundCloudIcon,
+      color: "hover:bg-[#FF7700]",
+      category: "streaming",
+    },
+    {
+      name: "Bandcamp",
+      href: "https://talesforthetillerman.bandcamp.com/",
+      icon: BandcampIcon,
+      color: "hover:bg-[#1DA0C3]",
+      category: "streaming",
+    },
+    {
+      name: "Amazon Music",
+      href: "https://music.amazon.co.uk/artists/B0FCNWCSZC/tales-for-the-tillerman",
+      icon: AmazonMusicIcon,
+      color: "hover:bg-[#00A8E1]",
+      category: "streaming",
+    },
+    {
+      name: "Tidal",
+      href: "https://tidal.com/artist/61948400",
+      icon: TidalIcon,
+      color: "hover:bg-[#00D7FF]",
+      category: "streaming",
+    },
+    {
+      name: "Deezer",
+      href: "https://www.deezer.com/en/artist/330066641",
+      icon: DeezerIcon,
+      color: "hover:bg-[#FF0099]",
+      category: "streaming",
+    },
+    {
+      name: "Bandsintown",
+      href: "https://www.bandsintown.com/a/15468933-tales-for-the-tillerman",
+      icon: BandsinTownIcon,
+      color: "hover:bg-[#3B5998]",
+      category: "streaming",
     },
     {
       name: "YouTube",
-      href: "https://www.youtube.com/channel/UCiSLr9s4NLC1kzHBqJirsrQ",
+      href: "https://www.youtube.com/@Tales4Tillerman",
       icon: YouTubeIcon,
       color: "hover:bg-[#FF0000]",
+      category: "social",
     },
     {
       name: "Instagram",
       href: "https://www.instagram.com/tales4tillerman",
       icon: InstagramIcon,
       color: "hover:bg-[#E1306C]",
+      category: "social",
+    },
+    {
+      name: "TikTok",
+      href: "https://www.tiktok.com/@tales.40.tilllerman",
+      icon: TikTokIcon,
+      color: "hover:bg-[#000000]",
+      category: "social",
+    },
+    {
+      name: "Facebook",
+      href: "https://www.facebook.com/profile.php?id=61575566232586",
+      icon: FacebookIcon,
+      color: "hover:bg-[#1877F2]",
+      category: "social",
     },
   ]
 
@@ -141,13 +214,13 @@ export function LiveSection() {
             </motion.p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-3 gap-12">
+          <div className="w-full">
             {/* Concert List */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="lg:col-span-2"
+              className="mb-12"
             >
               {loading ? (
                 <div className="text-center py-12">
@@ -201,28 +274,63 @@ export function LiveSection() {
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
+              className="lg:col-span-3"
             >
-              <div className="sticky top-32">
-                <h3 className="font-serif text-2xl text-foreground mb-6">
-                  Stream Our Music
+              <div className="mt-8">
+                <h3 className="font-serif text-3xl text-foreground mb-8 text-center">
+                  Stream & Follow
                 </h3>
-                <div className="space-y-4">
-                  {platforms.map((platform, index) => (
-                    <motion.a
-                      key={platform.name}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      whileHover={{ y: -4, scale: 1.02 }}
-                      transition={{ duration: 0.4, delay: index * 0.1, type: "spring", stiffness: 300, damping: 20 }}
-                      href={platform.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex items-center gap-4 px-6 py-5 bg-secondary border border-border rounded-xl text-foreground transition-all duration-300 hover:border-transparent hover:text-white shadow-lg hover:shadow-xl ${platform.color}`}
-                    >
-                      <platform.icon />
-                      <span className="font-medium text-lg">{platform.name}</span>
-                    </motion.a>
-                  ))}
+                
+                {/* Streaming Platforms */}
+                <div className="mb-10">
+                  <h4 className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block">
+                    Streaming Platforms
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                    {platforms.filter(p => p.category === "streaming").map((platform, index) => (
+                      <motion.a
+                        key={platform.name}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        whileHover={{ y: -4, scale: 1.05 }}
+                        transition={{ duration: 0.4, delay: index * 0.05, type: "spring", stiffness: 300, damping: 20 }}
+                        href={platform.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={platform.name}
+                        className={`flex flex-col items-center justify-center p-4 bg-secondary/50 border border-border rounded-xl text-foreground transition-all duration-300 hover:border-transparent hover:text-white shadow-lg hover:shadow-xl ${platform.color}`}
+                      >
+                        <platform.icon />
+                        <span className="text-xs font-medium text-center mt-2">{platform.name}</span>
+                      </motion.a>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Social Networks */}
+                <div>
+                  <h4 className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block">
+                    Follow Us
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {platforms.filter(p => p.category === "social").map((platform, index) => (
+                      <motion.a
+                        key={platform.name}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        whileHover={{ y: -4, scale: 1.05 }}
+                        transition={{ duration: 0.4, delay: index * 0.05, type: "spring", stiffness: 300, damping: 20 }}
+                        href={platform.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={platform.name}
+                        className={`flex flex-col items-center justify-center p-5 bg-secondary/50 border border-border rounded-xl text-foreground transition-all duration-300 hover:border-transparent hover:text-white shadow-lg hover:shadow-xl ${platform.color}`}
+                      >
+                        <platform.icon />
+                        <span className="text-xs font-medium text-center mt-2">{platform.name}</span>
+                      </motion.a>
+                    ))}
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -253,6 +361,70 @@ function InstagramIcon() {
   return (
     <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
       <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+    </svg>
+  )
+}
+
+function AppleMusicIcon() {
+  return (
+    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M19.098 10.638c0-1.1.08-2.267.244-3.57 0-.603.528-1.1 1.117-1.1.59 0 1.12.497 1.12 1.1-.206 1.303-.326 2.47-.326 3.57 0 8.998 5.291 16.594 12.061 20.15h-.003c.4.23.654.668.654 1.15 0 .744-.603 1.346-1.345 1.346-.527 0-.996-.31-1.212-.744-.259-.528-.528-1.057-.806-1.646h-1.923c-.28.59-.548 1.12-.806 1.646-.216.435-.685.744-1.212.744-.742 0-1.345-.603-1.345-1.346 0-.482.254-.92.654-1.15 6.77-3.556 12.061-11.152 12.061-20.15zm-6.055 1.104c0 .836.68 1.516 1.516 1.516.835 0 1.515-.68 1.515-1.516 0-.835-.68-1.515-1.515-1.515-.836 0-1.516.68-1.516 1.515zm8.993 6.057c-.683 0-1.237.554-1.237 1.237 0 .683.554 1.238 1.237 1.238.684 0 1.238-.555 1.238-1.238 0-.683-.554-1.237-1.238-1.237zm-14.22-8.76c1.1 1.1 1.897 2.678 1.897 4.45 0 3.553-2.898 6.451-6.452 6.451-3.553 0-6.451-2.898-6.451-6.451 0-1.772.797-3.35 1.897-4.45C-2.09 8.537-2.696 6.264-2.696 3.76c0-5.516 4.48-9.996 9.996-9.996 5.516 0 9.996 4.48 9.996 9.996 0 2.504-.607 4.777-1.59 6.825z" />
+    </svg>
+  )
+}
+
+function AmazonMusicIcon() {
+  return (
+    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M6.5 14c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3m3.5-9h2.15v12.87h-2.15zm5 0h2.15v12.87h-2.15zM.5 14c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+    </svg>
+  )
+}
+
+function SoundCloudIcon() {
+  return (
+    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M1.175 12.225c-.051 0-.175.016-.175.175v1.2c0 .158.124.175.175.175.051 0 .175-.017.175-.175v-1.2c0-.159-.124-.175-.175-.175zm1.633 1.957c-.089 0-.109.124-.109.175v.65c0 .051.02.175.109.175.088 0 .108-.124.108-.175v-.65c0-.051-.02-.175-.108-.175zm1.308-1.957c-.052 0-.175.016-.175.175v1.2c0 .158.123.175.175.175.051 0 .175-.017.175-.175v-1.2c0-.159-.124-.175-.175-.175zm1.337 1.296c-.051 0-.175.017-.175.175v.725c0 .158.124.175.175.175.051 0 .175-.017.175-.175v-.725c0-.158-.124-.175-.175-.175zm7.326-5.553c-.759 0-1.451.205-2.057.561-.184-3.214-2.969-5.745-6.326-5.745-3.595 0-6.513 2.849-6.513 6.359 0 .339.029.671.087.998-.57.583-.925 1.391-.925 2.285 0 1.873 1.505 3.39 3.371 3.39h12.443c2.208 0 4-1.79 4-4s-1.792-4-4-4z" />
+    </svg>
+  )
+}
+
+function BandcampIcon() {
+  return (
+    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M5.51 2H2.72A1.97 1.97 0 0 0 .75 3.97v16.06A1.97 1.97 0 0 0 2.72 22h16.06a1.97 1.97 0 0 0 1.97-1.97V3.97A1.97 1.97 0 0 0 18.78 2H5.51zm5.96 11.37l-4.15 5.54h4.15V13.37z" />
+    </svg>
+  )
+}
+
+function TidalIcon() {
+  return (
+    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M8 2L0 8v8l8 6 8-6V8L8 2zm4 10l-4 3-4-3V6l4-3 4 3v6z" />
+    </svg>
+  )
+}
+
+function DeezerIcon() {
+  return (
+    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M2 4h4v2H2V4zm6 0h4v2H8V4zm6 0h4v2h-4V4zm-12 4h4v2H2V8zm6 0h4v2H8V8zm6 0h4v2h-4V8zm-12 4h4v2H2v-2zm6 0h4v2H8v-2zm6 0h4v2h-4v-2zm-12 4h4v2H2v-2zm6 0h4v2H8v-2zm6 0h4v2h-4v-2z" />
+    </svg>
+  )
+}
+
+function TikTokIcon() {
+  return (
+    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.51v13.69a2.82 2.82 0 0 1-2.94 2.85 2.88 2.88 0 0 1-2.94-2.85c0-1.56 1.3-2.91 2.94-2.91.37 0 .74.08 1.1.24V9.4a5.9 5.9 0 0 0-1.1-.1C5.5 9.3 2 12.78 2 17.01c0 4.2 3.5 7.69 7.79 7.69 4.29 0 7.79-3.49 7.79-7.69 0-.29 0-.58-.03-.87.16.03.3.07.47.09v-3.1a5.1 5.1 0 0 1-.94-.09" />
+    </svg>
+  )
+}
+
+function FacebookIcon() {
+  return (
+    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
     </svg>
   )
 }

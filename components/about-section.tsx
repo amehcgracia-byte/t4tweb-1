@@ -33,7 +33,7 @@ export function AboutSection() {
     <section id="about" ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
-          src="/images/sections/about-bg.jpg"
+          src="/images/about-section-bg.jpg"
           alt="About section background"
           fill
           className="object-cover"
@@ -67,15 +67,15 @@ export function AboutSection() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="space-y-6 text-muted-foreground leading-relaxed text-xl md:text-2xl"
+                className="space-y-6 leading-relaxed text-xl md:text-2xl"
               >
-                <p>
+                <p className="bg-black/70 text-white px-6 md:px-8 py-4 md:py-5 rounded-lg border border-black/30">
                   Tales for the Tillerman is a Berlin-based collective that weaves together 
                   world music, funk, soul, and reggae into a vibrant tapestry of sound. 
                   With roots spanning across continents, the band brings a unique fusion 
                   that transcends borders and speaks to the universal language of rhythm.
                 </p>
-                <p>
+                <p className="bg-black/70 text-white px-6 md:px-8 py-4 md:py-5 rounded-lg border border-black/30">
                   From intimate club shows to open-air festivals, the five-piece ensemble 
                   delivers electrifying performances that move both body and soul. Their 
                   music is a celebration of diversity, unity, and the timeless power of 

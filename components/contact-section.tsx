@@ -12,7 +12,7 @@ export function ContactSection() {
   const contactMethods = [
     {
       title: "Email Us",
-      description: "For booking inquiries and collaborations",
+      description: "For booking inquiries Momo Garcia - Band Management",
       icon: EmailIcon,
       href: "mailto:talesforthetillerman@gmail.com",
       label: "talesforthetillerman@gmail.com",
@@ -20,16 +20,16 @@ export function ContactSection() {
     },
     {
       title: "Telegram",
-      description: "Quick response for urgent matters",
+      description: "Janosch Puhe - Quick response for urgent matters",
       icon: TelegramIcon,
-      href: "https://t.me/talesforthetillerman",
-      label: "@talesforthetillerman",
+      href: "https://t.me/Janoschpuhe",
+      label: "@Janoschpuhe +4916090615287",
       internal: false,
     },
   ]
 
   return (
-    <section id="contact" ref={sectionRef} className="relative py-16 md:py-20 min-h-screen overflow-hidden">
+    <section id="contact" ref={sectionRef} className="relative py-12 md:py-16 overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/sections/contact-bg.jpg"
@@ -43,7 +43,7 @@ export function ContactSection() {
         {/* Header */}
         <motion.div
           style={{ opacity, y }}
-          className="text-center mb-10"
+          className="text-center mb-8"
         >
           <motion.span
             initial={{ opacity: 0 }}
@@ -57,7 +57,7 @@ export function ContactSection() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="font-serif text-4xl md:text-5xl lg:text-6xl text-foreground mb-6 text-balance"
+            className="font-serif text-3xl md:text-4xl lg:text-5xl text-foreground mb-4 text-balance"
           >
             Book the Band
           </motion.h2>
@@ -65,14 +65,14 @@ export function ContactSection() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-muted-foreground max-w-2xl mx-auto text-xl"
+            className="text-muted-foreground max-w-2xl mx-auto text-base md:text-lg"
           >
             Ready to bring the groove to your event? Get in touch with our management for bookings and inquiries.
           </motion.p>
         </motion.div>
 
         {/* Contact Options */}
-        <div className="grid sm:grid-cols-2 gap-8 mb-10">
+        <div className="grid sm:grid-cols-2 gap-6 mb-0">
           {contactMethods.map((method, index) => (
             <motion.a
               key={method.title}
@@ -114,39 +114,7 @@ export function ContactSection() {
           ))}
         </div>
 
-        {/* Main CTA Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="text-center mb-8"
-        >
-          <motion.a
-            whileHover={{ scale: 1.05, y: -4 }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            href="mailto:talesforthetillerman@gmail.com?subject=Booking%20Inquiry"
-            className="inline-flex items-center gap-4 px-14 py-7 bg-primary text-primary-foreground rounded-xl font-semibold text-2xl hover:bg-primary/90 transition-all shadow-xl shadow-primary/25"
-          >
-            <motion.span
-              whileHover={{ rotate: 20 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            >
-              <CalendarIcon className="w-8 h-8" />
-            </motion.span>
-            Book Now
-          </motion.a>
-        </motion.div>
 
-        {/* Management Note */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-center text-muted-foreground text-lg mt-6"
-        >
-          Management: Momo Garcia
-        </motion.p>
       </div>
     </section>
   )
