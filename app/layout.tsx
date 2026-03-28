@@ -52,7 +52,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
-      <body className="font-sans antialiased pb-24 md:pb-0">{children}</body>
+      <body className="font-sans antialiased pb-24 md:pb-0">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+        >
+          Skip to main content
+        </a>
+        {children}
+      </body>
     </html>
   )
 }

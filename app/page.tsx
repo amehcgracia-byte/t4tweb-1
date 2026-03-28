@@ -15,7 +15,7 @@ import { ScrollToTopButton } from "@/components/scroll-to-top-button"
 
 export default function Home() {
   return (
-    <main className="relative bg-black">
+    <main id="main-content" tabIndex={-1} className="relative bg-black">
       <Navigation />
 
       <SceneSection id="hero" imageSrc="/images/t4t-1.jpg" imageAlt="Band hero scene">
