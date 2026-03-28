@@ -19,11 +19,44 @@ interface Concert {
 
 // Parse CSV data
 function parseCSV(csv: string): Concert[] {
-  const lines = csv.trim().split("\n")
-  const headers = lines[0].split(",")
-  
+  const lines = csv.trim().split(/\r?\n/).filter(Boolean)
+  if (lines.length < 2) return []
+
+  const parseRow = (line: string): string[] => {
+    const values: string[] = []
+    let current = ""
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      const next = line[i + 1]
+
+      if (char === '"' && inQuotes && next === '"') {
+        current += '"'
+        i++
+        continue
+      }
+
+      if (char === '"') {
+        inQuotes = !inQuotes
+        continue
+      }
+
+      if (char === "," && !inQuotes) {
+        values.push(current.trim())
+        current = ""
+        continue
+      }
+
+      current += char
+    }
+
+    values.push(current.trim())
+    return values
+  }
+
   return lines.slice(1).map((line) => {
-    const values = line.split(",")
+    const values = parseRow(line)
     return {
       venue: values[0] || "",
       city: values[1] || "",
@@ -35,7 +68,7 @@ function parseCSV(csv: string): Concert[] {
       capacity: values[7] || "",
       price: values[8] || "",
     }
-  })
+  }).filter((concert) => concert.venue && concert.date)
 }
 
 // Format date for display
@@ -174,7 +207,7 @@ export function LiveSection() {
   ]
 
   return (
-    <section id="live" ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
+    <section ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/sections/live-bg.jpg"
