@@ -12,6 +12,7 @@ import { Navigation } from "@/components/navigation"
 import { SceneSection } from "@/components/scene-section"
 import { FloatingBookingBar } from "@/components/floating-booking-bar"
 import { ScrollToTopButton } from "@/components/scroll-to-top-button"
+import { LatestReleaseSection } from "@/components/latest-release-section"
 
 export default function Home() {
   return (
@@ -21,6 +22,8 @@ export default function Home() {
       <SceneSection id="hero" imageSrc="/images/t4t-1.jpg" imageAlt="Band hero scene">
         <HeroSection />
       </SceneSection>
+
+      <LatestReleaseSection />
 
       <QuickActionsSection />
 
