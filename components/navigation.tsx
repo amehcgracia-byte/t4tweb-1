@@ -15,6 +15,24 @@ export function Navigation() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileMenuOpen(false)
+    }
+
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden"
+      window.addEventListener("keydown", handleEsc)
+    } else {
+      document.body.style.overflow = ""
+    }
+
+    return () => {
+      document.body.style.overflow = ""
+      window.removeEventListener("keydown", handleEsc)
+    }
+  }, [isMobileMenuOpen])
+
   const navLinks = [
     { href: "#about", label: "About" },
     { href: "#press-kit", label: "Press" },
@@ -70,6 +88,8 @@ export function Navigation() {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-3 text-foreground rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
               aria-label="Toggle menu"
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="mobile-nav-menu"
             >
               <svg
                 className="w-7 h-7"
@@ -99,27 +119,34 @@ export function Navigation() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border bg-background/95 backdrop-blur-sm">
-            <div className="flex flex-col gap-5">
-              {navLinks.map((link) => (
+          <>
+            <button
+              aria-label="Close menu overlay"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 top-20 z-40 bg-black/60 md:hidden"
+            />
+            <div id="mobile-nav-menu" className="relative z-50 md:hidden py-4 border-t border-border bg-background/95 backdrop-blur-sm">
+              <div className="flex flex-col gap-5">
+                {navLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-base md:text-lg text-gray-200 hover:text-foreground transition-colors py-3"
+                  >
+                    {link.label}
+                  </a>
+                ))}
                 <a
-                  key={link.href}
-                  href={link.href}
+                  href="mailto:talesforthetillerman@gmail.com"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-base md:text-lg text-gray-200 hover:text-foreground transition-colors py-3"
+                  className="px-5 py-4 bg-primary text-primary-foreground rounded-xl text-base md:text-lg font-semibold text-center hover:bg-primary/80 transition-all duration-300 mt-3"
                 >
-                  {link.label}
+                  Book Now
                 </a>
-              ))}
-              <a
-                href="mailto:talesforthetillerman@gmail.com"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="px-5 py-4 bg-primary text-primary-foreground rounded-xl text-base md:text-lg font-semibold text-center hover:bg-primary/80 transition-all duration-300 mt-3"
-              >
-                Book Now
-              </a>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </nav>
