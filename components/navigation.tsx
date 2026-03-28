@@ -28,7 +28,7 @@ export function Navigation() {
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
           ? "bg-background/70 backdrop-blur-xl border-b border-white/10 shadow-xl shadow-black/25"
-          : "bg-gradient-to-b from-black/45 via-black/20 to-transparent"
+          : "bg-gradient-to-b from-black/75 via-black/45 to-transparent border-b border-white/10"
       }`}
       style={{ boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none" }}
     >
@@ -41,7 +41,7 @@ export function Navigation() {
               alt="Tales for the Tillerman"
               width={90}
               height={90}
-              className="rounded-full shadow-lg shadow-black/30"
+              className="rounded-full shadow-lg shadow-black/40 ring-1 ring-white/30"
             />
           </a>
 
