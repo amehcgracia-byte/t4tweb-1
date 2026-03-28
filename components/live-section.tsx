@@ -363,6 +363,7 @@ export function LiveSection() {
                         href={platform.href}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={`Follow on ${platform.name}`}
                         title={platform.name}
                         className={`flex flex-col items-center justify-center p-5 bg-secondary/50 border border-border rounded-xl text-foreground transition-all duration-300 hover:border-transparent hover:text-white shadow-lg hover:shadow-xl ${platform.color}`}
                       >
