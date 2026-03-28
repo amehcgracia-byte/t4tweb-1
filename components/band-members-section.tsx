@@ -57,7 +57,6 @@ export function BandMembersSection() {
 
   return (
     <section
-      id="band"
       ref={sectionRef}
       className="py-16 md:py-20 bg-background relative overflow-hidden"
     >

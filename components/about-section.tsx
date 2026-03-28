@@ -30,7 +30,7 @@ export function AboutSection() {
   ]
 
   return (
-    <section id="about" ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
+    <section ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/about-section-bg.jpg"

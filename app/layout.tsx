@@ -13,7 +13,9 @@ const playfair = Playfair_Display({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL("http://localhost:3000"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+  ),
   title: "Tales for the Tillerman | Press Kit",
   description: "Berlin-based band blending world music, funk, and soul. Press kit, booking info, and media resources.",
   keywords: ["Tales for the Tillerman", "Berlin band", "world music", "press kit", "booking"],
