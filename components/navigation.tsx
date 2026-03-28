@@ -28,7 +28,7 @@ export function Navigation() {
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
           ? "bg-background/70 backdrop-blur-xl border-b border-white/10 shadow-xl shadow-black/25"
-          : "bg-transparent"
+          : "bg-gradient-to-b from-black/45 via-black/20 to-transparent"
       }`}
       style={{ boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none" }}
     >
@@ -51,7 +51,7 @@ export function Navigation() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-lg md:text-xl text-muted-foreground hover:text-foreground transition-all duration-200 font-medium hover:text-white"
+                className="text-lg md:text-xl text-gray-200/90 hover:text-foreground transition-all duration-200 font-medium hover:text-white"
                 style={{ lineHeight: 1.2 }}
               >
                 {link.label}
@@ -59,7 +59,7 @@ export function Navigation() {
             ))}
             <a
               href="mailto:talesforthetillerman@gmail.com"
-              className="px-8 py-4 bg-primary text-primary-foreground rounded-xl text-lg md:text-xl font-semibold shadow-lg shadow-primary/30 hover:bg-primary/80 transition-all duration-300 opacity-33"
+              className="px-8 py-4 bg-primary text-primary-foreground rounded-xl text-lg md:text-xl font-semibold shadow-lg shadow-primary/30 hover:bg-primary/80 transition-all duration-300"
             >
               Book Now
             </a>
@@ -106,14 +106,14 @@ export function Navigation() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-base md:text-lg text-muted-foreground hover:text-foreground transition-colors py-3"
+                  className="text-base md:text-lg text-gray-200 hover:text-foreground transition-colors py-3"
                 >
                   {link.label}
                 </a>
               ))}
               <a
                 href="mailto:talesforthetillerman@gmail.com"
-                className="px-5 py-4 bg-primary text-primary-foreground rounded-xl text-base md:text-lg font-semibold text-center hover:bg-primary/80 transition-all duration-300 mt-3 opacity-33"
+                className="px-5 py-4 bg-primary text-primary-foreground rounded-xl text-base md:text-lg font-semibold text-center hover:bg-primary/80 transition-all duration-300 mt-3"
               >
                 Book Now
               </a>
