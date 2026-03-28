@@ -41,8 +41,19 @@ export function QuickActionsSection() {
   ]
 
   return (
-    <section id="quick-actions" ref={sectionRef} className="relative py-12 md:py-16 overflow-hidden bg-black/50">
+    <section id="quick-actions" ref={sectionRef} className="relative py-12 md:py-16 overflow-hidden bg-gradient-to-b from-black/85 via-black/70 to-black/85 border-y border-primary/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <motion.div
+          style={{ opacity, y }}
+          className="text-center mb-8 md:mb-10"
+        >
+          <span className="text-primary text-xs md:text-sm font-semibold tracking-[0.2em] uppercase">
+            Quick Access
+          </span>
+          <h2 className="font-serif text-2xl md:text-3xl text-white mt-2">
+            Everything in one tap
+          </h2>
+        </motion.div>
         <motion.div
           style={{ opacity, y }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"
@@ -63,7 +74,9 @@ export function QuickActionsSection() {
               href={action.href}
               target={action.external ? "_blank" : undefined}
               rel={action.external ? "noopener noreferrer" : undefined}
-              className={`group flex flex-col items-center justify-center p-6 rounded-2xl text-white font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl ${action.color}`}
+              aria-label={action.external ? `${action.title} (opens in a new tab)` : action.title}
+              title={action.title}
+              className={`group flex flex-col items-center justify-center p-6 rounded-2xl text-white font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl border border-white/10 hover:border-white/30 ${action.color}`}
             >
               <div className="mb-3">
                 <action.icon />

@@ -202,30 +202,6 @@ export function HeroSection() {
   )
 }
 
-function SocialLink({
-  href,
-  label,
-  children,
-}: {
-  href: string
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <motion.a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={label}
-      whileHover={{ scale: 1.1, y: -3 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="w-16 h-16 flex items-center justify-center rounded-full bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-    >
-      {children}
-    </motion.a>
-  )
-}
-
 function SpotifyIcon() {
   return (
     <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">

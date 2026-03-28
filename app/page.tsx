@@ -10,15 +10,20 @@ import { ContactSection } from "@/components/contact-section"
 import { Footer } from "@/components/footer"
 import { Navigation } from "@/components/navigation"
 import { SceneSection } from "@/components/scene-section"
+import { FloatingBookingBar } from "@/components/floating-booking-bar"
+import { ScrollToTopButton } from "@/components/scroll-to-top-button"
+import { LatestReleaseSection } from "@/components/latest-release-section"
 
 export default function Home() {
   return (
-    <main className="relative bg-black">
+    <main id="main-content" tabIndex={-1} className="relative bg-black">
       <Navigation />
 
       <SceneSection id="hero" imageSrc="/images/t4t-1.jpg" imageAlt="Band hero scene">
         <HeroSection />
       </SceneSection>
+
+      <LatestReleaseSection />
 
       <QuickActionsSection />
 
@@ -68,6 +73,9 @@ export default function Home() {
 
       <Footer />
 
+      <FloatingBookingBar />
+      <ScrollToTopButton />
+
       {/* Banner Footer - After Footer */}
       <section className="relative w-full overflow-hidden bg-gradient-to-b from-primary/5 via-primary/3 to-black" style={{ minHeight: "150px", clipPath: "inset(47% 0 0 0)" }}>
         <Image
@@ -82,5 +90,3 @@ export default function Home() {
     </main>
   )
 }
-
-

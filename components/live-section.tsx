@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
@@ -17,13 +17,51 @@ interface Concert {
   price: string
 }
 
+function parseConcertDate(dateStr: string): Date | null {
+  const date = new Date(dateStr)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 // Parse CSV data
 function parseCSV(csv: string): Concert[] {
-  const lines = csv.trim().split("\n")
-  const headers = lines[0].split(",")
-  
+  const lines = csv.trim().split(/\r?\n/).filter(Boolean)
+  if (lines.length < 2) return []
+
+  const parseRow = (line: string): string[] => {
+    const values: string[] = []
+    let current = ""
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      const next = line[i + 1]
+
+      if (char === '"' && inQuotes && next === '"') {
+        current += '"'
+        i++
+        continue
+      }
+
+      if (char === '"') {
+        inQuotes = !inQuotes
+        continue
+      }
+
+      if (char === "," && !inQuotes) {
+        values.push(current.trim())
+        current = ""
+        continue
+      }
+
+      current += char
+    }
+
+    values.push(current.trim())
+    return values
+  }
+
   return lines.slice(1).map((line) => {
-    const values = line.split(",")
+    const values = parseRow(line)
     return {
       venue: values[0] || "",
       city: values[1] || "",
@@ -35,12 +73,14 @@ function parseCSV(csv: string): Concert[] {
       capacity: values[7] || "",
       price: values[8] || "",
     }
-  })
+  }).filter((concert) => concert.venue && concert.date)
 }
 
 // Format date for display
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
+  const date = parseConcertDate(dateStr)
+  if (!date) return dateStr
+
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -53,6 +93,8 @@ export function LiveSection() {
   const [concerts, setConcerts] = useState<Concert[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [showPastShows, setShowPastShows] = useState(false)
+  const [selectedCity, setSelectedCity] = useState("All cities")
   const { opacity, y } = useScrollAnimation(sectionRef)
 
   // Fetch and parse CSV data with error handling
@@ -63,10 +105,34 @@ export function LiveSection() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const csv = await response.text()
         const parsed = parseCSV(csv)
-        // Sort by date, most recent first
-        const sorted = parsed.sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        )
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        const upcoming = parsed
+          .filter((concert) => {
+            const date = parseConcertDate(concert.date)
+            return date && date >= today
+          })
+          .sort((a, b) => {
+            const dateA = parseConcertDate(a.date)
+            const dateB = parseConcertDate(b.date)
+            if (!dateA || !dateB) return 0
+            return dateA.getTime() - dateB.getTime()
+          })
+
+        const past = parsed
+          .filter((concert) => {
+            const date = parseConcertDate(concert.date)
+            return date && date < today
+          })
+          .sort((a, b) => {
+            const dateA = parseConcertDate(a.date)
+            const dateB = parseConcertDate(b.date)
+            if (!dateA || !dateB) return 0
+            return dateB.getTime() - dateA.getTime()
+          })
+
+        const sorted = [...upcoming, ...past]
         setConcerts(sorted)
         setError(false)
       } catch (error) {
@@ -78,6 +144,56 @@ export function LiveSection() {
     }
     fetchConcerts()
   }, [])
+
+  const todayStart = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return today
+  }, [])
+
+  const upcomingConcerts = useMemo(() => {
+    return concerts.filter((concert) => {
+      const date = parseConcertDate(concert.date)
+      return !!date && date >= todayStart
+    })
+  }, [concerts, todayStart])
+
+  const pastConcerts = useMemo(() => {
+    return concerts.filter((concert) => {
+      const date = parseConcertDate(concert.date)
+      return !!date && date < todayStart
+    })
+  }, [concerts, todayStart])
+
+  const cityOptions = useMemo(() => {
+    const uniqueCities = Array.from(new Set(concerts.map((concert) => concert.city).filter(Boolean)))
+    return ["All cities", ...uniqueCities]
+  }, [concerts])
+
+  const filteredUpcomingConcerts = useMemo(() => {
+    if (selectedCity === "All cities") return upcomingConcerts
+    return upcomingConcerts.filter((concert) => concert.city === selectedCity)
+  }, [upcomingConcerts, selectedCity])
+
+  const filteredPastConcerts = useMemo(() => {
+    if (selectedCity === "All cities") return pastConcerts
+    return pastConcerts.filter((concert) => concert.city === selectedCity)
+  }, [pastConcerts, selectedCity])
+
+  const liveStats = useMemo(() => {
+    const uniqueCities = new Set(concerts.map((concert) => concert.city).filter(Boolean)).size
+    const nextShow = filteredUpcomingConcerts[0]
+    return {
+      totalShows: concerts.length,
+      uniqueCities,
+      upcomingShows: filteredUpcomingConcerts.length,
+      nextShowDate: nextShow ? formatDate(nextShow.date) : "TBA",
+    }
+  }, [concerts, filteredUpcomingConcerts])
+
+  useEffect(() => {
+    setShowPastShows(false)
+  }, [selectedCity])
 
   const platforms = [
     {
@@ -159,7 +275,7 @@ export function LiveSection() {
     },
     {
       name: "TikTok",
-      href: "https://www.tiktok.com/@tales.40.tilllerman",
+      href: "https://www.tiktok.com/@tales4tillerman",
       icon: TikTokIcon,
       color: "hover:bg-[#000000]",
       category: "social",
@@ -174,7 +290,7 @@ export function LiveSection() {
   ]
 
   return (
-    <section id="live" ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
+    <section ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/sections/live-bg.jpg"
@@ -291,6 +407,7 @@ export function LiveSection() {
                         href={platform.href}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={`Follow on ${platform.name}`}
                         title={platform.name}
                         className={`flex flex-col items-center justify-center p-5 bg-secondary/50 border border-border rounded-xl text-foreground transition-all duration-300 hover:border-transparent hover:text-white shadow-lg hover:shadow-xl ${platform.color}`}
                       >
@@ -320,6 +437,46 @@ export function LiveSection() {
               <h3 className="font-serif text-2xl text-foreground mb-6 text-center">
                 Upcoming Shows
               </h3>
+
+              {!loading && !error && concerts.length > 0 && (
+                <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-lg border border-border/80 bg-secondary/30 p-3 text-center">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Upcoming</p>
+                    <p className="text-lg font-semibold text-foreground">{liveStats.upcomingShows}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/80 bg-secondary/30 p-3 text-center">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Cities</p>
+                    <p className="text-lg font-semibold text-foreground">{liveStats.uniqueCities}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/80 bg-secondary/30 p-3 text-center">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Total shows</p>
+                    <p className="text-lg font-semibold text-foreground">{liveStats.totalShows}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/80 bg-secondary/30 p-3 text-center">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Next date</p>
+                    <p className="text-sm font-semibold text-foreground">{liveStats.nextShowDate}</p>
+                  </div>
+                </div>
+              )}
+
+              {!loading && !error && cityOptions.length > 1 && (
+                <div className="mb-6 flex justify-center">
+                  <label className="text-sm text-muted-foreground inline-flex items-center gap-3">
+                    <span>Filter by city</span>
+                    <select
+                      value={selectedCity}
+                      onChange={(event) => setSelectedCity(event.target.value)}
+                      className="rounded-md border border-border bg-secondary/60 px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      {cityOptions.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
               
               {/* LOADING STATE - Elegant skeleton loader */}
               {loading && (
@@ -405,9 +562,9 @@ export function LiveSection() {
               )}
               
               {/* SUCCESS STATE - Show concerts */}
-              {!loading && !error && concerts.length > 0 && (
+              {!loading && !error && filteredUpcomingConcerts.length > 0 && (
                 <div className="space-y-3">
-                  {concerts.map((concert, index) => (
+                  {filteredUpcomingConcerts.map((concert, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, y: 20 }}
@@ -450,6 +607,66 @@ export function LiveSection() {
                       </div>
                     </motion.div>
                   ))}
+                </div>
+              )}
+
+              {!loading && !error && filteredPastConcerts.length > 0 && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setShowPastShows((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-5 py-2.5 text-sm text-foreground transition-all hover:border-primary/40 hover:bg-secondary/60"
+                  >
+                    {showPastShows ? "Hide Past Shows" : "Show Recent Past Shows"}
+                  </button>
+                </div>
+              )}
+
+              {!loading && !error && showPastShows && filteredPastConcerts.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  {filteredPastConcerts.slice(0, 6).map((concert, index) => (
+                    <motion.div
+                      key={`past-${index}`}
+                      initial={{ opacity: 0, y: 12 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.02 }}
+                      className="min-h-[72px] p-4 bg-secondary/30 rounded-xl border border-border/70 flex items-center"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
+                        <div className="shrink-0 text-muted-foreground text-sm min-w-[100px]">
+                          {formatDate(concert.date)}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-serif text-base text-foreground">
+                            {concert.venue}
+                          </div>
+                          <div className="text-muted-foreground text-sm">
+                            {concert.city}, {concert.country}
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                          Past
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {!loading && !error && filteredUpcomingConcerts.length === 0 && concerts.length > 0 && (
+                <div className="text-center py-12 px-6 bg-secondary/20 border border-border rounded-xl">
+                  <p className="text-muted-foreground mb-4">
+                    No upcoming dates for this filter right now, but you can check our full history on Bandsintown.
+                  </p>
+                  <motion.a
+                    whileHover={{ scale: 1.05 }}
+                    href="https://www.bandsintown.com/a/15468933-tales-for-the-tillerman"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-all"
+                  >
+                    <BandsinTownIcon />
+                    See All Shows on Bandsintown
+                  </motion.a>
                 </div>
               )}
             </motion.div>
