@@ -17,13 +17,51 @@ interface Concert {
   price: string
 }
 
+function parseConcertDate(dateStr: string): Date | null {
+  const date = new Date(dateStr)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 // Parse CSV data
 function parseCSV(csv: string): Concert[] {
-  const lines = csv.trim().split("\n")
-  const headers = lines[0].split(",")
-  
+  const lines = csv.trim().split(/\r?\n/).filter(Boolean)
+  if (lines.length < 2) return []
+
+  const parseRow = (line: string): string[] => {
+    const values: string[] = []
+    let current = ""
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      const next = line[i + 1]
+
+      if (char === '"' && inQuotes && next === '"') {
+        current += '"'
+        i++
+        continue
+      }
+
+      if (char === '"') {
+        inQuotes = !inQuotes
+        continue
+      }
+
+      if (char === "," && !inQuotes) {
+        values.push(current.trim())
+        current = ""
+        continue
+      }
+
+      current += char
+    }
+
+    values.push(current.trim())
+    return values
+  }
+
   return lines.slice(1).map((line) => {
-    const values = line.split(",")
+    const values = parseRow(line)
     return {
       venue: values[0] || "",
       city: values[1] || "",
@@ -35,12 +73,14 @@ function parseCSV(csv: string): Concert[] {
       capacity: values[7] || "",
       price: values[8] || "",
     }
-  })
+  }).filter((concert) => concert.venue && concert.date)
 }
 
 // Format date for display
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
+  const date = parseConcertDate(dateStr)
+  if (!date) return dateStr
+
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -63,10 +103,34 @@ export function LiveSection() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const csv = await response.text()
         const parsed = parseCSV(csv)
-        // Sort by date, most recent first
-        const sorted = parsed.sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        )
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        const upcoming = parsed
+          .filter((concert) => {
+            const date = parseConcertDate(concert.date)
+            return date && date >= today
+          })
+          .sort((a, b) => {
+            const dateA = parseConcertDate(a.date)
+            const dateB = parseConcertDate(b.date)
+            if (!dateA || !dateB) return 0
+            return dateA.getTime() - dateB.getTime()
+          })
+
+        const past = parsed
+          .filter((concert) => {
+            const date = parseConcertDate(concert.date)
+            return date && date < today
+          })
+          .sort((a, b) => {
+            const dateA = parseConcertDate(a.date)
+            const dateB = parseConcertDate(b.date)
+            if (!dateA || !dateB) return 0
+            return dateB.getTime() - dateA.getTime()
+          })
+
+        const sorted = [...upcoming, ...past]
         setConcerts(sorted)
         setError(false)
       } catch (error) {
@@ -78,6 +142,14 @@ export function LiveSection() {
     }
     fetchConcerts()
   }, [])
+
+  const upcomingConcerts = concerts.filter((concert) => {
+    const date = parseConcertDate(concert.date)
+    if (!date) return false
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return date >= today
+  })
 
   const platforms = [
     {
@@ -174,7 +246,7 @@ export function LiveSection() {
   ]
 
   return (
-    <section id="live" ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
+    <section ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/sections/live-bg.jpg"
@@ -405,9 +477,9 @@ export function LiveSection() {
               )}
               
               {/* SUCCESS STATE - Show concerts */}
-              {!loading && !error && concerts.length > 0 && (
+              {!loading && !error && upcomingConcerts.length > 0 && (
                 <div className="space-y-3">
-                  {concerts.map((concert, index) => (
+                  {upcomingConcerts.map((concert, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, y: 20 }}
@@ -450,6 +522,24 @@ export function LiveSection() {
                       </div>
                     </motion.div>
                   ))}
+                </div>
+              )}
+
+              {!loading && !error && upcomingConcerts.length === 0 && concerts.length > 0 && (
+                <div className="text-center py-12 px-6 bg-secondary/20 border border-border rounded-xl">
+                  <p className="text-muted-foreground mb-4">
+                    No upcoming dates right now, but you can check our full history on Bandsintown.
+                  </p>
+                  <motion.a
+                    whileHover={{ scale: 1.05 }}
+                    href="https://www.bandsintown.com/a/15468933-tales-for-the-tillerman"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-all"
+                  >
+                    <BandsinTownIcon />
+                    See All Shows on Bandsintown
+                  </motion.a>
                 </div>
               )}
             </motion.div>

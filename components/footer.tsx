@@ -65,7 +65,7 @@ export function Footer() {
   ]
 
   return (
-    <footer className="bg-black border-t border-border">
+    <footer className="bg-black/95 border-t border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           {/* Left: Logo & Info */}
@@ -82,7 +82,7 @@ export function Footer() {
             <span className="font-serif text-xl text-white mb-4">
               Tales for the Tillerman
             </span>
-            <p className="text-sm text-gray-400 text-center md:text-left">
+            <p className="text-sm text-gray-400 text-center md:text-left max-w-xs">
               Berlin-based world music collective blending funk, soul, and reggae.
             </p>
           </div>
@@ -162,7 +162,7 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={link.name}
-                className="w-10 h-10 flex items-center justify-center rounded-full bg-secondary text-white hover:bg-primary transition-colors"
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-secondary text-white hover:bg-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               >
                 <link.icon />
               </a>

@@ -2,6 +2,7 @@
 
 import { useRef } from "react"
 import { motion } from "framer-motion"
+import Image from "next/image"
 import { useContentAnimation } from "@/hooks/useScrollAnimation"
 
 interface SceneSectionProps {
@@ -42,8 +43,17 @@ export function SceneSection({
       id={id}
       className={`relative min-h-screen ${className}`}
     >
-      {/* ===== GLOBAL BACKGROUND ALT (sin fondo por sección) ===== */}
-      <div className="absolute inset-0 -z-10 bg-black/5" />
+      {/* ===== SECTION BACKGROUND IMAGE ===== */}
+      <div className="absolute inset-0 -z-10">
+        <Image
+          src={imageSrc}
+          alt={imageAlt}
+          fill
+          className="object-cover"
+          priority={id === "hero"}
+        />
+        <div className="absolute inset-0 bg-black/55" />
+      </div>
 
       {/* ===== CONTENT WRAPPER (optimizado para flujo visual) ===== */}
       <div className="relative z-10 min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12 md:py-16">
