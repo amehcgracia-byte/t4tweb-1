@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
@@ -93,6 +93,7 @@ export function LiveSection() {
   const [concerts, setConcerts] = useState<Concert[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [showPastShows, setShowPastShows] = useState(false)
   const { opacity, y } = useScrollAnimation(sectionRef)
 
   // Fetch and parse CSV data with error handling
@@ -143,13 +144,25 @@ export function LiveSection() {
     fetchConcerts()
   }, [])
 
-  const upcomingConcerts = concerts.filter((concert) => {
-    const date = parseConcertDate(concert.date)
-    if (!date) return false
+  const todayStart = useMemo(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    return date >= today
-  })
+    return today
+  }, [])
+
+  const upcomingConcerts = useMemo(() => {
+    return concerts.filter((concert) => {
+      const date = parseConcertDate(concert.date)
+      return !!date && date >= todayStart
+    })
+  }, [concerts, todayStart])
+
+  const pastConcerts = useMemo(() => {
+    return concerts.filter((concert) => {
+      const date = parseConcertDate(concert.date)
+      return !!date && date < todayStart
+    })
+  }, [concerts, todayStart])
 
   const platforms = [
     {
@@ -520,6 +533,48 @@ export function LiveSection() {
                             {concert.price === "Free" ? "Free" : `€${concert.price}`}
                           </span>
                         </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {!loading && !error && pastConcerts.length > 0 && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setShowPastShows((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-5 py-2.5 text-sm text-foreground transition-all hover:border-primary/40 hover:bg-secondary/60"
+                  >
+                    {showPastShows ? "Hide Past Shows" : "Show Recent Past Shows"}
+                  </button>
+                </div>
+              )}
+
+              {!loading && !error && showPastShows && pastConcerts.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  {pastConcerts.slice(0, 6).map((concert, index) => (
+                    <motion.div
+                      key={`past-${index}`}
+                      initial={{ opacity: 0, y: 12 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.02 }}
+                      className="min-h-[72px] p-4 bg-secondary/30 rounded-xl border border-border/70 flex items-center"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
+                        <div className="shrink-0 text-muted-foreground text-sm min-w-[100px]">
+                          {formatDate(concert.date)}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-serif text-base text-foreground">
+                            {concert.venue}
+                          </div>
+                          <div className="text-muted-foreground text-sm">
+                            {concert.city}, {concert.country}
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                          Past
+                        </span>
                       </div>
                     </motion.div>
                   ))}
