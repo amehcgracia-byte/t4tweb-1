@@ -231,7 +231,7 @@ export function LiveSection() {
     },
     {
       name: "TikTok",
-      href: "https://www.tiktok.com/@tales.40.tilllerman",
+      href: "https://www.tiktok.com/@tales4tillerman",
       icon: TikTokIcon,
       color: "hover:bg-[#000000]",
       category: "social",

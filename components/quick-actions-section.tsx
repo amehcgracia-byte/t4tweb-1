@@ -74,6 +74,8 @@ export function QuickActionsSection() {
               href={action.href}
               target={action.external ? "_blank" : undefined}
               rel={action.external ? "noopener noreferrer" : undefined}
+              aria-label={action.external ? `${action.title} (opens in a new tab)` : action.title}
+              title={action.title}
               className={`group flex flex-col items-center justify-center p-6 rounded-2xl text-white font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl border border-white/10 hover:border-white/30 ${action.color}`}
             >
               <div className="mb-3">

@@ -35,7 +35,7 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-5 sm:px-7 lg:px-10">
         <div className="flex items-center justify-between h-20 md:h-24">
           {/* Logo izquierdo */}
-          <a href="#" className="flex items-center transition-transform duration-300 hover:-translate-y-0.5">
+          <a href="#hero" aria-label="Go to top section" className="flex items-center transition-transform duration-300 hover:-translate-y-0.5">
             <Image
               src="/images/logo-qr.png"
               alt="Tales for the Tillerman"
@@ -113,6 +113,7 @@ export function Navigation() {
               ))}
               <a
                 href="mailto:talesforthetillerman@gmail.com"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className="px-5 py-4 bg-primary text-primary-foreground rounded-xl text-base md:text-lg font-semibold text-center hover:bg-primary/80 transition-all duration-300 mt-3"
               >
                 Book Now
