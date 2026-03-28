@@ -180,6 +180,17 @@ export function LiveSection() {
     return pastConcerts.filter((concert) => concert.city === selectedCity)
   }, [pastConcerts, selectedCity])
 
+  const liveStats = useMemo(() => {
+    const uniqueCities = new Set(concerts.map((concert) => concert.city).filter(Boolean)).size
+    const nextShow = filteredUpcomingConcerts[0]
+    return {
+      totalShows: concerts.length,
+      uniqueCities,
+      upcomingShows: filteredUpcomingConcerts.length,
+      nextShowDate: nextShow ? formatDate(nextShow.date) : "TBA",
+    }
+  }, [concerts, filteredUpcomingConcerts])
+
   useEffect(() => {
     setShowPastShows(false)
   }, [selectedCity])
@@ -426,6 +437,27 @@ export function LiveSection() {
               <h3 className="font-serif text-2xl text-foreground mb-6 text-center">
                 Upcoming Shows
               </h3>
+
+              {!loading && !error && concerts.length > 0 && (
+                <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-lg border border-border/80 bg-secondary/30 p-3 text-center">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Upcoming</p>
+                    <p className="text-lg font-semibold text-foreground">{liveStats.upcomingShows}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/80 bg-secondary/30 p-3 text-center">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Cities</p>
+                    <p className="text-lg font-semibold text-foreground">{liveStats.uniqueCities}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/80 bg-secondary/30 p-3 text-center">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Total shows</p>
+                    <p className="text-lg font-semibold text-foreground">{liveStats.totalShows}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/80 bg-secondary/30 p-3 text-center">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Next date</p>
+                    <p className="text-sm font-semibold text-foreground">{liveStats.nextShowDate}</p>
+                  </div>
+                </div>
+              )}
 
               {!loading && !error && cityOptions.length > 1 && (
                 <div className="mb-6 flex justify-center">
