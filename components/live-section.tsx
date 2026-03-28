@@ -94,6 +94,7 @@ export function LiveSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [showPastShows, setShowPastShows] = useState(false)
+  const [selectedCity, setSelectedCity] = useState("All cities")
   const { opacity, y } = useScrollAnimation(sectionRef)
 
   // Fetch and parse CSV data with error handling
@@ -163,6 +164,25 @@ export function LiveSection() {
       return !!date && date < todayStart
     })
   }, [concerts, todayStart])
+
+  const cityOptions = useMemo(() => {
+    const uniqueCities = Array.from(new Set(concerts.map((concert) => concert.city).filter(Boolean)))
+    return ["All cities", ...uniqueCities]
+  }, [concerts])
+
+  const filteredUpcomingConcerts = useMemo(() => {
+    if (selectedCity === "All cities") return upcomingConcerts
+    return upcomingConcerts.filter((concert) => concert.city === selectedCity)
+  }, [upcomingConcerts, selectedCity])
+
+  const filteredPastConcerts = useMemo(() => {
+    if (selectedCity === "All cities") return pastConcerts
+    return pastConcerts.filter((concert) => concert.city === selectedCity)
+  }, [pastConcerts, selectedCity])
+
+  useEffect(() => {
+    setShowPastShows(false)
+  }, [selectedCity])
 
   const platforms = [
     {
@@ -406,6 +426,25 @@ export function LiveSection() {
               <h3 className="font-serif text-2xl text-foreground mb-6 text-center">
                 Upcoming Shows
               </h3>
+
+              {!loading && !error && cityOptions.length > 1 && (
+                <div className="mb-6 flex justify-center">
+                  <label className="text-sm text-muted-foreground inline-flex items-center gap-3">
+                    <span>Filter by city</span>
+                    <select
+                      value={selectedCity}
+                      onChange={(event) => setSelectedCity(event.target.value)}
+                      className="rounded-md border border-border bg-secondary/60 px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      {cityOptions.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              )}
               
               {/* LOADING STATE - Elegant skeleton loader */}
               {loading && (
@@ -491,9 +530,9 @@ export function LiveSection() {
               )}
               
               {/* SUCCESS STATE - Show concerts */}
-              {!loading && !error && upcomingConcerts.length > 0 && (
+              {!loading && !error && filteredUpcomingConcerts.length > 0 && (
                 <div className="space-y-3">
-                  {upcomingConcerts.map((concert, index) => (
+                  {filteredUpcomingConcerts.map((concert, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, y: 20 }}
@@ -539,7 +578,7 @@ export function LiveSection() {
                 </div>
               )}
 
-              {!loading && !error && pastConcerts.length > 0 && (
+              {!loading && !error && filteredPastConcerts.length > 0 && (
                 <div className="mt-6 text-center">
                   <button
                     onClick={() => setShowPastShows((prev) => !prev)}
@@ -550,9 +589,9 @@ export function LiveSection() {
                 </div>
               )}
 
-              {!loading && !error && showPastShows && pastConcerts.length > 0 && (
+              {!loading && !error && showPastShows && filteredPastConcerts.length > 0 && (
                 <div className="mt-4 space-y-3">
-                  {pastConcerts.slice(0, 6).map((concert, index) => (
+                  {filteredPastConcerts.slice(0, 6).map((concert, index) => (
                     <motion.div
                       key={`past-${index}`}
                       initial={{ opacity: 0, y: 12 }}
@@ -581,10 +620,10 @@ export function LiveSection() {
                 </div>
               )}
 
-              {!loading && !error && upcomingConcerts.length === 0 && concerts.length > 0 && (
+              {!loading && !error && filteredUpcomingConcerts.length === 0 && concerts.length > 0 && (
                 <div className="text-center py-12 px-6 bg-secondary/20 border border-border rounded-xl">
                   <p className="text-muted-foreground mb-4">
-                    No upcoming dates right now, but you can check our full history on Bandsintown.
+                    No upcoming dates for this filter right now, but you can check our full history on Bandsintown.
                   </p>
                   <motion.a
                     whileHover={{ scale: 1.05 }}
