@@ -67,7 +67,7 @@ export function Navigation() {
               </a>
             </div>
 
-            <div className="md:hidden flex items-center">
+            <div className="md:hidden flex items-center shrink-0">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="h-10 w-10 p-0 inline-flex items-center justify-center text-foreground rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
