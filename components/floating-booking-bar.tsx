@@ -20,6 +20,8 @@ export function FloatingBookingBar() {
   }, [])
 
   useEffect(() => {
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) return
+
     const contactSection = document.getElementById("contact")
     if (!contactSection) return
 
