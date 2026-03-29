@@ -4,6 +4,7 @@ import { useRef } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
+import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 
 export function ContactSection() {
   const sectionRef = useRef<HTMLElement>(null)
@@ -51,7 +52,7 @@ export function ContactSection() {
             transition={{ duration: 0.5 }}
             className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block"
           >
-            Let&apos;s Work Together
+            {CAMPAIGN_CONTENT.tag}
           </motion.span>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
@@ -59,7 +60,7 @@ export function ContactSection() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="font-serif text-3xl md:text-4xl lg:text-5xl text-foreground mb-4 text-balance"
           >
-            Book the Band
+            {CAMPAIGN_CONTENT.primaryCtaLabel}
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -67,7 +68,15 @@ export function ContactSection() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-muted-foreground max-w-2xl mx-auto text-base md:text-lg"
           >
-            Ready to bring the groove to your event? Get in touch with our management for bookings and inquiries.
+            {CAMPAIGN_CONTENT.description}
+          </motion.p>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="mx-auto mt-4 inline-flex items-center rounded-full border border-primary/40 bg-primary/15 px-4 py-2 text-sm text-primary"
+          >
+            {CAMPAIGN_CONTENT.urgencyCue}
           </motion.p>
         </motion.div>
 
@@ -94,7 +103,7 @@ export function ContactSection() {
               <p className="text-muted-foreground text-lg mb-5">
                 {method.description}
               </p>
-              <span className="inline-flex items-center gap-2 text-primary font-medium text-lg">
+              <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-lg ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
                 {method.label}
                 <svg
                   className="w-5 h-5 group-hover:translate-x-1 transition-transform"
