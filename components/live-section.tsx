@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
+import { CAMPAIGN_CONTENT } from "@/components/campaign-content"
 
 interface Concert {
   venue: string
@@ -48,12 +49,35 @@ function formatDate(dateStr: string): string {
   })
 }
 
+function buildLiveSnapshot(concerts: Concert[]) {
+  const now = new Date()
+  const oneYearAgo = new Date(now)
+  oneYearAgo.setFullYear(now.getFullYear() - 1)
+
+  const sortedByDateAsc = [...concerts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  const nextShow = sortedByDateAsc.find((concert) => new Date(concert.date).getTime() >= now.getTime())
+
+  const recentShows = concerts.filter((concert) => {
+    const concertDate = new Date(concert.date)
+    return concertDate >= oneYearAgo && concertDate <= now
+  }).length
+
+  const citiesPlayed = new Set(concerts.map((concert) => `${concert.city}-${concert.country}`)).size
+
+  return {
+    citiesPlayed,
+    recentShows,
+    nextShow,
+  }
+}
+
 export function LiveSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const [concerts, setConcerts] = useState<Concert[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const { opacity, y } = useScrollAnimation(sectionRef)
+  const liveSnapshot = useMemo(() => buildLiveSnapshot(concerts), [concerts])
 
   // Fetch and parse CSV data with error handling
   useEffect(() => {
@@ -191,6 +215,14 @@ export function LiveSection() {
             style={{ opacity, y }}
             className="text-center mb-12"
           >
+            <div className="mb-4 flex justify-center">
+              <a
+                href={CAMPAIGN_CONTENT.liveStatusHref}
+                className="inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary hover:bg-primary/20 transition-colors"
+              >
+                {CAMPAIGN_CONTENT.liveStatusBadge}
+              </a>
+            </div>
             <motion.span
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
@@ -216,6 +248,33 @@ export function LiveSection() {
               From intimate club shows to festival main stages, Tales for the Tillerman 
               delivers an unforgettable live experience.
             </motion.p>
+
+            <div className="mt-6 mx-auto w-full max-w-3xl">
+              <a
+                href="https://www.bandsintown.com/a/15468933-tales-for-the-tillerman"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mb-3 flex items-center justify-center gap-2 rounded-full border border-border bg-black/35 px-4 py-2 text-xs sm:text-sm text-foreground hover:border-primary/40 hover:text-primary transition-colors"
+              >
+                <span className="text-primary font-semibold">{liveSnapshot.nextShow ? "Next show" : "Live updates"}</span>
+                <span>
+                  {liveSnapshot.nextShow
+                    ? `${formatDate(liveSnapshot.nextShow.date)} · ${liveSnapshot.nextShow.city}`
+                    : "New date announcement coming soon"}
+                </span>
+              </a>
+
+              <div className="grid grid-cols-2 gap-2 text-left">
+                <div className="rounded-xl border border-border bg-black/25 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Cities played</p>
+                  <p className="text-lg font-semibold text-foreground">{liveSnapshot.citiesPlayed || "—"}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-black/25 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Shows · 12 months</p>
+                  <p className="text-lg font-semibold text-foreground">{liveSnapshot.recentShows || "—"}</p>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           <div className="w-full">

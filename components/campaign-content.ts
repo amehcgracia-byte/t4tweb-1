@@ -1,5 +1,9 @@
 export const CAMPAIGN_CONTENT = {
   tag: "New single + next shows + booking",
+  liveStatusBadge: "New single out now",
+  liveStatusHref: "#latest-release",
+  nextShowBadge: "Next show: See live dates",
+  nextShowHref: "#live",
   title: "Ride the new single live this season",
   description:
     "Listen to the latest release, catch the next dates, and lock your booking slot before the spring calendar closes.",

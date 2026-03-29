@@ -19,6 +19,20 @@ export function LatestReleaseSection() {
           <p className="text-primary text-xs md:text-sm font-semibold uppercase tracking-[0.2em] mb-3">
             {CAMPAIGN_CONTENT.tag}
           </p>
+          <div className="mb-5 flex flex-wrap gap-2">
+            <a
+              href={CAMPAIGN_CONTENT.liveStatusHref}
+              className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
+            >
+              {CAMPAIGN_CONTENT.liveStatusBadge}
+            </a>
+            <a
+              href={CAMPAIGN_CONTENT.nextShowHref}
+              className="inline-flex items-center rounded-full border border-border bg-secondary/60 px-3 py-1 text-[11px] font-medium text-foreground transition-colors hover:border-primary/30 hover:text-primary"
+            >
+              {CAMPAIGN_CONTENT.nextShowBadge}
+            </a>
+          </div>
           <h2 className="font-serif text-3xl md:text-5xl text-foreground mb-2">
             {CAMPAIGN_CONTENT.releaseTitle}
           </h2>
