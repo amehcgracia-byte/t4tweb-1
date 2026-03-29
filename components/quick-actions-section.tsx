@@ -13,7 +13,7 @@ export function QuickActionsSection() {
       title: "Listen Now",
       description: "Stream on all platforms",
       icon: ListenIcon,
-      href: "#latest-release",
+      href: "#live",
       color: "bg-gradient-to-br from-green-600 to-green-700 hover:from-green-500 hover:to-green-600",
     },
     {
