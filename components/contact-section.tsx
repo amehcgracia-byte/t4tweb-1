@@ -76,6 +76,7 @@ export function ContactSection() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.25 }}
+            aria-live="polite"
             className="mx-auto mt-4 inline-flex items-center rounded-full border border-primary/40 bg-primary/15 px-4 py-2 text-sm text-primary"
           >
             {urgencyCue}
