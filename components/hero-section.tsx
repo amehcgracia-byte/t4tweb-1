@@ -4,7 +4,6 @@ import { useRef } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useContentAnimation } from "@/hooks/useScrollAnimation"
-import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 
 export function HeroSection() {
   const heroRef = useRef<HTMLDivElement>(null)
@@ -94,26 +93,6 @@ export function HeroSection() {
           World music, funk, and soul from Berlin
         </motion.p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.25, ease: "easeOut" }}
-          className="mx-auto mb-6 max-w-3xl rounded-2xl border border-primary/40 bg-black/50 px-5 py-4 backdrop-blur-sm"
-        >
-          <p className="text-primary text-xs font-semibold uppercase tracking-[0.2em] mb-2">
-            {CAMPAIGN_CONTENT.tag}
-          </p>
-          <p className="text-foreground text-base md:text-lg font-medium">
-            {CAMPAIGN_CONTENT.title}
-          </p>
-          <p className="text-muted-foreground text-sm md:text-base mt-1">
-            {CAMPAIGN_CONTENT.description}
-          </p>
-          <p className="text-primary/90 text-xs md:text-sm mt-2">
-            {CAMPAIGN_CONTENT.urgencyCue}
-          </p>
-        </motion.div>
-
         {/* Primary & Secondary CTAs */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -125,13 +104,11 @@ export function HeroSection() {
             whileHover={{ scale: 1.05, y: -4 }}
             whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            href={CAMPAIGN_CONTENT.releaseCtaHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Stream the latest release"
-            className={`px-11 py-6 rounded-lg text-lg md:text-xl font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
+            href="#press-kit"
+            aria-label="View band press kit"
+            className="px-11 py-6 bg-primary text-primary-foreground rounded-lg text-lg md:text-xl font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            {CAMPAIGN_CONTENT.releaseCtaLabel}
+            View Press Kit
           </motion.a>
           <motion.a
             whileHover={{ scale: 1.05, y: -4 }}
@@ -139,9 +116,9 @@ export function HeroSection() {
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
             href="#contact"
             aria-label="Book Tales for the Tillerman"
-            className={`px-11 py-6 rounded-lg text-lg md:text-xl font-semibold transition-all border border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
+            className="px-11 py-6 bg-secondary text-secondary-foreground rounded-lg text-lg md:text-xl font-semibold hover:bg-secondary/80 transition-all border border-border shadow-lg shadow-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            {CAMPAIGN_CONTENT.primaryCtaLabel}
+            Book the Band
           </motion.a>
         </motion.div>
 
