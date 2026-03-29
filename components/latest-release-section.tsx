@@ -25,7 +25,7 @@ export function LatestReleaseSection() {
           <p className="text-muted-foreground text-base md:text-lg mb-2">
             {CAMPAIGN_CONTENT.releaseSubtitle}
           </p>
-          <p className="text-primary/90 text-sm mb-6">
+          <p aria-live="polite" className="text-primary/90 text-sm mb-6">
             {urgencyCue}
           </p>
 

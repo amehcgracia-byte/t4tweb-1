@@ -38,7 +38,7 @@ export function FloatingBookingBar() {
           <p className="text-primary text-[11px] uppercase tracking-[0.16em] font-semibold">
             {CAMPAIGN_CONTENT.tag}
           </p>
-          <p className="text-foreground text-sm md:text-base">
+          <p aria-live="polite" className="text-foreground text-sm md:text-base">
             {urgencyCue}
           </p>
         </div>

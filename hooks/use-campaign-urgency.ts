@@ -6,19 +6,26 @@ let cachedUrgency: string | null = null
 let cachedUrgencyPromise: Promise<string | null> | null = null
 
 function buildUrgencyFromCsv(csv: string): string | null {
-  const lines = csv.trim().split("\n")
+  const lines = csv
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean)
   if (lines.length < 2) return null
 
   const today = new Date()
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
-  const rows = lines.slice(1).map((line) => line.split(","))
+  const rows = lines.slice(1).map((line) => line.split(",").map((cell) => cell.trim()))
   const futureShows = rows
     .map((row) => ({
       venue: row[0] || "",
       city: row[1] || "",
       date: row[3] || "",
     }))
-    .filter((show) => show.date && new Date(show.date).getTime() >= startOfToday)
+    .filter((show) => {
+      if (!show.date) return false
+      const ts = new Date(show.date).getTime()
+      return Number.isFinite(ts) && ts >= startOfToday
+    })
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
   if (!futureShows.length) return null
@@ -30,7 +37,8 @@ function buildUrgencyFromCsv(csv: string): string | null {
     year: "numeric",
   })
 
-  return `Next show: ${formattedDate} · ${nextShow.city}. Booking requests are open now.`
+  const locationLabel = nextShow.city || nextShow.venue || "TBA"
+  return `Next show: ${formattedDate} · ${locationLabel}. Booking requests are open now.`
 }
 
 export function useCampaignUrgency(fallback: string) {
