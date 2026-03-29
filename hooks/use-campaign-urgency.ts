@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 
 let cachedUrgency: string | null = null
+let urgencyPromise: Promise<string> | null = null
 
 function buildUrgencyFromCsv(csv: string): string | null {
   const lines = csv.trim().split("\n")
@@ -13,11 +14,16 @@ function buildUrgencyFromCsv(csv: string): string | null {
   const rows = lines.slice(1).map((line) => line.split(","))
   const futureShows = rows
     .map((row) => ({
-      venue: row[0] || "",
       city: row[1] || "",
       date: row[3] || "",
+      status: row[5] || "",
     }))
-    .filter((show) => show.date && new Date(show.date).getTime() >= startOfToday)
+    .filter(
+      (show) =>
+        show.date &&
+        new Date(show.date).getTime() >= startOfToday &&
+        show.status.toLowerCase() !== "completed",
+    )
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
   if (!futureShows.length) return null
@@ -36,25 +42,31 @@ export function useCampaignUrgency(fallback: string) {
   const [urgency, setUrgency] = useState(fallback)
 
   useEffect(() => {
+    let mounted = true
+
     if (cachedUrgency) {
       setUrgency(cachedUrgency)
       return
     }
 
-    async function loadUrgency() {
-      try {
-        const response = await fetch("/data/concerts.csv")
-        if (!response.ok) throw new Error("Failed to load concerts CSV")
-        const csv = await response.text()
-        const dynamicUrgency = buildUrgencyFromCsv(csv) || fallback
-        cachedUrgency = dynamicUrgency
-        setUrgency(dynamicUrgency)
-      } catch {
-        setUrgency(fallback)
-      }
+    if (!urgencyPromise) {
+      urgencyPromise = fetch("/data/concerts.csv")
+        .then((response) => {
+          if (!response.ok) throw new Error("Failed to load concerts CSV")
+          return response.text()
+        })
+        .then((csv) => buildUrgencyFromCsv(csv) || fallback)
+        .catch(() => fallback)
     }
 
-    loadUrgency()
+    urgencyPromise.then((value) => {
+      cachedUrgency = value
+      if (mounted) setUrgency(value)
+    })
+
+    return () => {
+      mounted = false
+    }
   }, [fallback])
 
   return urgency
