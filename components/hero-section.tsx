@@ -12,18 +12,16 @@ export function HeroSection() {
     offset: ["start start", "end start"],
   })
 
-  const backgroundScale = useTransform(scrollYProgress, [0, 1], [1, 1.06])
-  const backgroundY = useTransform(scrollYProgress, [0, 1], [0, 70])
+  const backgroundScale = useTransform(scrollYProgress, [0, 1], [1, 1.04])
+  const backgroundY = useTransform(scrollYProgress, [0, 1], [0, 36])
 
-  const logoY = useTransform(scrollYProgress, [0, 1], [0, 24])
-  const logoOpacity = useTransform(scrollYProgress, [0, 0.82, 1], [1, 1, 0.78])
+  const logoY = useTransform(scrollYProgress, [0, 1], [0, 18])
+  const logoOpacity = useTransform(scrollYProgress, [0, 0.82, 1], [1, 1, 0.82])
 
-  const contentY = useTransform(scrollYProgress, [0, 1], [0, -24])
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.84, 1], [1, 1, 0])
+  const contentY = useTransform(scrollYProgress, [0, 1], [0, -18])
+  const contentOpacity = useTransform(scrollYProgress, [0, 0.86, 1], [1, 1, 0])
 
-  const glowOpacity = useTransform(scrollYProgress, [0, 0.6, 1], [0.2, 0.12, 0.05])
-
-  const badges = ["Live Band", "Berlin", "Festivals · Clubs · Events"]
+  const glowOpacity = useTransform(scrollYProgress, [0, 0.6, 1], [0.18, 0.1, 0.04])
 
   return (
     <section
@@ -31,7 +29,6 @@ export function HeroSection() {
       ref={sectionRef}
       className="relative flex min-h-screen w-full items-stretch overflow-hidden"
     >
-      {/* Background */}
       <div className="absolute inset-0 -z-20 overflow-hidden">
         <motion.div
           style={{
@@ -47,66 +44,62 @@ export function HeroSection() {
             priority
             sizes="100vw"
             className="object-cover"
-            style={{ objectPosition: "center 24%" }}
+            style={{ objectPosition: "center 10%" }}
           />
         </motion.div>
       </div>
 
-      {/* Cinematic overlays */}
-      <div className="absolute inset-0 -z-10 bg-black/38" />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/42 via-black/18 to-black/82" />
-      <div className="absolute inset-y-0 left-0 -z-10 w-[26%] bg-gradient-to-r from-black/45 to-transparent" />
-      <div className="absolute inset-y-0 right-0 -z-10 w-[26%] bg-gradient-to-l from-black/35 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-[46%] bg-gradient-to-t from-black/82 via-black/45 to-transparent" />
+      <div className="absolute inset-0 -z-10 bg-black/18" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/22 via-black/10 to-black/42" />
+      <div className="absolute inset-y-0 left-0 -z-10 w-[18%] bg-gradient-to-r from-black/18 to-transparent" />
+      <div className="absolute inset-y-0 right-0 -z-10 w-[18%] bg-gradient-to-l from-black/18 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 -z-10 h-[32%] bg-gradient-to-t from-black/45 via-black/18 to-transparent" />
 
       <motion.div
         style={{ opacity: glowOpacity }}
-        className="absolute inset-0 -z-10 bg-gradient-to-r from-[#FF8C21]/0 via-[#FF8C21]/16 to-[#FF8C21]/0"
+        className="absolute inset-0 -z-10 bg-gradient-to-r from-[#FF8C21]/0 via-[#FF8C21]/14 to-[#FF8C21]/0"
       />
 
-      <div className="absolute left-1/2 top-[26%] -z-10 h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-[#FF8C21]/10 blur-3xl" />
+      <div className="absolute left-1/2 top-[22%] -z-10 h-[360px] w-[360px] -translate-x-1/2 rounded-full bg-[#FF8C21]/10 blur-3xl md:h-[420px] md:w-[420px]" />
 
-      {/* Main layout */}
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col justify-between px-4 pt-28 pb-10 sm:px-6 sm:pt-32 lg:px-10">
-        {/* Top block: logo + kicker */}
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col justify-between px-4 pt-24 pb-6 sm:px-6 sm:pt-28 md:pt-32 lg:px-10">
         <motion.div
           style={{
             y: logoY,
             opacity: logoOpacity,
           }}
-          className="flex flex-col items-center pt-6 sm:pt-8"
+          className="flex flex-col items-center pt-2 sm:pt-4"
         >
           <motion.div
-            initial={{ opacity: 0, y: 18, scale: 0.95 }}
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.9, ease: "easeOut" }}
             className="relative"
           >
-            {/* logo aura */}
             <motion.div
               animate={{
-                opacity: [0.28, 0.42, 0.28],
-                scale: [1, 1.06, 1],
+                opacity: [0.24, 0.38, 0.24],
+                scale: [1, 1.05, 1],
               }}
               transition={{
-                duration: 4.5,
+                duration: 4.8,
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
-              className="absolute left-1/2 top-1/2 h-[180px] w-[180px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#FF8C21]/18 blur-3xl sm:h-[220px] sm:w-[220px] md:h-[260px] md:w-[260px]"
+              className="absolute left-1/2 top-1/2 h-[220px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#FF8C21]/16 blur-3xl sm:h-[260px] sm:w-[260px] md:h-[320px] md:w-[320px]"
             />
 
             <motion.div
               animate={{
-                y: [0, -6, 0],
+                y: [0, -5, 0],
                 filter: [
                   "drop-shadow(0 10px 30px rgba(0,0,0,0.45))",
-                  "drop-shadow(0 14px 40px rgba(255,140,33,0.22))",
+                  "drop-shadow(0 14px 40px rgba(255,140,33,0.20))",
                   "drop-shadow(0 10px 30px rgba(0,0,0,0.45))",
                 ],
               }}
               transition={{
-                duration: 5.2,
+                duration: 5.4,
                 repeat: Infinity,
                 ease: "easeInOut",
               }}
@@ -115,31 +108,30 @@ export function HeroSection() {
               <Image
                 src="/images/t4tPics/logo-white.png"
                 alt="Tales for the Tillerman logo"
-                width={172}
-                height={172}
+                width={206}
+                height={206}
                 priority
-                className="h-[112px] w-[112px] object-contain sm:h-[140px] sm:w-[140px] md:h-[164px] md:w-[164px]"
+                className="h-[134px] w-[134px] object-contain sm:h-[164px] sm:w-[164px] md:h-[196px] md:w-[196px]"
               />
             </motion.div>
           </motion.div>
 
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.85, delay: 0.15 }}
+            transition={{ duration: 0.85, delay: 0.14 }}
             className="mt-5 text-[0.78rem] font-semibold uppercase tracking-[0.32em] text-[#ffd3a3] sm:text-sm"
           >
             Berlin-based live collective
           </motion.p>
         </motion.div>
 
-        {/* Bottom block: headline + copy + CTA */}
         <motion.div
           style={{
             y: contentY,
             opacity: contentOpacity,
           }}
-          className="mx-auto flex w-full max-w-5xl flex-col items-center text-center"
+          className="mx-auto flex w-full max-w-5xl flex-col items-center text-center pb-10 sm:pb-14 md:pb-18 lg:pb-24"
         >
           <motion.h1
             initial={{ opacity: 0, y: 22 }}
@@ -168,7 +160,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.46 }}
-            className="mt-9 flex w-full flex-col items-center justify-center gap-4 sm:w-auto sm:flex-row"
+            className="mt-10 flex w-full flex-col items-center justify-center gap-4 sm:w-auto sm:flex-row"
           >
             <motion.a
               whileHover={{
@@ -194,29 +186,9 @@ export function HeroSection() {
               Book the Band
             </motion.a>
           </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.58 }}
-            className="mt-7 flex flex-wrap items-center justify-center gap-3"
-          >
-            {badges.map((badge) => (
-              <div
-                key={badge}
-                className="rounded-full border border-white/15 bg-white/8 px-4 py-2 text-sm font-medium text-white/88 backdrop-blur-sm"
-              >
-                {badge}
-              </div>
-            ))}
-          </motion.div>
         </motion.div>
       </div>
 
-      {/* Bottom fade */}
-      <div className="pointer-events-none absolute right-0 bottom-0 left-0 z-20 h-40 bg-gradient-to-b from-transparent via-black/25 to-black" />
-
-      {/* Scroll indicator */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, y: [0, 8, 0] }}
