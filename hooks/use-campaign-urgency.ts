@@ -14,7 +14,6 @@ function buildUrgencyFromCsv(csv: string): string | null {
   const rows = lines.slice(1).map((line) => line.split(","))
   const futureShows = rows
     .map((row) => ({
-      venue: row[0] || "",
       city: row[1] || "",
       date: row[3] || "",
     }))
