@@ -3,6 +3,7 @@
 import { useRef } from "react"
 import { motion } from "framer-motion"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
+import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 
 export function QuickActionsSection() {
   const sectionRef = useRef<HTMLElement>(null)
@@ -10,39 +11,44 @@ export function QuickActionsSection() {
 
   const actions = [
     {
-      title: "Listen Now",
-      description: "Stream on all platforms",
+      title: "New Single",
+      description: "Start the campaign journey",
       icon: ListenIcon,
-      href: "#live",
-      color: "bg-gradient-to-br from-green-600 to-green-700 hover:from-green-500 hover:to-green-600",
+      href: CAMPAIGN_CONTENT.releaseCtaHref,
+      external: true,
+      color: CAMPAIGN_PRIMARY_CTA_CLASS,
     },
     {
-      title: "See Shows",
-      description: "Check upcoming dates",
+      title: "Spring Shows",
+      description: "Pick your next date",
       icon: CalendarIcon,
-      href: "https://www.bandsintown.com/a/15468933-tales-for-the-tillerman",
+      href: CAMPAIGN_CONTENT.showsCtaHref,
       external: true,
-      color: "bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600",
+      color: CAMPAIGN_PRIMARY_CTA_CLASS,
     },
     {
       title: "Press Kit",
-      description: "Download materials",
+      description: "Everything in one place",
       icon: DownloadIcon,
       href: "#press-kit",
-      color: "bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600",
+      color: CAMPAIGN_PRIMARY_CTA_CLASS,
     },
     {
-      title: "Book Us",
-      description: "For booking inquiries",
+      title: "Book Spring 2026",
+      description: "Limited weekend availability",
       icon: BookIcon,
-      href: "#contact",
-      color: "bg-gradient-to-br from-pink-600 to-pink-700 hover:from-pink-500 hover:to-pink-600",
+      href: CAMPAIGN_CONTENT.primaryCtaHref,
+      color: CAMPAIGN_PRIMARY_CTA_CLASS,
     },
   ]
 
   return (
     <section id="quick-actions" ref={sectionRef} className="relative py-12 md:py-16 overflow-hidden bg-black/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="mx-auto mb-6 max-w-4xl rounded-xl border border-primary/30 bg-black/40 px-4 py-3 text-center">
+          <p className="text-primary text-xs uppercase tracking-[0.2em] font-semibold">{CAMPAIGN_CONTENT.tag}</p>
+          <p className="text-muted-foreground text-sm mt-1">{CAMPAIGN_CONTENT.urgencyCue}</p>
+        </div>
         <motion.div
           style={{ opacity, y }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"
@@ -63,7 +69,7 @@ export function QuickActionsSection() {
               href={action.href}
               target={action.external ? "_blank" : undefined}
               rel={action.external ? "noopener noreferrer" : undefined}
-              className={`group flex flex-col items-center justify-center p-6 rounded-2xl text-white font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl ${action.color}`}
+              className={`group flex flex-col items-center justify-center p-6 rounded-2xl font-semibold transition-all duration-300 hover:shadow-2xl ${action.color}`}
             >
               <div className="mb-3">
                 <action.icon />
