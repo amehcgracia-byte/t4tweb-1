@@ -1,5 +1,5 @@
 export const CAMPAIGN_CONTENT = {
-  tag: "New single + spring shows + booking",
+  tag: "New single + next shows + booking",
   title: "Ride the new single live this season",
   description:
     "Listen to the latest release, catch the next dates, and lock your booking slot before the spring calendar closes.",
@@ -9,7 +9,9 @@ export const CAMPAIGN_CONTENT = {
   releaseCtaHref: "https://open.spotify.com/intl-es/artist/0FHjK3O0k8HQMrJsF7KQwF",
   showsCtaLabel: "See Upcoming Shows",
   showsCtaHref: "https://www.bandsintown.com/a/15468933-tales-for-the-tillerman",
-  urgencyCue: "Spring booking: limited weekend availability.",
+  urgencyCue: "Booking cue: limited weekend availability for May–June 2026.",
+  releaseTitle: "Latest Release · Midnight Radio",
+  releaseSubtitle: "A groove-forward single built for live stages.",
 }
 
 export const CAMPAIGN_PRIMARY_CTA_CLASS =

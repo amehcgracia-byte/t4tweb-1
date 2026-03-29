@@ -125,8 +125,10 @@ export function HeroSection() {
             whileHover={{ scale: 1.05, y: -4 }}
             whileTap={{ scale: 0.98 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            href="#press-kit"
-            aria-label="View band press kit"
+            href={CAMPAIGN_CONTENT.releaseCtaHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Stream the latest release"
             className={`px-11 py-6 rounded-lg text-lg md:text-xl font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
           >
             {CAMPAIGN_CONTENT.releaseCtaLabel}
