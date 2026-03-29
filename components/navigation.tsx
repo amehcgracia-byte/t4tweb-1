@@ -23,9 +23,14 @@ export function Navigation() {
     { href: "#contact", label: "Contact" },
   ]
 
+  const navButtonClass =
+    "inline-flex items-center justify-center min-w-[5.25rem] px-4 lg:px-5 h-11 lg:h-12 rounded-xl bg-orange-500/85 text-white text-[0.98rem] lg:text-[1.03rem] font-medium leading-none tracking-[0.01em] whitespace-nowrap hover:bg-orange-400 transition-all duration-200 shadow-lg shadow-orange-900/20"
+
+  const mobileNavButtonClass = `${navButtonClass} w-full`
+
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
         isScrolled
           ? "bg-background/80 backdrop-blur-2xl border-b border-white/10 shadow-xl shadow-black/25"
           : "bg-transparent"
@@ -50,17 +55,13 @@ export function Navigation() {
 
             <div className="hidden md:flex flex-1 items-center justify-end gap-1.5 lg:gap-2 pl-3 lg:pl-4">
               {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="h-11 min-w-[5.25rem] px-4 inline-flex items-center justify-center p-0 rounded-lg text-[0.98rem] lg:text-[1.03rem] font-medium leading-none tracking-[0.01em] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all duration-200"
-                >
+                <a key={link.href} href={link.href} className={navButtonClass}>
                   {link.label}
                 </a>
               ))}
               <a
                 href="mailto:talesforthetillerman@gmail.com"
-                className="h-11 ml-1 px-5 inline-flex items-center justify-center p-0 bg-primary text-primary-foreground rounded-lg text-[0.98rem] lg:text-[1.03rem] font-semibold leading-none tracking-[0.01em] shadow-lg shadow-primary/25 hover:bg-primary/80 transition-all duration-300"
+                className={`${navButtonClass} ml-1 font-semibold`}
               >
                 Book Now
               </a>
@@ -92,14 +93,15 @@ export function Navigation() {
                   key={link.href}
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="h-11 px-4 w-full inline-flex items-center p-0 rounded-lg text-base font-medium leading-none text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                  className={mobileNavButtonClass}
                 >
                   {link.label}
                 </a>
               ))}
               <a
                 href="mailto:talesforthetillerman@gmail.com"
-                className="h-11 mt-1 px-4 w-full inline-flex items-center justify-center p-0 bg-primary text-primary-foreground rounded-lg text-base font-semibold leading-none text-center hover:bg-primary/80 transition-all duration-300"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`${mobileNavButtonClass} mt-1 font-semibold text-center`}
               >
                 Book Now
               </a>

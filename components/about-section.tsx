@@ -1,111 +1,117 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { motion } from "framer-motion"
-import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 
 export function AboutSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const { opacity, y } = useScrollAnimation(sectionRef)
+  const [copied, setCopied] = useState(false)
 
-  // Variantes para los stats boxes (aparecen en secuencia)
-  const statsVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (custom: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: custom * 0.1,
-        duration: 0.6,
-      },
-    }),
+  const bioText = `Tales for the Tillerman is a Berlin-based collective blending world music, funk, soul, and reggae into a vibrant live experience. With roots spanning across continents, the band creates a sound that moves between groove, warmth, rhythm, and energy.
+
+Their performances balance musical depth with danceable power, bringing together five musicians into one fluid, dynamic live act. Based in Berlin, the project brings together world music fusion, stage energy, and a strong collective identity.
+
+5 musicians • Berlin-based • World music fusion • Live experience`
+
+  const copyBio = async () => {
+    try {
+      await navigator.clipboard.writeText(bioText)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch (error) {
+      console.error("Copy failed", error)
+    }
   }
 
-  const stats = [
-    { number: "5", label: "Musicians" },
-    { number: "Berlin", label: "Based" },
-    { number: "World", label: "Music Fusion" },
-    { number: "Live", label: "Experience" },
-  ]
-
   return (
-    <section id="about" ref={sectionRef} className="relative py-16 md:py-20 overflow-hidden">
-      <div className="absolute inset-0 -z-10">
-        <Image
-          src="/images/about-section-bg.jpg"
-          alt="About section background"
-          fill
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-black/50" />
-      </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="mx-auto max-w-4xl">
+    <section
+      id="about"
+      ref={sectionRef}
+      className="relative min-h-screen w-full overflow-hidden"
+    >
+      <div
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-screen h-full -z-10 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/images/about-bg-main.jpg')" }}
+      />
+      <div className="absolute inset-0 -z-10 bg-black/34" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/6 via-transparent to-black/18 pointer-events-none z-0" />
+
+      <div className="relative z-10 min-h-screen w-full flex items-center justify-center px-4 sm:px-6 lg:px-10 py-24 md:py-32">
+        <motion.div
+          style={{ opacity, y }}
+          className="w-full max-w-6xl mx-auto"
+        >
+          <div className="text-center mb-14 md:mb-16">
+            <motion.span
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="text-primary text-lg md:text-xl font-medium tracking-wider uppercase mb-6 block"
+            >
+              About the Band
+            </motion.span>
+
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="font-serif text-5xl md:text-6xl lg:text-7xl text-white text-balance"
+            >
+              A Journey Through Sound
+            </motion.h2>
+          </div>
+
           <motion.div
-            style={{ opacity, y }}
-            className="flex flex-col items-center mb-10"
+            initial={{ opacity: 0, y: 22 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.2 }}
+            className="w-full rounded-2xl border border-white/12 bg-black/42 backdrop-blur-sm px-7 md:px-12 lg:px-14 py-10 md:py-14 shadow-2xl"
           >
-            <div className="text-center max-w-3xl">
-              <motion.span
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                className="text-primary text-sm font-medium tracking-wider uppercase mb-4 block"
-              >
-                About the Band
-              </motion.span>
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="font-serif text-5xl md:text-6xl lg:text-7xl text-foreground mb-8 text-balance"
-              >
-                A Journey Through Sound
-              </motion.h2>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="space-y-6 leading-relaxed text-xl md:text-2xl"
-              >
-                <p className="bg-black/70 text-white px-6 md:px-8 py-4 md:py-5 rounded-lg border border-black/30">
-                  Tales for the Tillerman is a Berlin-based collective that weaves together 
-                  world music, funk, soul, and reggae into a vibrant tapestry of sound. 
-                  With roots spanning across continents, the band brings a unique fusion 
-                  that transcends borders and speaks to the universal language of rhythm.
-                </p>
-                <p className="bg-black/70 text-white px-6 md:px-8 py-4 md:py-5 rounded-lg border border-black/30">
-                  From intimate club shows to open-air festivals, the five-piece ensemble 
-                  delivers electrifying performances that move both body and soul. Their 
-                  music is a celebration of diversity, unity, and the timeless power of 
-                  live music.
-                </p>
-              </motion.div>
+            <div className="space-y-9 md:space-y-10 text-white">
+              <p className="max-w-none text-xl md:text-2xl leading-relaxed text-white/92 mb-0">
+                Tales for the Tillerman is a Berlin-based collective blending world music,
+                funk, soul, and reggae into a vibrant live experience. With roots spanning
+                across continents, the band creates a sound that moves between groove,
+                warmth, rhythm, and energy.
+              </p>
+
+              <p className="max-w-none text-xl md:text-2xl leading-relaxed text-white/88 mb-0">
+                Their performances balance musical depth with danceable power, bringing
+                together five musicians into one fluid, dynamic live act. Based in Berlin,
+                the project brings together world music fusion, stage energy, and a strong
+                collective identity.
+              </p>
+
+              <p className="max-w-none text-lg md:text-xl leading-relaxed mb-0 pt-2">
+                <span className="text-primary font-medium">5 musicians</span>
+                <span className="text-white/55"> • </span>
+                <span className="text-primary font-medium">Berlin-based</span>
+                <span className="text-white/55"> • </span>
+                <span className="text-primary font-medium">World music fusion</span>
+                <span className="text-white/55"> • </span>
+                <span className="text-primary font-medium">Live experience</span>
+              </p>
             </div>
           </motion.div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-xl mx-auto">
-            {stats.map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                custom={index}
-                initial="hidden"
-                whileInView="visible"
-                whileHover={{ y: -4, scale: 1.02 }}
-                variants={statsVariants}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className="p-4 md:p-5 bg-card/90 backdrop-blur-sm rounded-2xl border border-border text-center shadow-lg hover:shadow-xl hover:border-primary/50 transition-all"
-              >
-                <div className="font-serif text-3xl md:text-4xl text-primary mb-3">
-                  {stat.number}
-                </div>
-                <div className="text-muted-foreground text-lg">{stat.label}</div>
-              </motion.div>
-            ))}
+          <div className="mt-10 md:mt-12 flex justify-center">
+            <motion.button
+              onClick={copyBio}
+              whileTap={{ scale: 0.96 }}
+              animate={copied ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+              transition={{ duration: 0.35 }}
+              className={`inline-flex items-center justify-center px-9 py-4 rounded-xl border text-lg md:text-xl font-semibold transition-all shadow-lg ${
+                copied
+                  ? "bg-orange-500 text-white border-orange-400 shadow-orange-500/40"
+                  : "bg-orange-500/90 text-white border-orange-400/70 shadow-orange-500/30 hover:bg-orange-500"
+              }`}
+            >
+              {copied ? "Copied" : "Copy"}
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   )
