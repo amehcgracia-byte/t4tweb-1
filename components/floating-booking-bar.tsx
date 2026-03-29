@@ -1,9 +1,14 @@
 "use client"
 
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 
 export function FloatingBookingBar() {
+  const [dismissed, setDismissed] = useState(false)
+
+  if (dismissed) return null
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -26,6 +31,14 @@ export function FloatingBookingBar() {
         >
           {CAMPAIGN_CONTENT.primaryCtaLabel}
         </a>
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss booking bar"
+          className="inline-flex items-center justify-center rounded-lg border border-primary/40 px-3 py-2 text-xs text-primary hover:bg-primary/10 transition-colors"
+        >
+          Dismiss
+        </button>
       </div>
     </motion.div>
   )
