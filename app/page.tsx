@@ -10,6 +10,9 @@ import { ContactSection } from "@/components/contact-section"
 import { Footer } from "@/components/footer"
 import { Navigation } from "@/components/navigation"
 import { SceneSection } from "@/components/scene-section"
+import { LatestReleaseSection } from "@/components/latest-release-section"
+import { FloatingBookingBar } from "@/components/floating-booking-bar"
+import { CampaignJourneyCheck } from "@/components/campaign-journey-check"
 
 export default function Home() {
   return (
@@ -21,6 +24,8 @@ export default function Home() {
       </SceneSection>
 
       <QuickActionsSection />
+
+      <LatestReleaseSection />
 
       <SectionDivider />
 
@@ -68,6 +73,9 @@ export default function Home() {
 
       <Footer />
 
+      <FloatingBookingBar />
+      <CampaignJourneyCheck />
+
       {/* Banner Footer - After Footer */}
       <section className="relative w-full overflow-hidden bg-gradient-to-b from-primary/5 via-primary/3 to-black" style={{ minHeight: "150px", clipPath: "inset(47% 0 0 0)" }}>
         <Image
@@ -82,5 +90,3 @@ export default function Home() {
     </main>
   )
 }
-
-
