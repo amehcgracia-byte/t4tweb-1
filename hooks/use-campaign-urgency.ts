@@ -34,11 +34,10 @@ function buildUrgencyFromCsv(csv: string): string | null {
 }
 
 export function useCampaignUrgency(fallback: string) {
-  const [urgency, setUrgency] = useState(fallback)
+  const [urgency, setUrgency] = useState(() => cachedUrgency || fallback)
 
   useEffect(() => {
     if (cachedUrgency) {
-      setUrgency(cachedUrgency)
       return
     }
 

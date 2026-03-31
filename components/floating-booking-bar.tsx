@@ -1,29 +1,27 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { useCampaignUrgency } from "@/hooks/use-campaign-urgency"
 
-export function FloatingBookingBar() {
-  const [dismissed, setDismissed] = useState(false)
-  const [ready, setReady] = useState(false)
-  const urgencyCue = useCampaignUrgency(CAMPAIGN_CONTENT.urgencyCue)
+const isBrowser = typeof window !== "undefined"
 
-  useEffect(() => {
-    const isDismissed = window.sessionStorage.getItem("floating-booking-dismissed")
-    if (isDismissed === "true") {
-      setDismissed(true)
+export function FloatingBookingBar() {
+  const [dismissed, setDismissed] = useState(() => {
+    if (isBrowser) {
+      return window.sessionStorage.getItem("floating-booking-dismissed") === "true"
     }
-    setReady(true)
-  }, [])
+    return false
+  })
+  const urgencyCue = useCampaignUrgency(CAMPAIGN_CONTENT.urgencyCue)
 
   function dismissBar() {
     setDismissed(true)
     window.sessionStorage.setItem("floating-booking-dismissed", "true")
   }
 
-  if (!ready || dismissed) return null
+  if (!isBrowser || dismissed) return null
 
   return (
     <motion.div
