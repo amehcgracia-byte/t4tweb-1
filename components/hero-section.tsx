@@ -1,5 +1,4 @@
 "use client"
-
 import { useRef } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
@@ -12,29 +11,18 @@ export function HeroSection() {
     offset: ["start start", "end start"],
   })
 
-  const backgroundScale = useTransform(scrollYProgress, [0, 1], [1, 1.04])
-  const backgroundY = useTransform(scrollYProgress, [0, 1], [0, 36])
-
-  const logoY = useTransform(scrollYProgress, [0, 1], [0, 18])
-  const logoOpacity = useTransform(scrollYProgress, [0, 0.82, 1], [1, 1, 0.82])
-
-  const contentY = useTransform(scrollYProgress, [0, 1], [0, -18])
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.86, 1], [1, 1, 0])
-
-  const glowOpacity = useTransform(scrollYProgress, [0, 0.6, 1], [0.18, 0.1, 0.04])
+  const backgroundScale = useTransform(scrollYProgress, [0, 1], [1, 1.06])
+  const backgroundY = useTransform(scrollYProgress, [0, 1], [0, 35])
 
   return (
     <section
       id="top"
       ref={sectionRef}
-      className="relative flex min-h-screen w-full items-stretch overflow-hidden"
+      className="relative flex min-h-screen w-full items-stretch overflow-hidden bg-black"
     >
       <div className="absolute inset-0 -z-20 overflow-hidden">
         <motion.div
-          style={{
-            scale: backgroundScale,
-            y: backgroundY,
-          }}
+          style={{ scale: backgroundScale, y: backgroundY }}
           className="relative h-full w-full"
         >
           <Image
@@ -44,179 +32,84 @@ export function HeroSection() {
             priority
             sizes="100vw"
             className="object-cover"
-            style={{ objectPosition: "center 10%" }}
+            style={{ objectPosition: "center 58%" }}
           />
         </motion.div>
       </div>
 
-      <div className="absolute inset-0 -z-10 bg-black/18" />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/22 via-black/10 to-black/42" />
-      <div className="absolute inset-y-0 left-0 -z-10 w-[18%] bg-gradient-to-r from-black/18 to-transparent" />
-      <div className="absolute inset-y-0 right-0 -z-10 w-[18%] bg-gradient-to-l from-black/18 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-[32%] bg-gradient-to-t from-black/45 via-black/18 to-transparent" />
+      <div className="absolute inset-0 -z-10 bg-black/33" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/10 via-transparent to-black/58" />
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_62%,#00000088_12%,transparent_82%)]" />
 
       <motion.div
-        style={{ opacity: glowOpacity }}
-        className="absolute inset-0 -z-10 bg-gradient-to-r from-[#FF8C21]/0 via-[#FF8C21]/14 to-[#FF8C21]/0"
+        animate={{ opacity: [0.10, 0.24, 0.10] }}
+        transition={{ duration: 16, repeat: Infinity }}
+        className="absolute inset-0 -z-10 bg-gradient-to-r from-transparent via-[#FF8C21]/21 to-transparent"
       />
 
-      <div className="absolute left-1/2 top-[22%] -z-10 h-[360px] w-[360px] -translate-x-1/2 rounded-full bg-[#FF8C21]/10 blur-3xl md:h-[420px] md:w-[420px]" />
-
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col justify-between px-4 pt-24 pb-6 sm:px-6 sm:pt-28 md:pt-32 lg:px-10">
-        <motion.div
-          style={{
-            y: logoY,
-            opacity: logoOpacity,
-          }}
-          className="flex flex-col items-center pt-2 sm:pt-4"
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 16, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.9, ease: "easeOut" }}
-            className="relative"
-          >
-            <motion.div
-              animate={{
-                opacity: [0.24, 0.38, 0.24],
-                scale: [1, 1.05, 1],
-              }}
-              transition={{
-                duration: 4.8,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="absolute left-1/2 top-1/2 h-[220px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#FF8C21]/16 blur-3xl sm:h-[260px] sm:w-[260px] md:h-[320px] md:w-[320px]"
+      <div className="relative z-30 mx-auto flex min-h-screen w-full max-w-7xl flex-col justify-between px-6 pt-3 pb-6 sm:px-10 lg:px-14">
+        
+        <div className="flex flex-col items-center text-center mt-auto pb-4">
+          
+          <div className="flex flex-col items-center mb-4">
+            <Image
+              src="/images/t4tPics/logo-white.png"
+              alt="Tales for the Tillerman logo"
+              width={290}
+              height={290}
+              priority
+              className="h-[106px] w-[106px] object-contain drop-shadow-2xl sm:h-[133px] sm:w-[133px] md:h-[160px] md:w-[160px]"
             />
+            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.38em] text-[#ffd3a3]">
+              BERLIN-BASED LIVE COLLECTIVE
+            </p>
+          </div>
 
-            <motion.div
-              animate={{
-                y: [0, -5, 0],
-                filter: [
-                  "drop-shadow(0 10px 30px rgba(0,0,0,0.45))",
-                  "drop-shadow(0 14px 40px rgba(255,140,33,0.20))",
-                  "drop-shadow(0 10px 30px rgba(0,0,0,0.45))",
-                ],
-              }}
-              transition={{
-                duration: 5.4,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="relative"
-            >
-              <Image
-                src="/images/t4tPics/logo-white.png"
-                alt="Tales for the Tillerman logo"
-                width={206}
-                height={206}
-                priority
-                className="h-[134px] w-[134px] object-contain sm:h-[164px] sm:w-[164px] md:h-[196px] md:w-[196px]"
-              />
-            </motion.div>
-          </motion.div>
-
-          <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.85, delay: 0.14 }}
-            className="mt-5 text-[0.78rem] font-semibold uppercase tracking-[0.32em] text-[#ffd3a3] sm:text-sm"
-          >
-            Berlin-based live collective
-          </motion.p>
-        </motion.div>
-
-        <motion.div
-          style={{
-            y: contentY,
-            opacity: contentOpacity,
-          }}
-          className="mx-auto flex w-full max-w-5xl flex-col items-center text-center pb-10 sm:pb-14 md:pb-18 lg:pb-24"
-        >
-          <motion.h1
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.95, delay: 0.22 }}
-            className="max-w-5xl text-4xl font-semibold leading-[0.98] text-white sm:text-5xl md:text-6xl lg:text-7xl"
-          >
-            A vibrant blend of
+          <h1 className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.68rem]">
+            A vibrant blend of{" "}
             <span className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent">
-              {" "}
               funk, soul and world music
             </span>
-          </motion.h1>
+          </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.95, delay: 0.34 }}
-            className="mt-6 max-w-3xl text-base leading-relaxed text-white/88 sm:text-lg md:text-xl"
-          >
-            Tales for the Tillerman brings groove-driven live energy to festivals,
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-white/90 sm:text-base md:text-[17px]">
+            Tales for the Tillerman brings groove-driven live energy to festivals, 
             clubs and special events — with a warm, rhythmic sound made to move a room.
-          </motion.p>
+          </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.46 }}
-            className="mt-10 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row sm:gap-4"
-          >
+          <div className="mt-6 flex w-full max-w-lg flex-col items-center gap-4 sm:flex-row sm:justify-center sm:gap-8">
             <motion.a
-              whileHover={{
-                scale: 1.03,
-                boxShadow: "0 20px 50px rgba(255, 140, 33, 0.34)",
-              }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               href="#contact"
-              className="flex min-h-[52px] min-w-[220px] items-center justify-center rounded-xl border border-[#ffb36b]/35 bg-gradient-to-r from-[#FF8C21] via-[#FF7C00] to-[#FF6C00] px-8 py-3.5 text-center text-base font-bold text-white shadow-xl shadow-[#FF8C21]/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-[#FF8C21]/40 md:min-h-[56px] md:py-4 md:text-lg"
+              className="w-full sm:w-auto min-h-[48px] rounded-2xl bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-6 py-3.5 text-base font-bold text-white shadow-xl shadow-[#FF8C21]/50 transition-all"
             >
               Book the Band
             </motion.a>
 
+            <motion.div 
+              className="flex items-center gap-2 text-white/80"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.4 }}
+            >
+              <span className="text-[10px] uppercase tracking-[0.42em]">SCROLL</span>
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.7} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7" />
+              </svg>
+            </motion.div>
+
             <motion.a
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.99 }}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               href="#press-kit"
-              className="flex min-h-[52px] min-w-[220px] items-center justify-center rounded-xl border border-white/25 bg-white/[0.06] px-8 py-3.5 text-center text-base font-semibold text-white/95 backdrop-blur-sm transition-all duration-300 hover:border-white/40 hover:bg-white/[0.1] md:min-h-[56px] md:py-4 md:text-lg"
+              className="w-full sm:w-auto min-h-[48px] rounded-2xl border border-white/40 bg-white/5 px-6 py-3.5 text-base font-semibold text-white backdrop-blur-sm hover:border-white/65 hover:bg-white/15 transition-all"
             >
               View Press Kit
             </motion.a>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1, y: [0, 8, 0] }}
-        transition={{
-          opacity: { duration: 1, delay: 1 },
-          y: { duration: 2.4, repeat: Infinity, ease: "easeInOut" },
-        }}
-        className="absolute bottom-8 left-1/2 z-20 -translate-x-1/2"
-      >
-        <a
-          href="#about"
-          className="flex flex-col items-center gap-2 text-white/60 transition-colors hover:text-white/90"
-        >
-          <span className="text-[0.68rem] uppercase tracking-[0.28em]">
-            Scroll
-          </span>
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.7}
-              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-            />
-          </svg>
-        </a>
-      </motion.div>
     </section>
   )
 }

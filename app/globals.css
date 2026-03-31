@@ -804,6 +804,7 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -814,6 +815,34 @@ main,
 section {
   width: 100%;
   max-width: 100%;
+}
+
+/* Mobile touch optimizations */
+@media (max-width: 768px) {
+  html {
+    scroll-padding-top: 70px;
+  }
+  
+  /* Ensure all buttons/links meet touch target minimum */
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Prevent text selection on interactive elements */
+  button,
+  a,
+  .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* Smooth momentum scrolling */
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* ============================================================================

@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
 
-export function AboutSection() {
+export function AboutSection({ className = "" }: { className?: string }) {
   const sectionRef = useRef<HTMLElement>(null)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const [copied, setCopied] = useState(false)
@@ -27,21 +27,29 @@ Their performances balance musical depth with danceable power, bringing together
   }
 
   return (
-    <section ref={sectionRef} className="relative w-full overflow-hidden">
-      <div
-        className="absolute inset-0 top-0 -z-10 h-full w-screen bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: "url('/images/about-bg-main.jpg')",
-          width: "100vw",
-          marginLeft: "calc(-50vw + 50%)",
-        }}
-      />
+    <section 
+      ref={sectionRef} 
+      className={`relative min-h-screen w-full overflow-hidden bg-black ${className}`}
+    >
+      <div className="absolute inset-0 -z-10">
+        <img 
+          src="/images/about-bg-main.jpg"
+          alt="Band members background"
+          className="h-full w-full object-cover"
+          style={{ objectPosition: "center top" }}
+        />
+      </div>
+
       <div className="section-photo-scrim" />
       <div className="section-photo-fade-top" />
       <div className="section-photo-fade-bottom" />
 
-      <div className="relative z-10 flex w-full items-center justify-center px-4 py-16 sm:px-6 md:py-24 lg:px-10 lg:py-28">
-        <motion.div style={{ opacity, y }} className="mx-auto w-full max-w-6xl">
+      {/* Contenido */}
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-6 sm:px-8">
+        <motion.div 
+          style={{ opacity, y }} 
+          className="mx-auto w-full max-w-4xl"
+        >
           <SectionHeader
             eyebrow="About the Band"
             title="A Journey Through Sound"
@@ -49,54 +57,49 @@ Their performances balance musical depth with danceable power, bringing together
             className="mb-10 max-w-4xl md:mb-12"
           />
 
+          {/* Box de texto reducido ~20% */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
-            className="w-full rounded-2xl border border-white/12 bg-black/40 px-7 py-9 shadow-lg backdrop-blur-sm md:px-12 md:py-12 lg:px-14"
+            transition={{ duration: 0.6, delay: 0.05 }}
+            className="w-full rounded-3xl border border-white/10 bg-black/50 px-6 py-8 md:px-10 md:py-12 lg:px-12 lg:py-14 shadow-2xl backdrop-blur-md"
           >
-            <div className="space-y-8 text-white md:space-y-9">
-              <p className="mb-0 max-w-none text-lg leading-relaxed text-white/92 md:text-xl">
-                Tales for the Tillerman is a Berlin-based collective blending world music,
-                funk, soul, and reggae into a vibrant live experience. With roots spanning
-                across continents, the band creates a sound that moves between groove,
+            <div className="space-y-6 text-white md:space-y-8">
+              <p className="mb-0 max-w-none text-base leading-relaxed text-white/95 md:text-lg">
+                Tales for the Tillerman is a Berlin-based collective blending world music, 
+                funk, soul, and reggae into a vibrant live experience. With roots spanning 
+                across continents, the band creates a sound that moves between groove, 
                 warmth, rhythm, and energy.
               </p>
 
-              <p className="mb-0 max-w-none text-lg leading-relaxed text-white/88 md:text-xl">
-                Their performances balance musical depth with danceable power, bringing
-                together five musicians into one fluid, dynamic live act. Based in Berlin,
-                the project brings together world music fusion, stage energy, and a strong
+              <p className="mb-0 max-w-none text-base leading-relaxed text-white/90 md:text-lg">
+                Their performances balance musical depth with danceable power, bringing 
+                together five musicians into one fluid, dynamic live act. Based in Berlin, 
+                the project brings together world music fusion, stage energy, and a strong 
                 collective identity.
               </p>
 
-              <p className="mb-0 max-w-none pt-1 text-base leading-relaxed md:text-lg">
-                <span className="font-medium text-[#FF8C21]">5 musicians</span>
-                <span className="text-white/55"> • </span>
-                <span className="font-medium text-[#FF8C21]">Berlin-based</span>
-                <span className="text-white/55"> • </span>
-                <span className="font-medium text-[#FF8C21]">World music fusion</span>
-                <span className="text-white/55"> • </span>
-                <span className="font-medium text-[#FF8C21]">Live experience</span>
+              <p className="mb-0 max-w-none pt-2 text-sm leading-relaxed md:text-base text-[#FF8C21]">
+                5 musicians • Berlin-based • World music fusion • Live experience
               </p>
             </div>
           </motion.div>
 
-          <div className="mt-8 flex justify-center md:mt-10">
+          <div className="mt-12 flex justify-center">
             <motion.button
               type="button"
               onClick={copyBio}
               whileTap={{ scale: 0.98 }}
               animate={copied ? { scale: [1, 1.04, 1] } : { scale: 1 }}
               transition={{ duration: 0.3 }}
-              className={`inline-flex items-center justify-center rounded-xl border px-8 py-3.5 text-base font-semibold shadow-md transition-all md:text-lg ${
+              className={`inline-flex items-center justify-center rounded-2xl border px-8 py-3.5 text-base font-semibold shadow-lg transition-all md:text-lg ${
                 copied
-                  ? "border-[#FF7C00] bg-[#FF8C21] text-white shadow-[#FF8C21]/35"
-                  : "border-[#FF7C00]/70 bg-[#FF8C21]/90 text-white shadow-[#FF8C21]/25 hover:bg-[#FF8C21]"
+                  ? "border-[#FF8C21] bg-[#FF8C21] text-white shadow-[#FF8C21]/50"
+                  : "border-[#FF8C21]/70 bg-[#FF8C21]/90 text-white shadow-[#FF8C21]/30 hover:bg-[#FF8C21] hover:shadow-[#FF8C21]/40"
               }`}
             >
-              {copied ? "Copied" : "Copy"}
+              {copied ? "✓ Copied to clipboard" : "Copy band bio"}
             </motion.button>
           </div>
         </motion.div>

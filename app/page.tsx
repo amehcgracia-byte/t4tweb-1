@@ -1,4 +1,3 @@
-import Image from "next/image"
 import { HeroSection } from "@/components/hero-section"
 import { SectionDivider } from "@/components/section-divider"
 import { AboutSection } from "@/components/about-section"
@@ -21,25 +20,15 @@ export default function Home() {
         <HeroSection />
       </SceneSection>
 
-      <section className="relative -mt-12 w-full overflow-hidden bg-transparent md:-mt-16 lg:-mt-20">
-        <div className="relative h-[360px] w-full md:h-[430px] lg:h-[500px]">
-          <Image
-            src="/images/banner.gif"
-            alt="Animated boat and waves"
-            fill
-            className="object-cover object-bottom opacity-80"
-            style={{
-              clipPath: "inset(18% 0 0 0)",
-            }}
-            unoptimized
-            priority
-          />
-
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black via-black/65 via-black/30 to-transparent md:h-48 lg:h-56" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black via-black/65 via-black/30 to-transparent md:h-48 lg:h-56" />
-          <div className="pointer-events-none absolute inset-0 bg-black/20" />
-        </div>
-      </section>
+      <div className="relative h-[350px] w-full overflow-hidden md:h-[450px] lg:h-[520px]">
+        <img
+          src="/images/t4tPics/banner-crop.gif"
+          alt="Animated boat and waves"
+          className="h-full w-full object-cover"
+        />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black via-black/60 to-transparent md:h-32" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black via-black/60 to-transparent md:h-32" />
+      </div>
 
       <LatestReleaseSection />
 
@@ -76,8 +65,6 @@ export default function Home() {
       <Footer />
 
       <FloatingBookingBar />
-
-      <div className="h-12 w-full bg-gradient-to-b from-black to-transparent md:h-16" aria-hidden />
     </main>
   )
 }

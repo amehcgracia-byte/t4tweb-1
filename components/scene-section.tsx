@@ -20,7 +20,7 @@ export function SceneSection({ id, children, className = "" }: SceneSectionProps
       id={id}
       className={`relative min-h-screen w-full overflow-hidden ${className}`}
     >
-      <div className="relative z-10 flex min-h-screen w-full items-center justify-center px-4 py-10 sm:px-6 sm:py-12 md:py-14 lg:px-8">
+      <div className="relative z-10 flex min-h-screen w-full items-center justify-center px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         <motion.div
           style={{
             opacity: contentAnimations.opacity,

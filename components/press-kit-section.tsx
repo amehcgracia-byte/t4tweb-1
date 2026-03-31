@@ -40,13 +40,7 @@ export function PressKitSection() {
 
   return (
     <section ref={sectionRef} className="relative w-full overflow-hidden">
-      <div
-        className="absolute inset-0 top-0 -z-10 h-full w-screen"
-        style={{
-          width: "100vw",
-          marginLeft: "calc(-50vw + 50%)",
-        }}
-      >
+      <div className="absolute inset-0 -z-10">
         <Image
           src="/images/sections/press-bg.jpg"
           alt="Press kit background"
@@ -57,8 +51,9 @@ export function PressKitSection() {
       </div>
       <div className="section-photo-scrim" />
       <div className="section-photo-fade-top" />
+      <div className="section-photo-fade-bottom" />
 
-      <div className="relative z-20 overflow-hidden py-14 md:py-16">
+      <div className="relative z-20 py-16 md:py-20">
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div style={{ opacity, y }} className="mb-10 md:mb-12">
             <SectionHeader
@@ -96,81 +91,51 @@ export function PressKitSection() {
             </div>
           </motion.div>
 
-          {/* Additional Resources Grid */}
-          <div className="grid sm:grid-cols-3 gap-6">
-            {/* Band Logo Card - First */}
-            {resources.length > 0 && (() => {
-              const BandLogoIcon = resources[0].icon;
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {resources.map((resource, index) => {
+              const Icon = resource.icon
               return (
                 <motion.a
-                  key={resources[0].title}
-                  custom={0}
+                  key={resource.title}
+                  custom={index}
                   initial="hidden"
                   whileInView="visible"
                   variants={resourceVariants}
                   whileHover={{ y: -2 }}
                   transition={{ type: "spring", stiffness: 320, damping: 22 }}
-                  href={resources[0].href}
-                  target={resources[0].download ? undefined : "_blank"}
-                  rel={resources[0].download ? undefined : "noopener noreferrer"}
-                  download={resources[0].download}
+                  href={resource.href}
+                  target={resource.download ? undefined : "_blank"}
+                  rel={resource.download ? undefined : "noopener noreferrer"}
+                  download={resource.download ? true : undefined}
                   className="group rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg"
                 >
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-secondary text-muted-foreground group-hover:text-foreground transition-colors">
-                    <BandLogoIcon />
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-muted-foreground transition-colors group-hover:text-foreground">
+                    <Icon />
                   </div>
-                  <h3 className="font-medium text-foreground mb-1">{resources[0].title}</h3>
-                  <p className="text-sm text-muted-foreground">{resources[0].description}</p>
+                  <h3 className="mb-1 font-medium text-foreground">{resource.title}</h3>
+                  <p className="text-sm text-muted-foreground">{resource.description}</p>
                 </motion.a>
-              );
-            })()}
+              )
+            })}
 
-            {/* Manager Card - Second */}
             <motion.a
               href="mailto:talesforthetillerman@gmail.com"
               initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               whileHover={{ y: -2 }}
               transition={{ duration: 0.45, delay: 0.06, type: "spring", stiffness: 320, damping: 22 }}
-              className="group cursor-pointer overflow-hidden rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg"
+              className="group overflow-hidden rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg"
             >
-              <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
+              <div className="relative mb-4 h-48 w-full overflow-hidden rounded-lg">
                 <img
                   src="/images/Momo Garcia Manager.png"
                   alt="Momo Garcia Manager"
-                  className="w-full h-full object-cover blur-sm group-hover:blur-none transition-all duration-300"
+                  className="h-full w-full object-cover transition-all duration-300 group-hover:scale-105"
                 />
               </div>
-              <h3 className="font-medium text-foreground mb-1">Manager</h3>
+              <h3 className="mb-1 font-medium text-foreground">Manager</h3>
               <p className="text-sm text-muted-foreground">Momo Garcia - Band Management</p>
             </motion.a>
-
-            {/* Linktree Card - Third */}
-            {resources.length > 1 && (() => {
-              const LinktreeIcon = resources[1].icon;
-              return (
-                <motion.a
-                  key={resources[1].title}
-                  custom={1}
-                  initial="hidden"
-                  whileInView="visible"
-                  variants={resourceVariants}
-                  whileHover={{ y: -2 }}
-                  transition={{ type: "spring", stiffness: 320, damping: 22 }}
-                  href={resources[1].href}
-                  target={resources[1].download ? undefined : "_blank"}
-                  rel={resources[1].download ? undefined : "noopener noreferrer"}
-                  download={resources[1].download}
-                  className="group rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg"
-                >
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-secondary text-muted-foreground group-hover:text-foreground transition-colors">
-                    <LinktreeIcon />
-                  </div>
-                  <h3 className="font-medium text-foreground mb-1">{resources[1].title}</h3>
-                  <p className="text-sm text-muted-foreground">{resources[1].description}</p>
-                </motion.a>
-              );
-            })()}
           </div>
         </div>
       </div>

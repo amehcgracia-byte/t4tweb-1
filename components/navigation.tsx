@@ -46,15 +46,18 @@ export function Navigation() {
           <div className="flex h-16 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 md:h-[4.5rem] md:px-4">
             <a
               href="#top"
-              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full p-0 transition-transform duration-300 hover:-translate-y-0.5 md:h-14 md:w-14"
+              className="inline-flex h-12 shrink-0 items-center justify-center gap-3 rounded-full p-0 transition-transform duration-300 hover:-translate-y-0.5 md:h-14"
             >
               <Image
                 src="/images/logo-qr.png"
                 alt="Tales for the Tillerman"
                 width={56}
                 height={56}
-                className="h-full w-full rounded-full shadow-lg shadow-black/30"
+                className="h-full w-auto rounded-full shadow-lg shadow-black/30"
               />
+              <span className="hidden font-serif text-lg font-medium tracking-wide text-white sm:text-xl md:block lg:text-2xl">
+                Tales for the Tillerman
+              </span>
             </a>
 
             <div className="hidden items-center gap-0.5 md:flex md:gap-1 lg:gap-2">
@@ -72,7 +75,7 @@ export function Navigation() {
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-foreground transition-colors hover:bg-white/20"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 text-foreground transition-colors hover:bg-white/20"
                 aria-label="Toggle menu"
                 aria-expanded={isMobileMenuOpen}
               >
@@ -89,23 +92,23 @@ export function Navigation() {
         </div>
 
         {isMobileMenuOpen && (
-          <div className="border-t border-white/10 pb-4 pt-1 md:hidden">
-            <div className="rounded-xl border border-white/10 bg-background/95 px-1 backdrop-blur-sm">
+          <div className="border-t border-white/10 pb-6 pt-3 md:hidden">
+            <div className="rounded-xl border border-white/10 bg-background/95 px-2 backdrop-blur-sm">
               {navLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={mobileLinkClass}
+                  className="flex min-h-[48px] w-full items-center border-b border-white/10 px-4 text-left text-base font-medium text-white/80 transition-colors hover:text-white last:border-b-0"
                 >
                   {link.label}
                 </a>
               ))}
-              <div className="px-1 pt-4 pb-2">
+              <div className="px-2 pt-4 pb-2">
                 <a
                   href="#contact"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`${primaryCtaClass} w-full justify-center py-3.5 text-center`}
+                  className={`${primaryCtaClass} flex min-h-[48px] w-full items-center justify-center py-3.5 text-center`}
                 >
                   Book the band
                 </a>

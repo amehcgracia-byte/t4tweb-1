@@ -36,7 +36,7 @@ export function ContactSection() {
     <section
       ref={sectionRef}
       data-campaign-touchpoint="contact-booking"
-      className="relative overflow-hidden py-14 md:py-16"
+      className="relative overflow-hidden"
     >
       <div className="absolute inset-0 -z-10">
         <Image
@@ -49,6 +49,7 @@ export function ContactSection() {
       </div>
       <div className="section-photo-scrim" />
       <div className="section-photo-fade-top" />
+      <div className="section-photo-fade-bottom" />
 
       <div className="relative z-10 mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
         <motion.div style={{ opacity, y }} className="mb-10 md:mb-12">
@@ -107,8 +108,6 @@ export function ContactSection() {
           ))}
         </div>
       </div>
-
-      <div className="section-photo-fade-bottom" />
     </section>
   )
 }
