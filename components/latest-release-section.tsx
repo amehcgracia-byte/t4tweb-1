@@ -14,11 +14,13 @@ export function LatestReleaseSection() {
       className="relative overflow-hidden bg-black py-0"
     >
       <div className="absolute inset-0 z-0">
-        <img
-          src="/images/sections/hero-bg.jpg"
-          alt=""
+        <iframe
+          src="https://www.youtube.com/embed/xofflmVqYGs?autoplay=1&mute=1&loop=1&playlist=xofflmVqYGs&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
+          title=""
           aria-hidden="true"
-          className="h-full w-full object-cover object-[center_60%] opacity-40"
+          className="pointer-events-none absolute top-1/2 left-1/2 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 opacity-40"
+          allow="autoplay; encrypted-media"
+          allowFullScreen={false}
         />
 
         <div className="absolute inset-0 bg-black/48" />
