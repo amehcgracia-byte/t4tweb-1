@@ -14,20 +14,12 @@ export function LatestReleaseSection() {
       className="relative overflow-hidden bg-black py-0"
     >
       <div className="absolute inset-0 z-0">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          className="h-full w-full object-cover object-[center_60%] opacity-40"
+        <img
+          src="/images/sections/hero-bg.jpg"
+          alt=""
           aria-hidden="true"
-        >
-          <source
-            src="/images/t4tPics/Tales for the Tillerman Teaser.mp4"
-            type="video/mp4"
-          />
-        </video>
+          className="h-full w-full object-cover object-[center_60%] opacity-40"
+        />
 
         <div className="absolute inset-0 bg-black/48" />
         <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-black via-black/82 to-transparent md:h-56 lg:h-64" />
