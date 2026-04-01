@@ -59,46 +59,59 @@ export function ContactSection() {
         </motion.div>
 
         {/* Contact Options */}
-        <div className="grid sm:grid-cols-2 gap-6 mb-0">
-          {contactMethods.map((method, index) => (
-            <motion.a
-              key={method.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              whileHover={{ y: -2, scale: 1.01 }}
-              transition={{ duration: 0.45, delay: 0.06 + index * 0.06, type: "spring", stiffness: 320, damping: 22 }}
-              href={method.href}
-              target={method.internal ? undefined : "_blank"}
-              rel={method.internal ? undefined : "noopener noreferrer"}
-              className="group rounded-2xl border border-border bg-card/90 p-6 md:p-8 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg lg:p-10"
-            >
-              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-xl bg-primary/18 group-hover:bg-primary/26 md:mb-6 md:h-20 md:w-20">
-                <method.icon className="h-9 w-9 text-primary md:h-10 md:w-10" />
-              </div>
-              <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-3">
-                {method.title}
-              </h3>
-              <p className="text-muted-foreground text-base md:text-lg mb-4 md:mb-5">
-                {method.description}
-              </p>
-              <span className={`inline-flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg font-medium text-sm md:text-lg max-w-full ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
-                <span className="truncate">{method.label}</span>
-                <svg
-                  className="w-5 h-5 group-hover:translate-x-1 transition-transform"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 8l4 4m0 0l-4 4m4-4H3"
-                  />
-                </svg>
-              </span>
-            </motion.a>
-          ))}
+        <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8">
+          <motion.a
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            whileHover={{ y: -2, scale: 1.01 }}
+            transition={{ duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
+            href={contactMethods[0].href}
+            className="group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg flex-1 max-w-xs"
+          >
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/18 group-hover:bg-primary/26 md:mb-4 md:h-14 md:w-14">
+              <EmailIcon className="h-6 w-6 text-primary md:h-7 md:w-7" />
+            </div>
+            <h3 className="font-serif text-lg md:text-xl text-foreground mb-2">
+              Email Us
+            </h3>
+            <p className="text-muted-foreground text-sm md:text-base mb-3 md:mb-4">
+              Momo Garcia - Management
+            </p>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs md:text-sm max-w-full ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
+              <span className="truncate">talesforthetillerman@gmail.com</span>
+            </span>
+          </motion.a>
+
+          <div className="text-center px-4">
+            <p className="text-muted-foreground text-sm md:text-base">
+              Choose your preferred<br />
+              way to reach us
+            </p>
+          </div>
+
+          <motion.a
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            whileHover={{ y: -2, scale: 1.01 }}
+            transition={{ duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
+            href={contactMethods[1].href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg flex-1 max-w-xs"
+          >
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/18 group-hover:bg-primary/26 md:mb-4 md:h-14 md:w-14">
+              <TelegramIcon className="h-6 w-6 text-primary md:h-7 md:w-7" />
+            </div>
+            <h3 className="font-serif text-lg md:text-xl text-foreground mb-2">
+              Telegram
+            </h3>
+            <p className="text-muted-foreground text-sm md:text-base mb-3 md:mb-4">
+              Janosch Puhe - Quick response
+            </p>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs md:text-sm max-w-full ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
+              <span className="truncate">@Janoschpuhe</span>
+            </span>
+          </motion.a>
         </div>
       </div>
     </section>
