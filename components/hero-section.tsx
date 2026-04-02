@@ -25,13 +25,12 @@ export function HeroSection() {
           style={{ scale: backgroundScale, y: backgroundY }}
           className="relative h-full w-full"
         >
-          <Image
+          <img
             src="/images/t4tPics/hero-bg.jpg"
-            alt="Tales for the Tillerman live atmosphere"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
+            alt=""
+            aria-hidden="true"
+            fetchPriority="high"
+            className="h-full w-full object-cover"
             style={{ objectPosition: "center 58%" }}
           />
         </motion.div>
