@@ -51,10 +51,9 @@ export function Navigation() {
           : "bg-transparent"
       }`}
       style={{ boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none" }}
-      data-editable
+      data-edit-id="navigation"
       data-edit-type="section"
-      data-edit-field="navigation"
-      data-edit-label="Navigation"
+      data-edit-label="Navegación"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center md:h-[5.5rem]">
@@ -69,17 +68,15 @@ export function Navigation() {
                 width={56}
                 height={56}
                 className="h-full w-auto rounded-full shadow-lg shadow-black/30"
-                data-editable
+                data-edit-id="navigation.logo"
                 data-edit-type="image"
-                data-edit-field="navigation.logo"
                 data-edit-label="Logo"
               />
               <span 
                 className="hidden font-serif text-lg font-medium tracking-wide text-white sm:text-xl md:block lg:text-2xl"
-                data-editable
+                data-edit-id="navigation.brandName"
                 data-edit-type="text"
-                data-edit-field="navigation.brandName"
-                data-edit-label="Brand Name"
+                data-edit-label="Nombre de la marca"
               >
                 Tales for the Tillerman
               </span>
