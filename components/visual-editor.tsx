@@ -295,6 +295,7 @@ export function VisualEditorOverlay() {
                   <p className="text-white/70 text-xs capitalize">{selectedElement.type}</p>
                 </div>
                 <button
+                  data-edit-modal
                   onClick={() => {
                     setOpenPanel(false)
                     setSelectedElement(null)
@@ -339,7 +340,10 @@ export function VisualEditorOverlay() {
                       <img src={selectedElement.value} alt="Preview" className="w-full h-full object-cover" />
                     )}
                   </div>
-                  <button className="w-full py-3 bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white rounded-xl font-semibold hover:opacity-90 transition-opacity">
+                  <button 
+                    data-edit-modal
+                    className="w-full py-3 bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white rounded-xl font-semibold hover:opacity-90 transition-opacity"
+                  >
                     Cambiar imagen
                   </button>
                 </div>
@@ -367,6 +371,7 @@ export function VisualEditorOverlay() {
                     Esta es una sección completa del sitio. Para editar su contenido, haz clic en los elementos individuales dentro de ella.
                   </p>
                   <button
+                    data-edit-modal
                     onClick={() => window.open('/studio', '_blank')}
                     className="w-full py-3 border border-[#FF8C21] text-[#FF8C21] rounded-xl font-semibold hover:bg-[#FF8C21]/10 transition-colors"
                   >
@@ -379,6 +384,7 @@ export function VisualEditorOverlay() {
             {/* Panel Footer */}
             <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
               <button
+                data-edit-modal
                 onClick={() => setShowSaveModal(true)}
                 className="w-full py-3 bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white rounded-xl font-bold hover:opacity-90 transition-opacity"
               >
@@ -414,6 +420,7 @@ export function VisualEditorOverlay() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            data-edit-modal
             className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => saveStatus === 'idle' && setShowSaveModal(false)}
           >
@@ -421,6 +428,7 @@ export function VisualEditorOverlay() {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              data-edit-modal
               className="bg-white rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.3)] max-w-md w-full overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
@@ -455,6 +463,7 @@ export function VisualEditorOverlay() {
                 {saveStatus === 'idle' && (
                   <div className="space-y-3">
                     <button
+                      data-edit-modal
                       onClick={handleSave}
                       className="w-full py-4 bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white rounded-xl font-bold text-lg hover:opacity-90 transition-opacity shadow-lg shadow-[#FF8C21]/30"
                     >
@@ -462,6 +471,7 @@ export function VisualEditorOverlay() {
                     </button>
                     
                     <button
+                      data-edit-modal
                       onClick={() => setShowSaveModal(false)}
                       className="w-full py-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
                     >

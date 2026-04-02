@@ -1004,13 +1004,8 @@ body[data-edit-mode="true"] {
   cursor: default !important;
 }
 
-body[data-edit-mode="true"] a:not([data-edit-id]) {
-  pointer-events: none;
-  cursor: default !important;
-}
-
-body[data-edit-mode="true"] button:not([data-edit-toolbar] button) {
-  pointer-events: none;
+body[data-edit-mode="true"] a:not([data-edit-id]):not([data-edit-toolbar] a) {
+  pointer-events: none !important;
   cursor: default !important;
 }
 
@@ -1021,6 +1016,17 @@ body[data-edit-mode="true"] [data-edit-id] {
 body[data-edit-mode="true"] [data-edit-id]:hover {
   outline: 2px dashed #FF8C21 !important;
   outline-offset: 2px;
+}
+
+/* Override pointer-events for editor UI elements */
+[data-edit-panel],
+[data-edit-panel] *,
+[data-edit-toolbar],
+[data-edit-toolbar] *,
+[data-edit-modal],
+[data-edit-modal] * {
+  pointer-events: auto !important;
+  cursor: pointer !important;
 }
 
 /* Edit mode indicator */
