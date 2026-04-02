@@ -19,14 +19,30 @@ export default function Home() {
 
       <SectionDivider />
 
-      <div className="relative flex flex-col items-center justify-center gap-4 px-2 pt-8 pb-12 sm:px-4 sm:pt-12 sm:pb-16">
+      <div 
+        className="relative flex flex-col items-center justify-center gap-4 px-2 pt-8 pb-12 sm:px-4 sm:pt-12 sm:pb-16"
+        data-editable
+        data-edit-type="section"
+        data-edit-field="introBanner"
+        data-edit-label="Intro Banner"
+      >
         <img
           src="/images/t4tPics/banner-crop-ezgif.com-gif-maker.gif"
           alt="Animated banner"
           className="absolute inset-0 h-full w-full object-cover opacity-30"
+          data-editable
+          data-edit-type="image"
+          data-edit-field="introBanner.background"
+          data-edit-label="Banner Background"
         />
         <div className="relative z-10 flex flex-col items-center justify-center gap-4">
-          <p className="max-w-2xl text-center text-base leading-relaxed text-white/90 sm:text-lg md:text-xl px-4">
+          <p 
+            className="max-w-2xl text-center text-base leading-relaxed text-white/90 sm:text-lg md:text-xl px-4"
+            data-editable
+            data-edit-type="text"
+            data-edit-field="introBanner.description"
+            data-edit-label="Intro Text"
+          >
             Tales for the Tillerman brings groove-driven live energy to festivals, 
             clubs and special events — with a warm, rhythmic sound made to move a room.
           </p>
@@ -34,6 +50,10 @@ export default function Home() {
             <a
               href="#contact"
               className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-10 py-7 text-lg font-bold text-white shadow-xl shadow-[#FF8C21]/50 transition-all min-h-[80px]"
+              data-editable
+              data-edit-type="link"
+              data-edit-field="introBanner.bookBandCta"
+              data-edit-label="Book Band Button"
             >
               Book the Band
             </a>
@@ -41,6 +61,10 @@ export default function Home() {
             <a
               href="#press-kit"
               className="w-full sm:w-auto rounded-2xl border border-white/40 bg-white/5 px-10 py-7 text-lg font-semibold text-white backdrop-blur-sm hover:border-white/65 hover:bg-white/15 transition-all min-h-[80px]"
+              data-editable
+              data-edit-type="link"
+              data-edit-field="introBanner.pressKitCta"
+              data-edit-label="Press Kit Button"
             >
               View Press Kit
             </a>

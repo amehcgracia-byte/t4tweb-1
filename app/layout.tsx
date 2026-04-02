@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next"
 import { Inter, Playfair_Display } from "next/font/google"
 import "./globals.css"
+import { VisualEditorProvider } from "@/components/visual-editor"
+import { VisualEditorToolbar } from "@/components/visual-editor-toolbar"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -155,7 +157,12 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <VisualEditorProvider>
+          <VisualEditorToolbar />
+          {children}
+        </VisualEditorProvider>
+      </body>
     </html>
   )
 }

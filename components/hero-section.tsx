@@ -48,6 +48,10 @@ export function HeroSection() {
       id="top"
       ref={sectionRef}
       className="relative flex min-h-screen w-full items-stretch overflow-hidden bg-black"
+      data-editable
+      data-edit-type="section"
+      data-edit-field="heroSection"
+      data-edit-label="Hero Section"
     >
       <div className="absolute inset-0 z-0">
         <motion.div
@@ -62,6 +66,10 @@ export function HeroSection() {
             sizes="100vw"
             className="object-cover"
             style={{ objectPosition: "center center" }}
+            data-editable
+            data-edit-type="image"
+            data-edit-field="heroSection.backgroundImage"
+            data-edit-label="Background Image"
           />
         </motion.div>
       </div>
@@ -78,10 +86,22 @@ export function HeroSection() {
 
       <div className="relative z-10 flex min-h-screen w-full flex-col justify-end px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center text-center pb-8 pt-16">
-          <h1 className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6">
-            {content.title}{" "}
-            <span className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent">
-              {content.titleHighlight}
+          <h1 
+            className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6"
+            data-editable
+            data-edit-type="text"
+            data-edit-field="heroSection.title"
+            data-edit-label="Hero Title"
+          >
+            <span data-text-content>{content.title}</span>{" "}
+            <span 
+              className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent"
+              data-editable
+              data-edit-type="text"
+              data-edit-field="heroSection.titleHighlight"
+              data-edit-label="Highlighted Text"
+            >
+              <span data-text-content>{content.titleHighlight}</span>
             </span>
           </h1>
 
@@ -93,9 +113,19 @@ export function HeroSection() {
               height={290}
               priority
               className="h-[141px] w-[141px] object-contain drop-shadow-2xl sm:h-[177px] sm:w-[177px] md:h-[213px] md:w-[213px]"
+              data-editable
+              data-edit-type="image"
+              data-edit-field="heroSection.logo"
+              data-edit-label="Band Logo"
             />
-            <p className="mt-3 text-sm font-semibold uppercase tracking-[0.38em] text-[#ffd3a3]">
-              {content.subtitle}
+            <p 
+              className="mt-3 text-sm font-semibold uppercase tracking-[0.38em] text-[#ffd3a3]"
+              data-editable
+              data-edit-type="text"
+              data-edit-field="heroSection.subtitle"
+              data-edit-label="Subtitle"
+            >
+              <span data-text-content>{content.subtitle}</span>
             </p>
           </div>
         </div>

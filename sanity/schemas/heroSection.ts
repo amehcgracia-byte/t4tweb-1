@@ -1,9 +1,11 @@
 import { defineField, defineType } from 'sanity'
+import { StarIcon } from '@sanity/icons'
 
 export default defineType({
   name: 'heroSection',
   title: 'Hero Section',
   type: 'document',
+  icon: StarIcon,
   fields: [
     defineField({ name: 'title', title: 'Title', type: 'string' }),
     defineField({ name: 'titleHighlight', title: 'Title Highlight Text', type: 'string', description: 'The highlighted part (e.g. "funk, soul and world music")' }),
@@ -25,4 +27,20 @@ export default defineType({
       }],
     }),
   ],
+  // Presentation configuration for visual editing
+  preview: {
+    select: {
+      title: 'title',
+      backgroundImage: 'backgroundImage',
+      logo: 'logo',
+    },
+    prepare(selection) {
+      const {title, backgroundImage, logo} = selection
+      return {
+        title: title || 'Hero Section',
+        subtitle: 'Hero Section',
+        media: logo || backgroundImage,
+      }
+    }
+  }
 })

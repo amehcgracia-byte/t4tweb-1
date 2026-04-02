@@ -56,6 +56,10 @@ export function BandMembersSection() {
     <section
       ref={sectionRef}
       className="relative min-h-screen w-full overflow-hidden bg-black"
+      data-editable
+      data-edit-type="section"
+      data-edit-field="bandMembers"
+      data-edit-label="Band Members Section"
     >
       {/* Fondo full width */}
       <div className="absolute inset-0 -z-10">
@@ -63,6 +67,10 @@ export function BandMembersSection() {
           src="/images/t4t-2.jpg"
           alt="Band background"
           className="h-full w-full object-cover"
+          data-editable
+          data-edit-type="image"
+          data-edit-field="bandMembers.backgroundImage"
+          data-edit-label="Background Image"
         />
       </div>
 
@@ -106,13 +114,29 @@ export function BandMembersSection() {
                   fill
                   className="object-cover"
                   priority={index === 0}
+                  data-editable
+                  data-edit-type="image"
+                  data-edit-field={`bandMembers.members.${index}.image`}
+                  data-edit-label={`${member.fullName} Photo`}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
-                  <h3 className="text-2xl md:text-3xl lg:text-4xl font-serif text-white mb-2 tracking-tight">
+                  <h3 
+                    className="text-2xl md:text-3xl lg:text-4xl font-serif text-white mb-2 tracking-tight"
+                    data-editable
+                    data-edit-type="text"
+                    data-edit-field={`bandMembers.members.${index}.fullName`}
+                    data-edit-label="Member Name"
+                  >
                     {member.fullName}
                   </h3>
-                  <p className="text-xl text-orange-400 font-medium">
+                  <p 
+                    className="text-xl text-orange-400 font-medium"
+                    data-editable
+                    data-edit-type="text"
+                    data-edit-field={`bandMembers.members.${index}.role`}
+                    data-edit-label="Member Role"
+                  >
                     {member.role}
                   </p>
                 </div>
@@ -134,6 +158,10 @@ export function BandMembersSection() {
                       ? "border-orange-500 bg-zinc-900/80"
                       : "border-white/10 hover:border-white/20 bg-black/40 hover:bg-zinc-950"
                   }`}
+                data-editable
+                data-edit-type="object"
+                data-edit-field={`bandMembers.members.${index}`}
+                data-edit-label={member.fullName}
               >
                 <div className="min-w-0 flex-1">
                   <h4

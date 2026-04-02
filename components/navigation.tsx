@@ -51,6 +51,10 @@ export function Navigation() {
           : "bg-transparent"
       }`}
       style={{ boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none" }}
+      data-editable
+      data-edit-type="section"
+      data-edit-field="navigation"
+      data-edit-label="Navigation"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center md:h-[5.5rem]">
@@ -65,19 +69,44 @@ export function Navigation() {
                 width={56}
                 height={56}
                 className="h-full w-auto rounded-full shadow-lg shadow-black/30"
+                data-editable
+                data-edit-type="image"
+                data-edit-field="navigation.logo"
+                data-edit-label="Logo"
               />
-              <span className="hidden font-serif text-lg font-medium tracking-wide text-white sm:text-xl md:block lg:text-2xl">
+              <span 
+                className="hidden font-serif text-lg font-medium tracking-wide text-white sm:text-xl md:block lg:text-2xl"
+                data-editable
+                data-edit-type="text"
+                data-edit-field="navigation.brandName"
+                data-edit-label="Brand Name"
+              >
                 Tales for the Tillerman
               </span>
             </a>
 
             <div className="hidden items-center gap-0.5 md:flex md:gap-1 lg:gap-2">
               {navLinks.map((link) => (
-                <a key={link.href} href={link.href} className={navLinkClass}>
+                <a 
+                  key={link.href} 
+                  href={link.href} 
+                  className={navLinkClass}
+                  data-editable
+                  data-edit-type="link"
+                  data-edit-field={`navigation.links.${link.label.toLowerCase()}`}
+                  data-edit-label={`Nav: ${link.label}`}
+                >
                   {link.label}
                 </a>
               ))}
-              <a href="#contact" className={`${primaryCtaClass} ml-2 shrink-0 lg:ml-3`}>
+              <a 
+                href="#contact" 
+                className={`${primaryCtaClass} ml-2 shrink-0 lg:ml-3`}
+                data-editable
+                data-edit-type="link"
+                data-edit-field="navigation.cta"
+                data-edit-label="Book Button"
+              >
                 Book
               </a>
             </div>
@@ -112,6 +141,10 @@ export function Navigation() {
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex min-h-[48px] w-full items-center border-b border-white/10 px-4 text-left text-base font-medium text-white/80 transition-colors hover:text-white last:border-b-0"
+                  data-editable
+                  data-edit-type="link"
+                  data-edit-field={`navigation.links.${link.label.toLowerCase()}`}
+                  data-edit-label={`Nav: ${link.label}`}
                 >
                   {link.label}
                 </a>
@@ -121,6 +154,10 @@ export function Navigation() {
                   href="#contact"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`${primaryCtaClass} flex min-h-[48px] w-full items-center justify-center py-3.5 text-center`}
+                  data-editable
+                  data-edit-type="link"
+                  data-edit-field="navigation.cta"
+                  data-edit-label="Book Button"
                 >
                   Book the band
                 </a>
