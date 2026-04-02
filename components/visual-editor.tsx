@@ -740,11 +740,22 @@ function HoverIndicator({ element }: { element: HTMLElement }) {
 
 // ==================== MAIN EDITOR OVERLAY ====================
 
+function checkAuthCookie(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.cookie.includes('t4t-editor-auth=authorized')
+}
+
 export function VisualEditorOverlay() {
   const { isEditing, setIsEditing, selectedElement, setSelectedElement, openPanel, setOpenPanel, snapEnabled, setSnapEnabled } = useVisualEditor()
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Check authentication on mount
+  useEffect(() => {
+    setIsAuthenticated(checkAuthCookie())
+  }, [])
 
   // Handle element click in edit mode
   const handleElementClick = useCallback((e: MouseEvent) => {
@@ -938,6 +949,19 @@ export function VisualEditorOverlay() {
                 </button>
 
                 <button
+                  onClick={async () => {
+                    await fetch('/api/editor-auth/logout', { method: 'POST' })
+                    window.location.href = '/'
+                  }}
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2"
+                  title="Logout"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
+
+                <button
                   onClick={() => setIsEditing(false)}
                   className="px-4 py-2 bg-red-500/90 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-all duration-200"
                 >
@@ -1091,8 +1115,8 @@ export function VisualEditorOverlay() {
         )}
       </AnimatePresence>
 
-      {/* Floating Action Button */}
-      {!isEditing && (
+      {/* Floating Action Button - Only show for authenticated users */}
+      {!isEditing && isAuthenticated && (
         <motion.button
           initial={{ scale: 0, rotate: -180 }}
           animate={{ scale: 1, rotate: 0 }}
