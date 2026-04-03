@@ -1,13 +1,25 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
+import { useVisualEditor } from "@/components/visual-editor"
 
 export function PressKitSection() {
+  const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const sectionRef = useRef<HTMLElement>(null)
+  const bgRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
+  const mainCardRef = useRef<HTMLDivElement>(null)
+  const folderIconRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const descriptionRef = useRef<HTMLParagraphElement>(null)
+  const downloadButtonRef = useRef<HTMLAnchorElement>(null)
+  const resourceRefs = useRef<(HTMLAnchorElement | null)[]>([])
+  const managerRef = useRef<HTMLButtonElement>(null)
+
   const { opacity, y } = useScrollAnimation(sectionRef)
 
   const resources = [
@@ -35,18 +47,176 @@ export function PressKitSection() {
         delay: custom * 0.08,
         duration: 0.42,
       },
-    }),
+      }),
   }
 
+  useEffect(() => {
+    if (!isEditing) return
+
+    if (sectionRef.current) {
+      registerEditable({
+        id: 'press-kit-section',
+        type: 'section',
+        label: 'Press Kit Section',
+        parentId: null,
+        element: sectionRef.current,
+        originalRect: sectionRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
+      })
+    }
+
+    if (bgRef.current) {
+      registerEditable({
+        id: 'press-kit-bg',
+        type: 'image',
+        label: 'Press Kit Background',
+        parentId: 'press-kit-section',
+        element: bgRef.current,
+        originalRect: bgRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: bgRef.current.offsetWidth, height: bgRef.current.offsetHeight },
+      })
+    }
+
+    if (headerRef.current) {
+      registerEditable({
+        id: 'press-kit-header',
+        type: 'text',
+        label: 'Press Kit Header',
+        parentId: 'press-kit-section',
+        element: headerRef.current,
+        originalRect: headerRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: headerRef.current.offsetWidth, height: headerRef.current.offsetHeight },
+      })
+    }
+
+    if (folderIconRef.current) {
+      registerEditable({
+        id: 'press-kit-folder-icon',
+        type: 'box',
+        label: 'Folder Icon',
+        parentId: 'press-kit-section',
+        element: folderIconRef.current,
+        originalRect: folderIconRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: folderIconRef.current.offsetWidth, height: folderIconRef.current.offsetHeight },
+      })
+    }
+
+    if (mainCardRef.current) {
+      registerEditable({
+        id: 'press-kit-main-card',
+        type: 'box',
+        label: 'Main Press Kit Card',
+        parentId: 'press-kit-section',
+        element: mainCardRef.current,
+        originalRect: mainCardRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: mainCardRef.current.offsetWidth, height: mainCardRef.current.offsetHeight },
+      })
+    }
+
+    if (titleRef.current) {
+      registerEditable({
+        id: 'press-kit-title',
+        type: 'text',
+        label: 'Press Kit Title',
+        parentId: 'press-kit-section',
+        element: titleRef.current,
+        originalRect: titleRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: titleRef.current.offsetWidth, height: titleRef.current.offsetHeight },
+      })
+    }
+
+    if (descriptionRef.current) {
+      registerEditable({
+        id: 'press-kit-description',
+        type: 'text',
+        label: 'Press Kit Description',
+        parentId: 'press-kit-section',
+        element: descriptionRef.current,
+        originalRect: descriptionRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: descriptionRef.current.offsetWidth, height: descriptionRef.current.offsetHeight },
+      })
+    }
+
+    if (downloadButtonRef.current) {
+      registerEditable({
+        id: 'press-kit-download-button',
+        type: 'button',
+        label: 'Download Press Kit Button',
+        parentId: 'press-kit-section',
+        element: downloadButtonRef.current,
+        originalRect: downloadButtonRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: downloadButtonRef.current.offsetWidth, height: downloadButtonRef.current.offsetHeight },
+      })
+    }
+
+    // Register lower cards for selection (drag is handled separately)
+    resourceRefs.current.forEach((ref, index) => {
+      if (ref) {
+        registerEditable({
+          id: `press-kit-resource-${index}`,
+          type: 'link',
+          label: `Resource: ${resources[index]?.title || index}`,
+          parentId: 'press-kit-section',
+          element: ref,
+          originalRect: ref.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: ref.offsetWidth, height: ref.offsetHeight },
+        })
+      }
+    })
+
+    if (managerRef.current) {
+      registerEditable({
+        id: 'press-kit-manager',
+        type: 'link',
+        label: 'Manager Contact',
+        parentId: 'press-kit-section',
+        element: managerRef.current,
+        originalRect: managerRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: managerRef.current.offsetWidth, height: managerRef.current.offsetHeight },
+      })
+    }
+
+    return () => {
+      unregisterEditable('press-kit-section')
+      unregisterEditable('press-kit-bg')
+      unregisterEditable('press-kit-folder-icon')
+      unregisterEditable('press-kit-main-card')
+      unregisterEditable('press-kit-title')
+      unregisterEditable('press-kit-description')
+      unregisterEditable('press-kit-download-button')
+      resources.forEach((_, i) => unregisterEditable(`press-kit-resource-${i}`))
+      unregisterEditable('press-kit-manager')
+    }
+  }, [isEditing, registerEditable, unregisterEditable, resources])
+
   return (
-    <section ref={sectionRef} className="relative w-full overflow-hidden">
-      <div className="absolute inset-0 -z-10">
+    <section 
+      ref={sectionRef} 
+      className="relative w-full overflow-hidden"
+      data-edit-id="press-kit-section"
+      data-edit-type="section"
+      data-edit-label="Press Kit Section"
+    >
+      <div ref={bgRef} className="absolute inset-0 -z-10">
         <Image
           src="/images/sections/press-bg.jpg"
           alt="Press kit background"
           fill
           className="object-cover"
           sizes="100vw"
+          data-edit-id="press-kit-bg"
+          data-edit-type="image"
+          data-edit-label="Background Image"
         />
       </div>
       <div className="section-photo-scrim" />
@@ -55,35 +225,64 @@ export function PressKitSection() {
 
       <div className="relative z-20">
         <div className="relative z-10 mx-auto max-w-7xl">
-          <motion.div style={{ opacity, y }} className="mb-10 md:mb-12">
+          <motion.div 
+            ref={headerRef}
+            style={{ opacity, y }} 
+            className="mb-10 md:mb-12"
+          >
             <SectionHeader
               eyebrow="Media Resources"
               title="Professional Press Materials"
               description="Everything you need for press coverage, event promotion, and booking information."
+              dataEditId="press-kit-header"
+              dataEditType="text"
+              dataEditLabel="Press Kit Header"
             />
           </motion.div>
 
           <motion.div
+            ref={mainCardRef}
             initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.45 }}
             className="mb-10 md:mb-12"
           >
-            <div className="rounded-2xl border border-border bg-card/35 p-7 text-center shadow-md backdrop-blur-sm md:p-10">
-              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-xl bg-[#FF8C21]/18 md:mb-6 md:h-20 md:w-20">
+            <div 
+              className="rounded-2xl border border-border bg-card/35 p-7 text-center shadow-md backdrop-blur-sm md:p-10"
+              data-edit-id="press-kit-main-card"
+              data-edit-type="section"
+              data-edit-label="Main Press Kit Card"
+            >
+              <div ref={folderIconRef} className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-xl bg-[#FF8C21]/18 md:mb-6 md:h-20 md:w-20">
                 <FolderIcon className="h-9 w-9 text-[#FF8C21] md:h-10 md:w-10" />
               </div>
-              <h3 className="mb-2 font-serif text-[length:var(--text-h3)] leading-tight text-foreground md:mb-3">
+              <h3 
+                ref={titleRef}
+                className="mb-2 font-serif text-[length:var(--text-h3)] leading-tight text-foreground md:mb-3"
+                data-edit-id="press-kit-title"
+                data-edit-type="text"
+                data-edit-label="Press Kit Title"
+              >
                 Complete Press Kit
               </h3>
-              <p className="mx-auto mb-6 max-w-lg text-[length:var(--text-body)] text-muted-foreground md:mb-8">
-                Download our full press kit including high-quality photos, biography, technical rider, and more.
+              <p 
+                ref={descriptionRef}
+                className="mx-auto mb-6 max-w-lg text-[length:var(--text-body)] text-muted-foreground md:mb-8"
+                data-edit-id="press-kit-description"
+                data-edit-type="text"
+                data-edit-label="Press Kit Description"
+              >
+                Download our full press kit including high quality photos, biography, technical rider, and more.
               </p>
               <a
+                ref={downloadButtonRef}
                 href="/PressKit T40 2025.26_compressed.pdf"
                 download="PressKit T40 2025.26_compressed.pdf"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#FF8C21] px-8 py-4 text-base font-semibold text-white shadow-md shadow-[#FF8C21]/22 transition-all hover:bg-[#FF7C00] md:text-lg"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#FF8C21] px-8 py-4 text-base font-semibold text-white shadow-md shadow-[#FF8C21]/22 transition-all hover:bg-[#FF7C00]"
+                data-edit-id="press-kit-download-button"
+                data-edit-type="button"
+                data-edit-label="Download Press Kit Button"
               >
                 <DownloadIcon className="h-6 w-6" />
                 Press Kit
@@ -96,6 +295,7 @@ export function PressKitSection() {
               const Icon = resource.icon
               return (
                 <motion.a
+                  ref={(el) => { resourceRefs.current[index] = el }}
                   key={resource.title}
                   custom={index}
                   initial="hidden"
@@ -108,6 +308,9 @@ export function PressKitSection() {
                   rel={resource.download ? undefined : "noopener noreferrer"}
                   download={resource.download ? true : undefined}
                   className="group rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg"
+                  data-edit-id={`press-kit-resource-${index}`}
+                  data-edit-type="link"
+                  data-edit-label={`Resource: ${resource.title}`}
                 >
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-muted-foreground transition-colors group-hover:text-foreground">
                     <Icon />
@@ -118,24 +321,7 @@ export function PressKitSection() {
               )
             })}
 
-            <motion.a
-              href="mailto:talesforthetillerman@gmail.com"
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              whileHover={{ y: -2 }}
-              transition={{ duration: 0.45, delay: 0.06, type: "spring", stiffness: 320, damping: 22 }}
-              className="group overflow-hidden rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg"
-            >
-              <div className="relative mb-4 h-48 w-full overflow-hidden rounded-lg">
-                <img
-                  src="/images/Momo Garcia Manager.png"
-                  alt="Momo Garcia Manager"
-                  className="h-full w-full object-cover transition-all duration-300 group-hover:scale-105"
-                />
-              </div>
-              <h3 className="mb-1 font-medium text-foreground">Manager</h3>
-              <p className="text-sm text-muted-foreground">Momo Garcia - Band Management</p>
-            </motion.a>
+            <ManagerCard managerRef={managerRef} />
           </div>
         </div>
       </div>
@@ -194,5 +380,73 @@ function DownloadIcon({ className }: { className?: string }) {
         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
       />
     </svg>
+  )
+}
+
+function ManagerCard({ managerRef }: { managerRef: React.RefObject<HTMLButtonElement | null> }) {
+  const [showModal, setShowModal] = useState(false)
+  
+  return (
+    <>
+      <motion.button
+        ref={managerRef}
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.45, delay: 0.06, type: "spring", stiffness: 320, damping: 22 }}
+        onClick={() => setShowModal(true)}
+        className="group flex w-full flex-col items-start rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg cursor-pointer text-left"
+        data-edit-id="press-kit-manager"
+        data-edit-type="link"
+        data-edit-label="Manager Contact"
+      >
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-muted-foreground transition-colors group-hover:text-foreground">
+          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <h3 className="mb-1 font-medium text-foreground">Manager</h3>
+        <p className="text-sm text-muted-foreground">Momo Garcia</p>
+      </motion.button>
+
+      {showModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setShowModal(false)}
+        >
+          <div 
+            className="relative max-w-md w-full rounded-2xl border border-border bg-card p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="relative mb-4 h-56 w-full overflow-hidden rounded-xl">
+              <img
+                src="/images/Momo Garcia Manager.png"
+                alt="Momo Garcia Manager"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <h3 className="mb-2 font-serif text-xl font-semibold text-foreground">Momo Garcia</h3>
+            <p className="mb-4 text-sm text-muted-foreground">Band Management</p>
+            <a
+              href="mailto:talesforthetillerman@gmail.com"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#FF8C21] px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[#FF7C00]"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Contact Manager
+            </a>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
