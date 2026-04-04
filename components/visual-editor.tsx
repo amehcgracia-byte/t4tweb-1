@@ -282,19 +282,21 @@ interface SelectionOverlayProps {
 }
 
 function SelectionOverlay({ element, onDragStart, onResizeStart }: SelectionOverlayProps) {
-  const [rect, setRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+  const rectRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null)
+  const [, setTick] = useState(0)
 
   useEffect(() => {
     if (!element.element) return
     
     const update = () => {
       const r = element.element!.getBoundingClientRect()
-      setRect({
-        x: r.left + element.transform.x,
-        y: r.top + element.transform.y,
+      rectRef.current = {
+        x: r.left,
+        y: r.top,
         width: element.dimensions.width || r.width,
         height: element.dimensions.height || r.height,
-      })
+      }
+      setTick(t => t + 1)
     }
     update()
     
@@ -308,8 +310,22 @@ function SelectionOverlay({ element, onDragStart, onResizeStart }: SelectionOver
       window.removeEventListener('scroll', update, true)
       window.removeEventListener('resize', update)
     }
-  }, [element.element, element.transform.x, element.transform.y, element.dimensions.width, element.dimensions.height])
+  }, [element.element, element.dimensions.width, element.dimensions.height])
 
+  // Force re-render when transform changes (element moved)
+  useEffect(() => {
+    if (!element.element) return
+    const r = element.element.getBoundingClientRect()
+    rectRef.current = {
+      x: r.left,
+      y: r.top,
+      width: element.dimensions.width || r.width,
+      height: element.dimensions.height || r.height,
+    }
+    setTick(t => t + 1)
+  }, [element.transform.x, element.transform.y, element.dimensions.width, element.dimensions.height, element.element])
+
+  const rect = rectRef.current
   if (!rect) return null
 
   return createPortal(
@@ -491,8 +507,8 @@ export function VisualEditorOverlay() {
   const resizeStartRef = useRef({ mouseX: 0, mouseY: 0, width: 0, height: 0, startX: 0, startY: 0, handle: '' })
 
   const selectedElement = useMemo(() => {
-    return selectedId ? getElementById(selectedId) : null
-  }, [selectedId, getElementById])
+    return selectedId ? editableElements.get(selectedId) || null : null
+  }, [selectedId, editableElements])
 
   const hoveredElement = useMemo(() => {
     return hoveredId ? getElementById(hoveredId) : null
