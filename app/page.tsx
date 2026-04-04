@@ -18,10 +18,7 @@ export default function Home() {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   
   // Editable refs for the banner section
-  const bannerSectionRef = useRef<HTMLDivElement>(null)
-  const bannerImageRef = useRef<HTMLImageElement>(null)
   const bannerTextRef = useRef<HTMLParagraphElement>(null)
-  const bannerButtonsRef = useRef<HTMLDivElement>(null)
   const bookButtonRef = useRef<HTMLAnchorElement>(null)
   const pressButtonRef = useRef<HTMLAnchorElement>(null)
 
@@ -29,55 +26,16 @@ export default function Home() {
   useEffect(() => {
     if (!isEditing) return
 
-    if (bannerSectionRef.current) {
-      registerEditable({
-        id: 'intro-banner-section',
-        type: 'section',
-        label: 'Intro Banner',
-        parentId: null,
-        element: bannerSectionRef.current,
-        originalRect: bannerSectionRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: bannerSectionRef.current.offsetWidth, height: bannerSectionRef.current.offsetHeight },
-      })
-    }
-
-    if (bannerImageRef.current) {
-      registerEditable({
-        id: 'intro-banner-image',
-        type: 'image',
-        label: 'Banner Image',
-        parentId: 'intro-banner-section',
-        element: bannerImageRef.current,
-        originalRect: bannerImageRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: bannerImageRef.current.offsetWidth, height: bannerImageRef.current.offsetHeight },
-      })
-    }
-
     if (bannerTextRef.current) {
       registerEditable({
         id: 'intro-banner-text',
         type: 'text',
         label: 'Banner Text',
-        parentId: 'intro-banner-section',
+        parentId: null,
         element: bannerTextRef.current,
         originalRect: bannerTextRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
         dimensions: { width: bannerTextRef.current.offsetWidth, height: bannerTextRef.current.offsetHeight },
-      })
-    }
-
-    if (bannerButtonsRef.current) {
-      registerEditable({
-        id: 'intro-banner-buttons',
-        type: 'box',
-        label: 'Banner Buttons',
-        parentId: 'intro-banner-section',
-        element: bannerButtonsRef.current,
-        originalRect: bannerButtonsRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: bannerButtonsRef.current.offsetWidth, height: bannerButtonsRef.current.offsetHeight },
       })
     }
 
@@ -86,7 +44,7 @@ export default function Home() {
         id: 'intro-book-button',
         type: 'button',
         label: 'Book Band Button',
-        parentId: 'intro-banner-buttons',
+        parentId: null,
         element: bookButtonRef.current,
         originalRect: bookButtonRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -99,7 +57,7 @@ export default function Home() {
         id: 'intro-press-button',
         type: 'button',
         label: 'Press Kit Button',
-        parentId: 'intro-banner-buttons',
+        parentId: null,
         element: pressButtonRef.current,
         originalRect: pressButtonRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -108,10 +66,7 @@ export default function Home() {
     }
 
     return () => {
-      unregisterEditable('intro-banner-section')
-      unregisterEditable('intro-banner-image')
       unregisterEditable('intro-banner-text')
-      unregisterEditable('intro-banner-buttons')
       unregisterEditable('intro-book-button')
       unregisterEditable('intro-press-button')
     }
@@ -126,11 +81,9 @@ export default function Home() {
       <SectionDivider />
 
       <div 
-        ref={bannerSectionRef}
         className="relative flex flex-col items-center justify-center gap-4 px-2 pt-8 pb-12 sm:px-4 sm:pt-12 sm:pb-16"
       >
         <img
-          ref={bannerImageRef}
           src="/images/t4tPics/banner-crop-ezgif.com-gif-maker.gif"
           alt="Animated banner"
           className="absolute inset-0 h-full w-full object-cover opacity-30"
@@ -143,7 +96,7 @@ export default function Home() {
             Tales for the Tillerman brings groove-driven live energy to festivals, 
             clubs and special events — with a warm, rhythmic sound made to move a room.
           </p>
-          <div ref={bannerButtonsRef} className="flex flex-col items-center justify-center gap-6 sm:flex-row sm:gap-10">
+          <div className="flex flex-col items-center justify-center gap-6 sm:flex-row sm:gap-10">
             <a
               ref={bookButtonRef}
               href="#contact"

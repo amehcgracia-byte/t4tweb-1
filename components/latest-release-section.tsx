@@ -8,7 +8,6 @@ import { useVisualEditor } from "@/components/visual-editor"
 export function LatestReleaseSection() {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
 
-  const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const subtitleRef = useRef<HTMLParagraphElement>(null)
@@ -18,25 +17,12 @@ export function LatestReleaseSection() {
   useEffect(() => {
     if (!isEditing) return
 
-    if (sectionRef.current) {
-      registerEditable({
-        id: 'latest-release-section',
-        type: 'section',
-        label: 'Release Section',
-        parentId: null,
-        element: sectionRef.current,
-        originalRect: sectionRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
-      })
-    }
-
     if (bgRef.current) {
       registerEditable({
         id: 'latest-release-bg',
         type: 'image',
         label: 'Release Background',
-        parentId: 'latest-release-section',
+        parentId: null,
         element: bgRef.current,
         originalRect: bgRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -49,7 +35,7 @@ export function LatestReleaseSection() {
         id: 'latest-release-title',
         type: 'text',
         label: 'Release Title',
-        parentId: 'latest-release-section',
+        parentId: null,
         element: titleRef.current,
         originalRect: titleRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -62,7 +48,7 @@ export function LatestReleaseSection() {
         id: 'latest-release-subtitle',
         type: 'text',
         label: 'Release Subtitle',
-        parentId: 'latest-release-section',
+        parentId: null,
         element: subtitleRef.current,
         originalRect: subtitleRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -75,7 +61,7 @@ export function LatestReleaseSection() {
         id: 'latest-release-watch-button',
         type: 'button',
         label: 'Watch Video Button',
-        parentId: 'latest-release-section',
+        parentId: null,
         element: watchButtonRef.current,
         originalRect: watchButtonRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -88,7 +74,7 @@ export function LatestReleaseSection() {
         id: 'latest-release-shows-button',
         type: 'button',
         label: 'See Shows Button',
-        parentId: 'latest-release-section',
+        parentId: null,
         element: showsButtonRef.current,
         originalRect: showsButtonRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -97,7 +83,6 @@ export function LatestReleaseSection() {
     }
 
     return () => {
-      unregisterEditable('latest-release-section')
       unregisterEditable('latest-release-bg')
       unregisterEditable('latest-release-title')
       unregisterEditable('latest-release-subtitle')
@@ -107,11 +92,7 @@ export function LatestReleaseSection() {
   }, [isEditing, registerEditable, unregisterEditable])
   return (
     <section
-      ref={sectionRef}
       id="latest-release"
-      data-edit-id="latest-release-section"
-      data-edit-type="section"
-      data-edit-label="Sección Último Lanzamiento"
       className="relative overflow-hidden bg-black"
     >
       <div 

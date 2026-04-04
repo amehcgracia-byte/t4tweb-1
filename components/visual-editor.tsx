@@ -528,6 +528,15 @@ export function VisualEditorOverlay() {
 
     if (!orig) return
 
+    const computedStyle = getComputedStyle(el)
+    const isAbsolute = computedStyle.position === 'absolute' || computedStyle.position === 'fixed'
+    const isSection = selectedElement.type === 'section'
+
+    // Never modify position of absolute/fixed elements or section containers
+    if (isAbsolute || isSection) {
+      return
+    }
+
     console.log('[Editor] Applying state to', selectedElement.id, 'transform:', transform, 'dimensions:', dimensions)
 
     const scaleX = orig.width > 0 ? dimensions.width / orig.width : 1
