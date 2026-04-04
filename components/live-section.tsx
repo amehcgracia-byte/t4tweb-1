@@ -75,7 +75,7 @@ export function LiveSection() {
           }
         })
         const sorted = parsed.sort((a, b) =>
-          new Date(b.date).getTime() - new Date(a.date).getTime()
+          new Date(a.date).getTime() - new Date(b.date).getTime()
         )
         setConcerts(sorted)
         setError(false)
@@ -88,6 +88,10 @@ export function LiveSection() {
     }
     fetchConcerts()
   }, [])
+
+  const today = new Date()
+  const upcomingConcerts = concerts.filter(c => new Date(c.date) >= today)
+  const historyConcerts = concerts.filter(c => new Date(c.date) < today)
 
   const platforms = [
     { name: "Spotify", href: "https://open.spotify.com/artist/0FHjK3O0k8HQMrJsF7KQwF", icon: SpotifyIcon, color: "hover:bg-[#1DB954]", category: "streaming" },
@@ -231,50 +235,24 @@ export function LiveSection() {
               className="mb-12 min-h-[440px]"
             >
               <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-6 text-center">
-                History
+                Upcoming
               </h3>
 
               {loading && (
                 <div className="space-y-3">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={`skeleton-${i}`} className="min-h-[80px] bg-gradient-to-r from-secondary/30 via-secondary/50 to-secondary/30 rounded-xl overflow-hidden">
+                  {[...Array(2)].map((_, i) => (
+                    <div key={`skeleton-upcoming-${i}`} className="min-h-[80px] bg-gradient-to-r from-secondary/30 via-secondary/50 to-secondary/30 rounded-xl overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
                     </div>
                   ))}
                 </div>
               )}
 
-              {!loading && error && (
-                <div className="text-center py-12 px-6 bg-red-950/20 border border-red-900/30 rounded-xl">
-                  <svg className="w-12 h-12 mx-auto mb-4 opacity-70 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-muted-foreground mb-6">Unable to load shows at the moment.</p>
-                  <motion.a whileHover={{ scale: 1.05 }} href="https://www.bandsintown.com/e/108124718-tales-for-the-tillerman-at-mauerpark?came_from=250&utm_medium=web&utm_source=artist_page&utm_campaign=search_bar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-all">
-                    Check Shows on Bandsintown
-                  </motion.a>
-                </div>
-              )}
-
-              {!loading && !error && concerts.length === 0 && (
-                <div className="text-center py-12 px-6 bg-secondary/20 border border-border rounded-xl">
-                  <svg className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-muted-foreground mb-2">No shows scheduled at the moment.</p>
-                  <p className="text-muted-foreground text-sm mb-6">Follow us for exciting tour announcements coming soon!</p>
-                  <motion.a whileHover={{ scale: 1.05 }} href="https://www.bandsintown.com/e/108124718-tales-for-the-tillerman-at-mauerpark?came_from=250&utm_medium=web&utm_source=artist_page&utm_campaign=search_bar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-all">
-                    <BandsinTownIcon />
-                    See All Shows on Bandsintown
-                  </motion.a>
-                </div>
-              )}
-
-              {!loading && !error && concerts.length > 0 && (
+              {!loading && !error && upcomingConcerts.length > 0 && (
                 <div className="space-y-3">
-                  {concerts.map((concert, index) => (
+                  {upcomingConcerts.map((concert, index) => (
                     <motion.div
-                      key={index}
+                      key={`upcoming-${index}`}
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       whileHover={{ y: -2, scale: 1.01 }}
@@ -289,6 +267,51 @@ export function LiveSection() {
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground sm:ml-auto">
                           <span className="px-3 py-1 bg-primary/10 rounded-full text-primary text-xs">{concert.genre}</span>
+                          <span>{concert.price === "Free" ? "Free" : `€${concert.price}`}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {!loading && !error && upcomingConcerts.length === 0 && (
+                <div className="text-center py-8 px-6 bg-secondary/20 border border-border rounded-xl">
+                  <p className="text-muted-foreground">No upcoming shows scheduled.</p>
+                </div>
+              )}
+            </motion.div>
+
+            {/* ── HISTORY ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.35 }}
+              className="mb-12"
+            >
+              <h3 className="font-serif text-2xl md:text-3xl text-foreground mb-6 text-center">
+                History
+              </h3>
+
+              {!loading && !error && historyConcerts.length > 0 && (
+                <div className="space-y-3">
+                  {historyConcerts.map((concert, index) => (
+                    <motion.div
+                      key={`history-${index}`}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      whileHover={{ y: -2, scale: 1.01 }}
+                      transition={{ duration: 0.4, delay: index * 0.03, type: "spring", stiffness: 300, damping: 20 }}
+                      className="min-h-[80px] p-5 bg-secondary/30 rounded-xl border border-border/50 hover:border-primary/20 transition-all duration-300 group shadow-lg hover:shadow-xl flex items-center"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
+                        <div className="shrink-0 text-muted-foreground font-medium min-w-[100px]">{formatDate(concert.date)}</div>
+                        <div className="flex-1">
+                          <div className="font-serif text-lg text-muted-foreground group-hover:text-foreground transition-colors">{concert.venue}</div>
+                          <div className="text-muted-foreground/70 text-sm">{concert.city}, {concert.country}</div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground/70 sm:ml-auto">
+                          <span className="px-3 py-1 bg-secondary/50 rounded-full text-xs">{concert.genre}</span>
                           <span>{concert.price === "Free" ? "Free" : `€${concert.price}`}</span>
                         </div>
                       </div>
