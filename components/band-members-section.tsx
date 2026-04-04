@@ -215,30 +215,27 @@ export function BandMembersSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:hidden"
             onClick={() => setModalOpen(false)}
           >
             <div className="absolute inset-0 bg-black/80" />
             
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.92, opacity: 0 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
+            <div
               className="relative w-[90vw] max-w-sm rounded-2xl overflow-hidden shadow-2xl"
-              style={{ maxHeight: '80vh', willChange: 'transform, opacity' }}
+              style={{ maxHeight: '80vh' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="relative w-full" style={{ aspectRatio: '3/4', willChange: 'auto' }}>
+              <div className="relative w-full" style={{ aspectRatio: '3/4' }}>
                 <img
                   src={activeImage}
                   alt={activeMember.fullName}
                   className="absolute inset-0 w-full h-full object-cover"
+                  style={{ zIndex: 1 }}
                   draggable={false}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" style={{ zIndex: 2 }} />
+                <div className="absolute bottom-0 left-0 right-0 p-6" style={{ zIndex: 3 }}>
                   <h3 className="text-xl font-serif text-white mb-1 truncate">
                     {activeMember.fullName}
                   </h3>
@@ -251,14 +248,15 @@ export function BandMembersSection() {
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white/80 hover:text-white transition-colors z-10"
+                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                style={{ zIndex: 4 }}
                 aria-label="Close"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
