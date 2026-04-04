@@ -39,7 +39,7 @@ export function BandMembersSection() {
           id: i + 1,
           fullName: m.fullName,
           role: m.role,
-          image: m.imageUrl || FALLBACK_MEMBERS[i]?.image || "",
+          image: m.imageUrl || FALLBACK_MEMBERS[i]?.image || FALLBACK_MEMBERS[0]?.image || "",
         })))
       }
     }).catch(() => {})
@@ -51,6 +51,9 @@ export function BandMembersSection() {
       setModalOpen(true)
     }
   }
+
+  const activeMember = members[activeIndex]
+  const activeImage = activeMember?.image || FALLBACK_MEMBERS[0]?.image || ""
 
   return (
     <section
@@ -207,7 +210,7 @@ export function BandMembersSection() {
 
       {/* Mobile modal */}
       <AnimatePresence>
-        {modalOpen && (
+        {modalOpen && activeMember && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -223,32 +226,37 @@ export function BandMembersSection() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-[90vw] max-w-sm aspect-[3/4] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl"
+              className="relative w-[90vw] max-w-sm rounded-2xl overflow-hidden shadow-2xl"
               onClick={(e) => e.stopPropagation()}
+              style={{ maxHeight: '80vh' }}
             >
-              <Image
-                src={members[activeIndex].image}
-                alt={members[activeIndex].fullName}
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-                <h3 className="text-xl md:text-2xl font-serif text-white mb-1 md:mb-2 truncate">
-                  {members[activeIndex].fullName}
-                </h3>
-                <p className="text-base md:text-lg text-orange-400 font-medium">
-                  {members[activeIndex].role}
-                </p>
+              <div className="relative w-full" style={{ aspectRatio: '3/4' }}>
+                <Image
+                  src={activeImage}
+                  alt={activeMember.fullName}
+                  fill
+                  className="object-cover"
+                  sizes="90vw"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <h3 className="text-xl font-serif text-white mb-1 truncate">
+                    {activeMember.fullName}
+                  </h3>
+                  <p className="text-base text-orange-400 font-medium">
+                    {activeMember.role}
+                  </p>
+                </div>
               </div>
               
               <button
                 type="button"
                 onPointerDown={() => setModalOpen(false)}
-                className="absolute top-3 right-3 w-9 h-9 md:w-10 md:h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-black/70 transition-colors"
+                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-black/70 transition-colors z-10"
                 aria-label="Close"
               >
-                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
