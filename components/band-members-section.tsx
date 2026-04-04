@@ -219,25 +219,23 @@ export function BandMembersSection() {
             className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:hidden"
             onClick={() => setModalOpen(false)}
           >
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/80" />
             
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.92, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
               className="relative w-[90vw] max-w-sm rounded-2xl overflow-hidden shadow-2xl"
+              style={{ maxHeight: '80vh', willChange: 'transform, opacity' }}
               onClick={(e) => e.stopPropagation()}
-              style={{ maxHeight: '80vh' }}
             >
-              <div className="relative w-full" style={{ aspectRatio: '3/4' }}>
-                <Image
+              <div className="relative w-full" style={{ aspectRatio: '3/4', willChange: 'auto' }}>
+                <img
                   src={activeImage}
                   alt={activeMember.fullName}
-                  fill
-                  className="object-cover"
-                  sizes="90vw"
-                  priority
+                  className="absolute inset-0 w-full h-full object-cover"
+                  draggable={false}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6">
@@ -252,8 +250,8 @@ export function BandMembersSection() {
               
               <button
                 type="button"
-                onPointerDown={() => setModalOpen(false)}
-                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-black/70 transition-colors z-10"
+                onClick={() => setModalOpen(false)}
+                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white/80 hover:text-white transition-colors z-10"
                 aria-label="Close"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
