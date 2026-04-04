@@ -11,7 +11,6 @@ export function AboutSection({ className = "" }: { className?: string }) {
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
-  const textBoxRef = useRef<HTMLDivElement>(null)
   const text1Ref = useRef<HTMLParagraphElement>(null)
   const text2Ref = useRef<HTMLParagraphElement>(null)
   const tagsRef = useRef<HTMLParagraphElement>(null)
@@ -41,7 +40,7 @@ export function AboutSection({ className = "" }: { className?: string }) {
         id: 'about-bg-image',
         type: 'image',
         label: 'About Background',
-        parentId: 'about-section',
+        parentId: null,
         element: bgRef.current,
         originalRect: bgRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -54,24 +53,11 @@ export function AboutSection({ className = "" }: { className?: string }) {
         id: 'about-header',
         type: 'text',
         label: 'About Header',
-        parentId: 'about-section',
+        parentId: null,
         element: headerRef.current,
         originalRect: headerRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
         dimensions: { width: headerRef.current.offsetWidth, height: headerRef.current.offsetHeight },
-      })
-    }
-
-    if (textBoxRef.current) {
-      registerEditable({
-        id: 'about-text-box',
-        type: 'box',
-        label: 'About Text Box',
-        parentId: 'about-section',
-        element: textBoxRef.current,
-        originalRect: textBoxRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: textBoxRef.current.offsetWidth, height: textBoxRef.current.offsetHeight },
       })
     }
 
@@ -80,7 +66,7 @@ export function AboutSection({ className = "" }: { className?: string }) {
         id: 'about-text-1',
         type: 'text',
         label: 'About Text 1',
-        parentId: 'about-section',
+        parentId: null,
         element: text1Ref.current,
         originalRect: text1Ref.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -93,7 +79,7 @@ export function AboutSection({ className = "" }: { className?: string }) {
         id: 'about-text-2',
         type: 'text',
         label: 'About Text 2',
-        parentId: 'about-section',
+        parentId: null,
         element: text2Ref.current,
         originalRect: text2Ref.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -106,7 +92,7 @@ export function AboutSection({ className = "" }: { className?: string }) {
         id: 'about-tags',
         type: 'text',
         label: 'About Tags',
-        parentId: 'about-section',
+        parentId: null,
         element: tagsRef.current,
         originalRect: tagsRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -119,7 +105,7 @@ export function AboutSection({ className = "" }: { className?: string }) {
         id: 'about-copy-button',
         type: 'button',
         label: 'Copy Bio Button',
-        parentId: 'about-section',
+        parentId: null,
         element: copyButtonRef.current,
         originalRect: copyButtonRef.current.getBoundingClientRect(),
         transform: { x: 0, y: 0 },
@@ -131,7 +117,6 @@ export function AboutSection({ className = "" }: { className?: string }) {
       unregisterEditable('about-section')
       unregisterEditable('about-bg-image')
       unregisterEditable('about-header')
-      unregisterEditable('about-text-box')
       unregisterEditable('about-text-1')
       unregisterEditable('about-text-2')
       unregisterEditable('about-tags')
@@ -202,15 +187,11 @@ Their performances balance musical depth with danceable power, bringing together
 
           {/* Box de texto reducido ~20% */}
           <motion.div
-            ref={textBoxRef}
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.6, delay: 0.05 }}
             className="w-full rounded-3xl border border-white/10 bg-black/50 px-6 py-8 md:px-10 md:py-12 lg:px-12 lg:py-14 shadow-2xl backdrop-blur-md"
-            data-edit-id="about-text-box"
-            data-edit-type="box"
-            data-edit-label="About Text Box"
           >
             <div className="space-y-6 text-white md:space-y-8">
               <p 

@@ -328,13 +328,28 @@ function SelectionOverlay({ element, onDragStart, onResizeStart }: SelectionOver
   const rect = rectRef.current
   if (!rect) return null
 
+  const isSectionOrImage = element.type === 'section' || element.type === 'image'
+  const overlayZ = isSectionOrImage ? 9988 : 9990
+
   return createPortal(
-    <div data-ve-overlay className="ve-overlay fixed inset-0 pointer-events-none z-[9990]">
-      <div
-        className="absolute pointer-events-auto cursor-move"
-        style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height, touchAction: 'none' }}
-        onPointerDown={onDragStart}
-      />
+    <div data-ve-overlay className="ve-overlay fixed inset-0 pointer-events-none" style={{ zIndex: overlayZ }}>
+      {/* Drag surface - only for non-section/image elements, full area */}
+      {!isSectionOrImage && (
+        <div
+          className="absolute pointer-events-auto cursor-move"
+          style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height, touchAction: 'none' }}
+          onPointerDown={onDragStart}
+        />
+      )}
+      
+      {/* For sections/images, drag surface is just the border frame */}
+      {isSectionOrImage && (
+        <div
+          className="absolute pointer-events-auto cursor-move"
+          style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height, touchAction: 'none' }}
+          onPointerDown={onDragStart}
+        />
+      )}
       
       <div
         className="absolute pointer-events-none"
@@ -531,9 +546,24 @@ export function VisualEditorOverlay() {
     const computedStyle = getComputedStyle(el)
     const isAbsolute = computedStyle.position === 'absolute' || computedStyle.position === 'fixed'
     const isSection = selectedElement.type === 'section'
+    const isImage = selectedElement.type === 'image'
 
-    // Never modify position of absolute/fixed elements or section containers
-    if (isAbsolute || isSection) {
+    // For sections, only apply transform (no position/zIndex changes)
+    if (isSection) {
+      el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
+      el.style.transformOrigin = 'top left'
+      return
+    }
+
+    // For absolute/fixed images (backgrounds), allow movement via transform
+    if (isAbsolute && isImage) {
+      el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
+      el.style.transformOrigin = 'top left'
+      return
+    }
+
+    // Skip other absolute/fixed elements (they would break layout)
+    if (isAbsolute) {
       return
     }
 
@@ -541,18 +571,24 @@ export function VisualEditorOverlay() {
 
     const scaleX = orig.width > 0 ? dimensions.width / orig.width : 1
     const scaleY = orig.height > 0 ? dimensions.height / orig.height : 1
-    const isText = selectedElement.type === 'text'
+    const isText = selectedElement.type === 'text' || selectedElement.type === 'button'
     const hasResize = Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01
     const hasMove = transform.x !== 0 || transform.y !== 0
 
     if (isText && hasResize) {
-      // For text elements, use scale transform to resize the text itself
+      // For text and button elements, use scale transform to resize the content
       el.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY})`
       el.style.transformOrigin = 'top left'
       el.style.position = 'relative'
       el.style.zIndex = '1'
       el.style.width = ''
       el.style.height = ''
+    } else if (isText && !hasResize) {
+      // Text/button with only movement, no resize
+      el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
+      el.style.transformOrigin = 'top left'
+      el.style.position = 'relative'
+      el.style.zIndex = '1'
     } else {
       // For non-text elements, use width/height + translate
       el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
