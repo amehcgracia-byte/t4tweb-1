@@ -131,6 +131,7 @@ export function PressKitSection() {
                   src="/images/Momo Garcia Manager.png"
                   alt="Momo Garcia Manager"
                   fill
+                  sizes="(min-width: 768px) 384px, 100vw"
                   className="object-cover transition-all duration-300 group-hover:scale-105"
                 />
               </div>

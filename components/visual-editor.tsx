@@ -626,7 +626,12 @@ export function VisualEditorOverlay() {
     const target = e.target as HTMLElement
     const link = target.closest('a')
     
-    if (link && !target.closest('[data-edit-id]') && !target.closest('[data-edit-modal]')) {
+    if (
+      link &&
+      !target.closest('[data-edit-panel]') &&
+      !target.closest('[data-edit-toolbar]') &&
+      !target.closest('[data-edit-modal]')
+    ) {
       e.preventDefault()
     }
   }, [isEditing])
@@ -766,7 +771,7 @@ export function VisualEditorOverlay() {
 
       {/* Selection overlay */}
       {isEditing && selectedElement && (
-        <ElementSelectionOverlay element={selectedElement.element} />
+        <ElementSelectionOverlay key={selectedElement.id} element={selectedElement.element} />
       )}
 
       {/* Edit Panel */}

@@ -33,6 +33,7 @@ export default function Home() {
           src="/images/t4tPics/banner-crop-ezgif.com-gif-maker.gif"
           alt="Animated banner"
           fill
+          sizes="100vw"
           className="object-cover opacity-30"
           data-editable
           data-edit-type="image"
