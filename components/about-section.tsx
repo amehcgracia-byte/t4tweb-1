@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react"
 import { motion } from "framer-motion"
+import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
 
@@ -40,10 +41,11 @@ Their performances balance musical depth with danceable power, bringing together
         data-edit-label="Imagen de fondo"
         className="absolute inset-0 -z-10"
       >
-        <img 
+        <Image
           src="/images/about-bg-main.jpg"
           alt="Band members background"
-          className="h-full w-full object-cover"
+          fill
+          className="object-cover"
           style={{ objectPosition: "center top" }}
         />
       </div>

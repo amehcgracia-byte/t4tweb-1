@@ -67,10 +67,11 @@ export function BandMembersSection() {
         data-edit-label="Imagen de fondo banda"
         className="absolute inset-0 -z-10"
       >
-        <img 
+        <Image
           src="/images/t4t-2.jpg"
           alt="Band background"
-          className="h-full w-full object-cover"
+          fill
+          className="object-cover"
         />
       </div>
 
