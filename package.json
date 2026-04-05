@@ -2,6 +2,9 @@
   "name": "v0-music-press-kit-slider",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.10.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -21,7 +24,6 @@
     "framer-motion": "^12.38.0",
     "next": "16.2.0",
     "next-sanity": "^12.2.1",
-    "presentation": "link:@sanity/@sanity/presentation",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sanity": "^5.19.0",
