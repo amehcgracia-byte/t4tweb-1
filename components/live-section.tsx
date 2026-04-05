@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
+import { useVisualEditor } from "@/components/visual-editor"
 
 interface Concert {
   venue: string
@@ -33,6 +34,26 @@ export function LiveSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const { opacity, y } = useScrollAnimation(sectionRef)
+  const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
+
+  useEffect(() => {
+    if (!isEditing) return
+    if (sectionRef.current) {
+      registerEditable({
+        id: 'live-section',
+        type: 'section',
+        label: 'Live Section',
+        parentId: null,
+        element: sectionRef.current,
+        originalRect: sectionRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
+      })
+    }
+    return () => {
+      unregisterEditable('live-section')
+    }
+  }, [isEditing, registerEditable, unregisterEditable])
 
   useEffect(() => {
     async function fetchConcerts() {

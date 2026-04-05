@@ -1,15 +1,36 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { SectionHeader } from "@/components/section-header"
+import { useVisualEditor } from "@/components/visual-editor"
 
 export function ContactSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const { opacity, y } = useScrollAnimation(sectionRef)
+  const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
+
+  useEffect(() => {
+    if (!isEditing) return
+    if (sectionRef.current) {
+      registerEditable({
+        id: 'contact-section',
+        type: 'section',
+        label: 'Contact Section',
+        parentId: null,
+        element: sectionRef.current,
+        originalRect: sectionRef.current.getBoundingClientRect(),
+        transform: { x: 0, y: 0 },
+        dimensions: { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
+      })
+    }
+    return () => {
+      unregisterEditable('contact-section')
+    }
+  }, [isEditing, registerEditable, unregisterEditable])
 
   const contactMethods = [
     {

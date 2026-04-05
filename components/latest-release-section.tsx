@@ -6,7 +6,7 @@ import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campa
 import { useVisualEditor } from "@/components/visual-editor"
 
 export function LatestReleaseSection() {
-  const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
+  const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
 
   const bgRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -19,6 +19,7 @@ export function LatestReleaseSection() {
     if (!isEditing) return
 
     if (bgRef.current) {
+      const existing = getElementById('latest-release-bg')
       registerEditable({
         id: 'latest-release-bg',
         type: 'image',
@@ -26,12 +27,13 @@ export function LatestReleaseSection() {
         parentId: null,
         element: bgRef.current,
         originalRect: bgRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: bgRef.current.offsetWidth, height: bgRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: bgRef.current.offsetWidth, height: bgRef.current.offsetHeight },
       })
     }
 
     if (cardRef.current) {
+      const existing = getElementById('latest-release-card')
       registerEditable({
         id: 'latest-release-card',
         type: 'box',
@@ -39,12 +41,13 @@ export function LatestReleaseSection() {
         parentId: null,
         element: cardRef.current,
         originalRect: cardRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: cardRef.current.offsetWidth, height: cardRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: cardRef.current.offsetWidth, height: cardRef.current.offsetHeight },
       })
     }
 
     if (titleRef.current) {
+      const existing = getElementById('latest-release-title')
       registerEditable({
         id: 'latest-release-title',
         type: 'text',
@@ -52,12 +55,13 @@ export function LatestReleaseSection() {
         parentId: null,
         element: titleRef.current,
         originalRect: titleRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: titleRef.current.offsetWidth, height: titleRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: titleRef.current.offsetWidth, height: titleRef.current.offsetHeight },
       })
     }
 
     if (subtitleRef.current) {
+      const existing = getElementById('latest-release-subtitle')
       registerEditable({
         id: 'latest-release-subtitle',
         type: 'text',
@@ -65,12 +69,13 @@ export function LatestReleaseSection() {
         parentId: null,
         element: subtitleRef.current,
         originalRect: subtitleRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: subtitleRef.current.offsetWidth, height: subtitleRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: subtitleRef.current.offsetWidth, height: subtitleRef.current.offsetHeight },
       })
     }
 
     if (watchButtonRef.current) {
+      const existing = getElementById('latest-release-watch-button')
       registerEditable({
         id: 'latest-release-watch-button',
         type: 'button',
@@ -78,12 +83,13 @@ export function LatestReleaseSection() {
         parentId: null,
         element: watchButtonRef.current,
         originalRect: watchButtonRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: watchButtonRef.current.offsetWidth, height: watchButtonRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: watchButtonRef.current.offsetWidth, height: watchButtonRef.current.offsetHeight },
       })
     }
 
     if (showsButtonRef.current) {
+      const existing = getElementById('latest-release-shows-button')
       registerEditable({
         id: 'latest-release-shows-button',
         type: 'button',
@@ -91,8 +97,8 @@ export function LatestReleaseSection() {
         parentId: null,
         element: showsButtonRef.current,
         originalRect: showsButtonRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: showsButtonRef.current.offsetWidth, height: showsButtonRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: showsButtonRef.current.offsetWidth, height: showsButtonRef.current.offsetHeight },
       })
     }
 
@@ -104,7 +110,8 @@ export function LatestReleaseSection() {
       unregisterEditable('latest-release-watch-button')
       unregisterEditable('latest-release-shows-button')
     }
-  }, [isEditing, registerEditable, unregisterEditable])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing])
   return (
     <section
       id="latest-release"

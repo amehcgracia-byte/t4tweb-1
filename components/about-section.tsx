@@ -7,7 +7,7 @@ import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 
 export function AboutSection({ className = "" }: { className?: string }) {
-  const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
+  const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -20,112 +20,125 @@ export function AboutSection({ className = "" }: { className?: string }) {
   const { opacity, y } = useScrollAnimation(sectionRef)
   const [copied, setCopied] = useState(false)
 
+  // Register editable elements - only on isEditing change, not on callback changes
   useEffect(() => {
     if (!isEditing) return
 
-    if (sectionRef.current) {
-      registerEditable({
-        id: 'about-section',
-        type: 'section',
-        label: 'About Section',
-        parentId: null,
-        element: sectionRef.current,
-        originalRect: sectionRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
-      })
+    const registerAll = () => {
+      if (sectionRef.current) {
+        const existing = getElementById('about-section')
+        registerEditable({
+          id: 'about-section',
+          type: 'section',
+          label: 'About Section',
+          parentId: null,
+          element: sectionRef.current,
+          originalRect: sectionRef.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
+        })
+      }
+
+      if (bgRef.current) {
+        const existing = getElementById('about-bg-image')
+        registerEditable({
+          id: 'about-bg-image',
+          type: 'image',
+          label: 'About Background',
+          parentId: null,
+          element: bgRef.current,
+          originalRect: bgRef.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: bgRef.current.offsetWidth, height: bgRef.current.offsetHeight },
+        })
+      }
+
+      if (headerRef.current) {
+        const existing = getElementById('about-header')
+        registerEditable({
+          id: 'about-header',
+          type: 'text',
+          label: 'About Header',
+          parentId: null,
+          element: headerRef.current,
+          originalRect: headerRef.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: headerRef.current.offsetWidth, height: headerRef.current.offsetHeight },
+        })
+      }
+
+      if (textCardRef.current) {
+        const existing = getElementById('about-text-card')
+        registerEditable({
+          id: 'about-text-card',
+          type: 'box',
+          label: 'About Text Card',
+          parentId: null,
+          element: textCardRef.current,
+          originalRect: textCardRef.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: textCardRef.current.offsetWidth, height: textCardRef.current.offsetHeight },
+        })
+      }
+
+      if (text1Ref.current) {
+        const existing = getElementById('about-text-1')
+        registerEditable({
+          id: 'about-text-1',
+          type: 'text',
+          label: 'About Text 1',
+          parentId: null,
+          element: text1Ref.current,
+          originalRect: text1Ref.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: text1Ref.current.offsetWidth, height: text1Ref.current.offsetHeight },
+        })
+      }
+
+      if (text2Ref.current) {
+        const existing = getElementById('about-text-2')
+        registerEditable({
+          id: 'about-text-2',
+          type: 'text',
+          label: 'About Text 2',
+          parentId: null,
+          element: text2Ref.current,
+          originalRect: text2Ref.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: text2Ref.current.offsetWidth, height: text2Ref.current.offsetHeight },
+        })
+      }
+
+      if (tagsRef.current) {
+        const existing = getElementById('about-tags')
+        registerEditable({
+          id: 'about-tags',
+          type: 'text',
+          label: 'About Tags',
+          parentId: null,
+          element: tagsRef.current,
+          originalRect: tagsRef.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: tagsRef.current.offsetWidth, height: tagsRef.current.offsetHeight },
+        })
+      }
+
+      if (copyButtonRef.current) {
+        const existing = getElementById('about-copy-button')
+        registerEditable({
+          id: 'about-copy-button',
+          type: 'button',
+          label: 'Copy Bio Button',
+          parentId: null,
+          element: copyButtonRef.current,
+          originalRect: copyButtonRef.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: copyButtonRef.current.offsetWidth, height: copyButtonRef.current.offsetHeight },
+        })
+      }
     }
 
-    if (bgRef.current) {
-      registerEditable({
-        id: 'about-bg-image',
-        type: 'image',
-        label: 'About Background',
-        parentId: null,
-        element: bgRef.current,
-        originalRect: bgRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: bgRef.current.offsetWidth, height: bgRef.current.offsetHeight },
-      })
-    }
-
-    if (headerRef.current) {
-      registerEditable({
-        id: 'about-header',
-        type: 'text',
-        label: 'About Header',
-        parentId: null,
-        element: headerRef.current,
-        originalRect: headerRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: headerRef.current.offsetWidth, height: headerRef.current.offsetHeight },
-      })
-    }
-
-    if (textCardRef.current) {
-      registerEditable({
-        id: 'about-text-card',
-        type: 'box',
-        label: 'About Text Card',
-        parentId: null,
-        element: textCardRef.current,
-        originalRect: textCardRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: textCardRef.current.offsetWidth, height: textCardRef.current.offsetHeight },
-      })
-    }
-
-    if (text1Ref.current) {
-      registerEditable({
-        id: 'about-text-1',
-        type: 'text',
-        label: 'About Text 1',
-        parentId: null,
-        element: text1Ref.current,
-        originalRect: text1Ref.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: text1Ref.current.offsetWidth, height: text1Ref.current.offsetHeight },
-      })
-    }
-
-    if (text2Ref.current) {
-      registerEditable({
-        id: 'about-text-2',
-        type: 'text',
-        label: 'About Text 2',
-        parentId: null,
-        element: text2Ref.current,
-        originalRect: text2Ref.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: text2Ref.current.offsetWidth, height: text2Ref.current.offsetHeight },
-      })
-    }
-
-    if (tagsRef.current) {
-      registerEditable({
-        id: 'about-tags',
-        type: 'text',
-        label: 'About Tags',
-        parentId: null,
-        element: tagsRef.current,
-        originalRect: tagsRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: tagsRef.current.offsetWidth, height: tagsRef.current.offsetHeight },
-      })
-    }
-
-    if (copyButtonRef.current) {
-      registerEditable({
-        id: 'about-copy-button',
-        type: 'button',
-        label: 'Copy Bio Button',
-        parentId: null,
-        element: copyButtonRef.current,
-        originalRect: copyButtonRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: copyButtonRef.current.offsetWidth, height: copyButtonRef.current.offsetHeight },
-      })
-    }
+    registerAll()
 
     return () => {
       unregisterEditable('about-section')
@@ -137,7 +150,8 @@ export function AboutSection({ className = "" }: { className?: string }) {
       unregisterEditable('about-tags')
       unregisterEditable('about-copy-button')
     }
-  }, [isEditing, registerEditable, unregisterEditable])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing])
 
   const bioText = `Tales for the Tillerman is a Berlin-based collective blending world music, funk, soul, and reggae into a vibrant live experience. With roots spanning across continents, the band creates a sound that moves between groove, warmth, rhythm, and energy.
 

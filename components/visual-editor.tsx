@@ -170,6 +170,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const directTarget = document.elementFromPoint(x, y)
     if (directTarget instanceof HTMLElement) {
       const el = directTarget
+      if (isEditorUI(el)) return null
       const id = el.getAttribute('data-edit-id') || el.getAttribute('data-editable') || ''
       const rawType = el.getAttribute('data-edit-type') || el.getAttribute('data-editable-type') || 'text'
       const label = el.getAttribute('data-edit-label') || el.getAttribute('data-editable-label') || id
@@ -198,6 +199,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const point = document.elementsFromPoint(x, y)
     for (const el of point) {
       if (el instanceof HTMLElement) {
+        if (isEditorUI(el)) continue
         const id = el.getAttribute('data-edit-id') || el.getAttribute('data-editable') || ''
         const rawType = el.getAttribute('data-edit-type') || el.getAttribute('data-editable-type') || 'text'
         const label = el.getAttribute('data-edit-label') || el.getAttribute('data-editable-label') || id
@@ -349,12 +351,10 @@ function SelectionOverlay({ element, onDragStart, onResizeStart }: SelectionOver
     
     const observer = new ResizeObserver(update)
     observer.observe(element.element)
-    window.addEventListener('scroll', update, true)
     window.addEventListener('resize', update)
     
     return () => {
       observer.disconnect()
-      window.removeEventListener('scroll', update, true)
       window.removeEventListener('resize', update)
     }
   }, [element.element, element.dimensions.width, element.dimensions.height])
@@ -362,14 +362,17 @@ function SelectionOverlay({ element, onDragStart, onResizeStart }: SelectionOver
   // Force re-render when transform changes (element moved)
   useEffect(() => {
     if (!element.element) return
-    const r = element.element.getBoundingClientRect()
-    rectRef.current = {
-      x: r.left,
-      y: r.top,
-      width: element.dimensions.width || r.width,
-      height: element.dimensions.height || r.height,
-    }
-    setTick(t => t + 1)
+    requestAnimationFrame(() => {
+      if (!element.element) return
+      const r = element.element.getBoundingClientRect()
+      rectRef.current = {
+        x: r.left,
+        y: r.top,
+        width: element.dimensions.width || r.width,
+        height: element.dimensions.height || r.height,
+      }
+      setTick(t => t + 1)
+    })
   }, [element.transform.x, element.transform.y, element.dimensions.width, element.dimensions.height, element.element])
 
   const rect = rectRef.current
@@ -627,7 +630,15 @@ export function VisualEditorOverlay() {
     const hasResize = Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01
     const hasMove = transform.x !== 0 || transform.y !== 0
 
-    if (isText && hasResize) {
+    if (isImage) {
+      // Image elements: only translate, preserve original dimensions
+      el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
+      el.style.transformOrigin = 'top left'
+      el.style.position = 'relative'
+      el.style.zIndex = '1'
+      el.style.width = ''
+      el.style.height = ''
+    } else if (isText && hasResize) {
       // For text and button elements, use scale transform to resize the content
       el.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY})`
       el.style.transformOrigin = 'top left'
@@ -1110,68 +1121,67 @@ export function VisualEditorOverlay() {
         />
       )}
 
-      {/* Edit Panel */}
+      {/* Edit Panel - compact */}
       <AnimatePresence>
         {isEditing && openPanel && selectedElement && (
           <motion.div
-            initial={{ x: 320, opacity: 0 }}
+            initial={{ x: 260, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 320, opacity: 0 }}
+            exit={{ x: 260, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             data-edit-panel
-            className={`fixed top-20 z-[9997] w-72 bg-white rounded-2xl shadow-2xl overflow-hidden ${
+            className={`fixed top-16 z-[9997] w-56 bg-white rounded-xl shadow-2xl overflow-hidden ${
               (() => {
                 const rect = selectedElement.element?.getBoundingClientRect()
-                if (!rect) return 'right-4'
+                if (!rect) return 'right-3'
                 const centerX = rect.left + rect.width / 2
                 const screenCenter = window.innerWidth / 2
-                return centerX > screenCenter ? 'left-4' : 'right-4'
+                return centerX > screenCenter ? 'left-3' : 'right-3'
               })()
             }`}
           >
-            <div className="bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-5 py-4">
+            <div className="bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-white font-bold text-lg">{selectedElement.label}</h3>
-                  <p className="text-white/70 text-xs capitalize">{selectedElement.type}</p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-white font-semibold text-sm truncate">{selectedElement.label}</h3>
+                  <p className="text-white/70 text-[10px] capitalize">{selectedElement.type}</p>
                 </div>
                 <button
                   data-edit-modal
                   onClick={() => { setOpenPanel(false); setSelectedId(null) }}
-                  className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition"
+                  className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition shrink-0 ml-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
             </div>
 
-            <div className="p-5">
+            <div className="p-3">
               {(selectedElement.type === 'text' || selectedElement.type === 'button') && (
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-700">Text Content</label>
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-gray-700">Text</label>
                   <textarea
                     defaultValue={getElementValue(selectedElement)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#FF8C21] focus:border-transparent text-gray-800 resize-none"
-                    rows={4}
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800 resize-none"
+                    rows={3}
                     onChange={(e) => {
                       if (selectedElement.element) {
                         selectedElement.element.textContent = e.target.value
                       }
                     }}
                   />
-                  <p className="text-xs text-gray-500">Changes apply immediately</p>
                 </div>
               )}
 
               {selectedElement.type === 'button' && (
-                <div className="space-y-3 mt-4 pt-4 border-t border-gray-100">
-                  <label className="block text-sm font-semibold text-gray-700">Button Link (href)</label>
+                <div className="space-y-2 mt-2 pt-2 border-t border-gray-100">
+                  <label className="block text-xs font-semibold text-gray-700">Link</label>
                   <input
                     type="url"
                     defaultValue={selectedElement.element?.getAttribute('href') || ''}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#FF8C21] focus:border-transparent text-gray-800"
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800"
                     onChange={(e) => {
                       if (selectedElement.element) {
                         selectedElement.element.setAttribute('href', e.target.value)
@@ -1183,27 +1193,20 @@ export function VisualEditorOverlay() {
               )}
 
               {selectedElement.type === 'image' && (
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-700">Image</label>
-                  <div className="text-xs text-gray-500 p-3 bg-gray-50 rounded-xl space-y-1">
-                    <p><strong>Drag corners</strong> to resize proportionally</p>
-                    <p><strong>Drag center</strong> to move</p>
-                  </div>
-                  <div className="aspect-video bg-gray-100 rounded-xl overflow-hidden">
-                    {getElementValue(selectedElement) && (
-                      <img src={getElementValue(selectedElement)} alt="" className="w-full h-full object-cover" />
-                    )}
+                <div className="space-y-2">
+                  <div className="text-[10px] text-gray-500 p-2 bg-gray-50 rounded-lg">
+                    Drag handles to resize, center to move
                   </div>
                 </div>
               )}
 
               {selectedElement.type === 'link' && (
-                <div className="space-y-3">
-                  <label className="block text-sm font-semibold text-gray-700">Link URL</label>
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-gray-700">URL</label>
                   <input
                     type="url"
                     defaultValue={getElementValue(selectedElement)}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#FF8C21] focus:border-transparent text-gray-800"
+                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800"
                     onChange={(e) => {
                       if (selectedElement.element) {
                         selectedElement.element.setAttribute('href', e.target.value)
@@ -1214,13 +1217,13 @@ export function VisualEditorOverlay() {
               )}
             </div>
 
-            <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
+            <div className="px-3 py-2 border-t border-gray-100 bg-gray-50">
               <button
                 data-edit-modal
                 onClick={() => setShowSaveModal(true)}
-                className="w-full py-3 bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white rounded-xl font-bold hover:opacity-90 transition"
+                className="w-full py-1.5 bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white rounded-lg text-xs font-bold hover:opacity-90 transition"
               >
-                Save Changes
+                Save
               </button>
             </div>
           </motion.div>

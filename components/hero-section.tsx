@@ -30,7 +30,7 @@ export function HeroSection() {
 
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
 
-  // Register editable elements
+  // Register editable elements - only on isEditing change
   useEffect(() => {
     if (!isEditing) return
 
@@ -136,17 +136,7 @@ export function HeroSection() {
 
     registerAll()
 
-    // Update positions on scroll/resize
-    const updatePositions = () => {
-      registerAll()
-    }
-
-    window.addEventListener('scroll', updatePositions)
-    window.addEventListener('resize', updatePositions)
-
     return () => {
-      window.removeEventListener('scroll', updatePositions)
-      window.removeEventListener('resize', updatePositions)
       unregisterEditable('hero-section')
       unregisterEditable('hero-bg-image')
       unregisterEditable('hero-logo')
@@ -155,7 +145,8 @@ export function HeroSection() {
       unregisterEditable('hero-buttons')
       unregisterEditable('hero-scroll-indicator')
     }
-  }, [isEditing, registerEditable, unregisterEditable])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing])
 
   const { scrollYProgress } = useScroll({
     target: sectionRef,
