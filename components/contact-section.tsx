@@ -27,182 +27,163 @@ export function ContactSection() {
   useEffect(() => {
     if (!isEditing) return
 
-    const registerAll = () => {
-      if (sectionRef.current) {
-        const existing = getElementById('contact-section')
-        registerEditable({
-          id: 'contact-section',
-          type: 'section',
-          label: 'Contact Section',
-          parentId: null,
-          element: sectionRef.current,
-          originalRect: sectionRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
-        })
-      }
-
-      if (bgRef.current) {
-        const existing = getElementById('contact-bg-image')
-        registerEditable({
-          id: 'contact-bg-image',
-          type: 'image',
-          label: 'Contact Background',
-          parentId: null,
-          element: bgRef.current,
-          originalRect: bgRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: bgRef.current.offsetWidth, height: bgRef.current.offsetHeight },
-        })
-      }
-
-      if (headerRef.current) {
-        const existing = getElementById('contact-header')
-        registerEditable({
-          id: 'contact-header',
-          type: 'text',
-          label: 'Contact Header',
-          parentId: null,
-          element: headerRef.current,
-          originalRect: headerRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: headerRef.current.offsetWidth, height: headerRef.current.offsetHeight },
-        })
-      }
-
-      if (emailCardRef.current) {
-        const existing = getElementById('contact-email')
-        registerEditable({
-          id: 'contact-email',
-          type: 'link',
-          label: 'Contact Email',
-          parentId: null,
-          element: emailCardRef.current,
-          originalRect: emailCardRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: emailCardRef.current.offsetWidth, height: emailCardRef.current.offsetHeight },
-        })
-      }
-
-      if (emailTitleRef.current) {
-        const existing = getElementById('contact-email-title')
-        registerEditable({
-          id: 'contact-email-title',
-          type: 'text',
-          label: 'Email Title',
-          parentId: null,
-          element: emailTitleRef.current,
-          originalRect: emailTitleRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: emailTitleRef.current.offsetWidth, height: emailTitleRef.current.offsetHeight },
-        })
-      }
-
-      if (emailDescRef.current) {
-        const existing = getElementById('contact-email-description')
-        registerEditable({
-          id: 'contact-email-description',
-          type: 'text',
-          label: 'Email Description',
-          parentId: null,
-          element: emailDescRef.current,
-          originalRect: emailDescRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: emailDescRef.current.offsetWidth, height: emailDescRef.current.offsetHeight },
-        })
-      }
-
-      if (emailAddrRef.current) {
-        const existing = getElementById('contact-email-address')
-        registerEditable({
-          id: 'contact-email-address',
-          type: 'text',
-          label: 'Email Address',
-          parentId: null,
-          element: emailAddrRef.current,
-          originalRect: emailAddrRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: emailAddrRef.current.offsetWidth, height: emailAddrRef.current.offsetHeight },
-        })
-      }
-
-      if (telegramCardRef.current) {
-        const existing = getElementById('contact-telegram')
-        registerEditable({
-          id: 'contact-telegram',
-          type: 'link',
-          label: 'Contact Telegram',
-          parentId: null,
-          element: telegramCardRef.current,
-          originalRect: telegramCardRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: telegramCardRef.current.offsetWidth, height: telegramCardRef.current.offsetHeight },
-        })
-      }
-
-      if (telegramTitleRef.current) {
-        const existing = getElementById('contact-telegram-title')
-        registerEditable({
-          id: 'contact-telegram-title',
-          type: 'text',
-          label: 'Telegram Title',
-          parentId: null,
-          element: telegramTitleRef.current,
-          originalRect: telegramTitleRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: telegramTitleRef.current.offsetWidth, height: telegramTitleRef.current.offsetHeight },
-        })
-      }
-
-      if (telegramDescRef.current) {
-        const existing = getElementById('contact-telegram-description')
-        registerEditable({
-          id: 'contact-telegram-description',
-          type: 'text',
-          label: 'Telegram Description',
-          parentId: null,
-          element: telegramDescRef.current,
-          originalRect: telegramDescRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: telegramDescRef.current.offsetWidth, height: telegramDescRef.current.offsetHeight },
-        })
-      }
-
-      if (telegramHandleRef.current) {
-        const existing = getElementById('contact-telegram-handle')
-        registerEditable({
-          id: 'contact-telegram-handle',
-          type: 'text',
-          label: 'Telegram Handle',
-          parentId: null,
-          element: telegramHandleRef.current,
-          originalRect: telegramHandleRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: telegramHandleRef.current.offsetWidth, height: telegramHandleRef.current.offsetHeight },
-        })
-      }
-
-      if (middleTextRef.current) {
-        const existing = getElementById('contact-middle-text')
-        registerEditable({
-          id: 'contact-middle-text',
-          type: 'text',
-          label: 'Contact Middle Text',
-          parentId: null,
-          element: middleTextRef.current,
-          originalRect: middleTextRef.current.getBoundingClientRect(),
-          transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: middleTextRef.current.offsetWidth, height: middleTextRef.current.offsetHeight },
-        })
-      }
+    if (sectionRef.current) {
+      const existing = getElementById('contact-section')
+      registerEditable({
+        id: 'contact-section',
+        type: 'section',
+        label: 'Contact Section',
+        parentId: null,
+        element: sectionRef.current,
+        originalRect: sectionRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
+      })
     }
 
-    registerAll()
+    if (bgRef.current) {
+      const existing = getElementById('contact-bg-image')
+      registerEditable({
+        id: 'contact-bg-image',
+        type: 'image',
+        label: 'Contact Background',
+        parentId: null,
+        element: bgRef.current,
+        originalRect: bgRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: bgRef.current.offsetWidth, height: bgRef.current.offsetHeight },
+      })
+    }
+
+    if (emailCardRef.current) {
+      const existing = getElementById('contact-email')
+      registerEditable({
+        id: 'contact-email',
+        type: 'link',
+        label: 'Contact Email',
+        parentId: null,
+        element: emailCardRef.current,
+        originalRect: emailCardRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: emailCardRef.current.offsetWidth, height: emailCardRef.current.offsetHeight },
+      })
+    }
+
+    if (emailTitleRef.current) {
+      const existing = getElementById('contact-email-title')
+      registerEditable({
+        id: 'contact-email-title',
+        type: 'text',
+        label: 'Email Title',
+        parentId: null,
+        element: emailTitleRef.current,
+        originalRect: emailTitleRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: emailTitleRef.current.offsetWidth, height: emailTitleRef.current.offsetHeight },
+      })
+    }
+
+    if (emailDescRef.current) {
+      const existing = getElementById('contact-email-description')
+      registerEditable({
+        id: 'contact-email-description',
+        type: 'text',
+        label: 'Email Description',
+        parentId: null,
+        element: emailDescRef.current,
+        originalRect: emailDescRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: emailDescRef.current.offsetWidth, height: emailDescRef.current.offsetHeight },
+      })
+    }
+
+    if (emailAddrRef.current) {
+      const existing = getElementById('contact-email-address')
+      registerEditable({
+        id: 'contact-email-address',
+        type: 'text',
+        label: 'Email Address',
+        parentId: null,
+        element: emailAddrRef.current,
+        originalRect: emailAddrRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: emailAddrRef.current.offsetWidth, height: emailAddrRef.current.offsetHeight },
+      })
+    }
+
+    if (telegramCardRef.current) {
+      const existing = getElementById('contact-telegram')
+      registerEditable({
+        id: 'contact-telegram',
+        type: 'link',
+        label: 'Contact Telegram',
+        parentId: null,
+        element: telegramCardRef.current,
+        originalRect: telegramCardRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: telegramCardRef.current.offsetWidth, height: telegramCardRef.current.offsetHeight },
+      })
+    }
+
+    if (telegramTitleRef.current) {
+      const existing = getElementById('contact-telegram-title')
+      registerEditable({
+        id: 'contact-telegram-title',
+        type: 'text',
+        label: 'Telegram Title',
+        parentId: null,
+        element: telegramTitleRef.current,
+        originalRect: telegramTitleRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: telegramTitleRef.current.offsetWidth, height: telegramTitleRef.current.offsetHeight },
+      })
+    }
+
+    if (telegramDescRef.current) {
+      const existing = getElementById('contact-telegram-description')
+      registerEditable({
+        id: 'contact-telegram-description',
+        type: 'text',
+        label: 'Telegram Description',
+        parentId: null,
+        element: telegramDescRef.current,
+        originalRect: telegramDescRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: telegramDescRef.current.offsetWidth, height: telegramDescRef.current.offsetHeight },
+      })
+    }
+
+    if (telegramHandleRef.current) {
+      const existing = getElementById('contact-telegram-handle')
+      registerEditable({
+        id: 'contact-telegram-handle',
+        type: 'text',
+        label: 'Telegram Handle',
+        parentId: null,
+        element: telegramHandleRef.current,
+        originalRect: telegramHandleRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: telegramHandleRef.current.offsetWidth, height: telegramHandleRef.current.offsetHeight },
+      })
+    }
+
+    if (middleTextRef.current) {
+      const existing = getElementById('contact-middle-text')
+      registerEditable({
+        id: 'contact-middle-text',
+        type: 'text',
+        label: 'Contact Middle Text',
+        parentId: null,
+        element: middleTextRef.current,
+        originalRect: middleTextRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: middleTextRef.current.offsetWidth, height: middleTextRef.current.offsetHeight },
+      })
+    }
 
     return () => {
       unregisterEditable('contact-section')
       unregisterEditable('contact-bg-image')
-      unregisterEditable('contact-header')
       unregisterEditable('contact-email')
       unregisterEditable('contact-email-title')
       unregisterEditable('contact-email-description')
@@ -215,6 +196,8 @@ export function ContactSection() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing])
+
+  const currentYear = new Date().getFullYear()
 
   const contactMethods = [
     {
@@ -265,7 +248,7 @@ export function ContactSection() {
       <div className="section-photo-fade-bottom" />
 
       <div className="relative z-10 mx-auto w-full max-w-5xl min-h-screen flex flex-col justify-end">
-        <motion.div ref={headerRef} style={{ opacity, y }} className="mb-10 md:mb-12" data-edit-id="contact-header-wrapper" data-edit-type="box" data-edit-label="Contact Header">
+        <motion.div ref={headerRef} style={{ opacity, y }} className="mb-10 md:mb-12">
           <SectionHeader
             eyebrow="Contact"
             title="Book the Band"

@@ -610,7 +610,6 @@ export function VisualEditorOverlay() {
       el.style.transformOrigin = 'top left'
       el.style.position = 'relative'
       el.style.zIndex = '100'
-      // Only clear dimensions if actually resized
       if (Math.abs(dimensions.width - orig.width) > 0.5) {
         el.style.width = `${dimensions.width}px`
       } else {
@@ -642,6 +641,12 @@ export function VisualEditorOverlay() {
       } else {
         el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
       }
+      el.style.transformOrigin = 'top left'
+      el.style.position = 'relative'
+      el.style.zIndex = '1'
+    } else if (selectedElement.type === 'link' && hasResize) {
+      // For links (cards) with resize, use scale so inner content scales too
+      el.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY})`
       el.style.transformOrigin = 'top left'
       el.style.position = 'relative'
       el.style.zIndex = '1'
@@ -842,12 +847,13 @@ export function VisualEditorOverlay() {
         }
       }
       
-      // For scale-based resize (boxes, text, buttons), do NOT adjust position
+      // For scale-based resize (boxes, text, buttons, links), do NOT adjust position
       // The scale transform handles the visual resize from top-left origin
       const isBox = selectedElement.type === 'box' || selectedElement.type === 'section'
       const isText = selectedElement.type === 'text' || selectedElement.type === 'button'
+      const isLink = selectedElement.type === 'link'
       
-      if (isBox || isText) {
+      if (isBox || isText || isLink) {
         // Scale-based resize: keep position unchanged
         updateElementTransform(selectedElement.id, { x: selectedElement.transform.x, y: selectedElement.transform.y })
       } else {
