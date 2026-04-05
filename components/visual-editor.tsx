@@ -166,103 +166,58 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     return editableElements.get(id)
   }, [editableElements])
 
-  function getEditableFromDOM(x: number, y: number): EditableElementData | null {
-    const directTarget = document.elementFromPoint(x, y)
-    if (directTarget instanceof HTMLElement) {
-      const el = directTarget
-      if (isEditorUI(el)) return null
-      const id = el.getAttribute('data-edit-id') || el.getAttribute('data-editable') || ''
-      const rawType = el.getAttribute('data-edit-type') || el.getAttribute('data-editable-type') || 'text'
-      const label = el.getAttribute('data-edit-label') || el.getAttribute('data-editable-label') || id
-      
-      if (id) {
-        let typeCategory: string = rawType
-        if (rawType === 'link') typeCategory = 'link'
-        else if (rawType === 'button') typeCategory = 'button'
-        else if (rawType === 'image') typeCategory = 'image'
-        else if (rawType === 'section') typeCategory = 'section'
-        else typeCategory = 'text'
-        
-        return {
-          id,
-          type: typeCategory as EditableElementData['type'],
-          label,
-          parentId: null,
-          element: el,
-          originalRect: el.getBoundingClientRect(),
-          transform: { x: 0, y: 0 },
-          dimensions: { width: el.offsetWidth, height: el.offsetHeight },
-        }
-      }
-    }
-    
-    const point = document.elementsFromPoint(x, y)
-    for (const el of point) {
-      if (el instanceof HTMLElement) {
-        if (isEditorUI(el)) continue
-        const id = el.getAttribute('data-edit-id') || el.getAttribute('data-editable') || ''
-        const rawType = el.getAttribute('data-edit-type') || el.getAttribute('data-editable-type') || 'text'
-        const label = el.getAttribute('data-edit-label') || el.getAttribute('data-editable-label') || id
-        
-        if (id) {
-          let typeCategory: string = rawType
-          if (rawType === 'link') typeCategory = 'link'
-          else if (rawType === 'button') typeCategory = 'button'
-          else if (rawType === 'image') typeCategory = 'image'
-          else if (rawType === 'section') typeCategory = 'section'
-          else typeCategory = 'text'
-          
-          return {
-            id,
-            type: typeCategory as EditableElementData['type'],
-            label,
-            parentId: null,
-            element: el,
-            originalRect: el.getBoundingClientRect(),
-            transform: { x: 0, y: 0 },
-            dimensions: { width: el.offsetWidth, height: el.offsetHeight },
-          }
-        }
-      }
-    }
-    
-    return null
-  }
-
   const getEditableAtPosition = useCallback((x: number, y: number): EditableElementData | null => {
-    const elements = Array.from(editableElements.values())
+    // Use browser's native hit-testing first - this correctly handles z-index and stacking
+    const allElements = document.elementsFromPoint(x, y)
     
-    const elementsAtPoint = elements.filter(el => {
-      if (!el.element) return false
-      const rect = el.element.getBoundingClientRect()
-      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
-    })
-
-    if (elementsAtPoint.length > 0) {
-      const typePriority: Record<string, number> = {
-        button: 1,
-        link: 2,
-        text: 3,
-        box: 4,
-        image: 5,
-        video: 6,
-        logo: 7,
-        section: 8,
+    for (const el of allElements) {
+      if (!(el instanceof HTMLElement)) continue
+      if (isEditorUI(el)) continue
+      
+      const id = el.getAttribute('data-edit-id')
+      if (!id) continue
+      
+      // Check if this element is in our registry
+      const registered = editableElements.get(id)
+      if (registered) {
+        return registered
       }
-
-      elementsAtPoint.sort((a, b) => {
-        const typeDiff = (typePriority[a.type] || 99) - (typePriority[b.type] || 99)
-        if (typeDiff !== 0) return typeDiff
-        const depthA = getDepth(a.element)
-        const depthB = getDepth(b.element)
-        return depthB - depthA
-      })
-
-      return elementsAtPoint[0]
+      
+      // It has a data-edit-id but isn't in registry yet - create on the fly
+      const rawType = el.getAttribute('data-edit-type') || 'text'
+      const label = el.getAttribute('data-edit-label') || id
+      let typeCategory: string = rawType
+      if (rawType === 'link') typeCategory = 'link'
+      else if (rawType === 'button') typeCategory = 'button'
+      else if (rawType === 'image') typeCategory = 'image'
+      else if (rawType === 'section') typeCategory = 'section'
+      else typeCategory = 'text'
+      
+      const rect = el.getBoundingClientRect()
+      return {
+        id,
+        type: typeCategory as EditableElementData['type'],
+        label,
+        parentId: null,
+        element: el,
+        originalRect: rect,
+        transform: { x: 0, y: 0 },
+        dimensions: { width: el.offsetWidth, height: el.offsetHeight },
+      }
     }
 
-    return getEditableFromDOM(x, y)
-  }, [editableElements, getEditableFromDOM])
+    // Fallback: check registry elements that might not have data-edit-id
+    const elements = Array.from(editableElements.values())
+    for (const el of elements) {
+      if (!el.element) continue
+      const rect = el.element.getBoundingClientRect()
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        return el
+      }
+    }
+
+    return null
+  }, [editableElements])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
