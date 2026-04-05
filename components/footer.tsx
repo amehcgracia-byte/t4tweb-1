@@ -16,87 +16,92 @@ export function Footer() {
   useEffect(() => {
     if (!isEditing) return
 
-    if (footerRef.current) {
-      registerEditable({
-        id: 'footer-section',
-        type: 'section',
-        label: 'Footer Section',
-        parentId: null,
-        element: footerRef.current,
-        originalRect: footerRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: footerRef.current.offsetWidth, height: footerRef.current.offsetHeight },
-      })
-    }
-
-    if (logoRef.current) {
-      registerEditable({
-        id: 'footer-logo',
-        type: 'image',
-        label: 'Footer Logo',
-        parentId: null,
-        element: logoRef.current,
-        originalRect: logoRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: logoRef.current.offsetWidth, height: logoRef.current.offsetHeight },
-      })
-    }
-
-    if (descRef.current) {
-      registerEditable({
-        id: 'footer-description',
-        type: 'text',
-        label: 'Footer Description',
-        parentId: null,
-        element: descRef.current,
-        originalRect: descRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: descRef.current.offsetWidth, height: descRef.current.offsetHeight },
-      })
-    }
-
-    if (ctaRef.current) {
-      registerEditable({
-        id: 'footer-cta',
-        type: 'button',
-        label: 'Book the Band',
-        parentId: null,
-        element: ctaRef.current,
-        originalRect: ctaRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: ctaRef.current.offsetWidth, height: ctaRef.current.offsetHeight },
-      })
-    }
-
-    if (copyrightRef.current) {
-      registerEditable({
-        id: 'footer-copyright',
-        type: 'text',
-        label: 'Footer Copyright',
-        parentId: null,
-        element: copyrightRef.current,
-        originalRect: copyrightRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: copyrightRef.current.offsetWidth, height: copyrightRef.current.offsetHeight },
-      })
-    }
-
-    socialRefs.current.forEach((el, i) => {
-      if (el) {
+    // Delay registration to ensure all refs are populated
+    const timer = setTimeout(() => {
+      if (footerRef.current) {
         registerEditable({
-          id: `footer-social-${i}`,
-          type: 'link',
-          label: `Footer Social: ${el.getAttribute('aria-label') || 'Link'}`,
+          id: 'footer-section',
+          type: 'section',
+          label: 'Footer Section',
           parentId: null,
-          element: el,
-          originalRect: el.getBoundingClientRect(),
+          element: footerRef.current,
+          originalRect: footerRef.current.getBoundingClientRect(),
           transform: { x: 0, y: 0 },
-          dimensions: { width: el.offsetWidth, height: el.offsetHeight },
+          dimensions: { width: footerRef.current.offsetWidth, height: footerRef.current.offsetHeight },
         })
       }
-    })
+
+      if (logoRef.current) {
+        registerEditable({
+          id: 'footer-logo',
+          type: 'image',
+          label: 'Footer Logo',
+          parentId: null,
+          element: logoRef.current,
+          originalRect: logoRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: logoRef.current.offsetWidth, height: logoRef.current.offsetHeight },
+        })
+      }
+
+      if (descRef.current) {
+        registerEditable({
+          id: 'footer-description',
+          type: 'text',
+          label: 'Footer Description',
+          parentId: null,
+          element: descRef.current,
+          originalRect: descRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: descRef.current.offsetWidth, height: descRef.current.offsetHeight },
+        })
+      }
+
+      if (ctaRef.current) {
+        registerEditable({
+          id: 'footer-cta',
+          type: 'button',
+          label: 'Book the Band',
+          parentId: null,
+          element: ctaRef.current,
+          originalRect: ctaRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: ctaRef.current.offsetWidth, height: ctaRef.current.offsetHeight },
+        })
+      }
+
+      if (copyrightRef.current) {
+        registerEditable({
+          id: 'footer-copyright',
+          type: 'text',
+          label: 'Footer Copyright',
+          parentId: null,
+          element: copyrightRef.current,
+          originalRect: copyrightRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: copyrightRef.current.offsetWidth, height: copyrightRef.current.offsetHeight },
+        })
+      }
+
+      // Register social icons that have valid refs
+      socialRefs.current.forEach((el, i) => {
+        if (el) {
+          registerEditable({
+            id: `footer-social-${i}`,
+            type: 'link',
+            label: `Footer Social: ${el.getAttribute('aria-label') || 'Link'}`,
+            parentId: null,
+            element: el,
+            originalRect: el.getBoundingClientRect(),
+            transform: { x: 0, y: 0 },
+            dimensions: { width: el.offsetWidth, height: el.offsetHeight },
+          })
+        }
+      })
+    }, 100)
 
     return () => {
+      clearTimeout(timer)
       unregisterEditable('footer-section')
       unregisterEditable('footer-logo')
       unregisterEditable('footer-description')
