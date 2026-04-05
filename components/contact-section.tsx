@@ -254,9 +254,9 @@ export function ContactSection() {
             eyebrow="Contact"
             title="Book the Band"
             description="Get in touch for booking inquiries and event collaborations."
-            data-edit-id="contact-header"
-            data-edit-type="text"
-            data-edit-label="Encabezado Contacto"
+            dataEditId="contact-header"
+            dataEditType="text"
+            dataEditLabel="Encabezado Contacto"
           />
         </motion.div>
 

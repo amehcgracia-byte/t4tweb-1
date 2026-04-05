@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   EDITOR MODE - Neutralize layout constraints that block free editing
+   ============================================================================ */
+[data-edit-mode="true"] .max-w-3xl,
+[data-edit-mode="true"] .max-w-4xl,
+[data-edit-mode="true"] .max-w-5xl,
+[data-edit-mode="true"] .max-w-6xl,
+[data-edit-mode="true"] .max-w-2xl {
+  max-width: 100% !important;
+}
+
+[data-edit-mode="true"] .mx-auto {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
 :root {
   --font-inter: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
   --font-playfair: "Playfair Display", Georgia, "Times New Roman", serif;

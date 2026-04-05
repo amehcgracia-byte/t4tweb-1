@@ -635,6 +635,16 @@ export function VisualEditorOverlay() {
       el.style.transformOrigin = 'top left'
       el.style.position = 'relative'
       el.style.zIndex = '1'
+    } else if (isBox) {
+      // For boxes/cards, use scale transform so inner content scales proportionally
+      if (hasResize) {
+        el.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY})`
+      } else {
+        el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
+      }
+      el.style.transformOrigin = 'top left'
+      el.style.position = 'relative'
+      el.style.zIndex = '1'
     } else {
       // For non-text elements, use width/height + translate
       el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
@@ -809,8 +819,6 @@ export function VisualEditorOverlay() {
       
       let newWidth = resizeStartRef.current.width
       let newHeight = resizeStartRef.current.height
-      let newX = resizeStartRef.current.startX
-      let newY = resizeStartRef.current.startY
       const h = resizeStartRef.current.handle
       const aspectRatio = resizeStartRef.current.width / resizeStartRef.current.height
       
@@ -834,17 +842,29 @@ export function VisualEditorOverlay() {
         }
       }
       
-      if (h.includes('w')) {
-        const widthDiff = newWidth - resizeStartRef.current.width
-        newX = resizeStartRef.current.startX - widthDiff
-      }
-      if (h.includes('n')) {
-        const heightDiff = newHeight - resizeStartRef.current.height
-        newY = resizeStartRef.current.startY - heightDiff
+      // For scale-based resize (boxes, text, buttons), do NOT adjust position
+      // The scale transform handles the visual resize from top-left origin
+      const isBox = selectedElement.type === 'box' || selectedElement.type === 'section'
+      const isText = selectedElement.type === 'text' || selectedElement.type === 'button'
+      
+      if (isBox || isText) {
+        // Scale-based resize: keep position unchanged
+        updateElementTransform(selectedElement.id, { x: selectedElement.transform.x, y: selectedElement.transform.y })
+      } else {
+        // For absolute elements, adjust position when resizing from left/top
+        let newX = resizeStartRef.current.startX
+        let newY = resizeStartRef.current.startY
+        if (h.includes('w')) {
+          const widthDiff = newWidth - resizeStartRef.current.width
+          newX = resizeStartRef.current.startX - widthDiff
+        }
+        if (h.includes('n')) {
+          const heightDiff = newHeight - resizeStartRef.current.height
+          newY = resizeStartRef.current.startY - heightDiff
+        }
+        updateElementTransform(selectedElement.id, { x: newX, y: newY })
       }
       
-      // Update registry state - element will follow via useEditable styles
-      updateElementTransform(selectedElement.id, { x: newX, y: newY })
       updateElementDimensions(selectedElement.id, { width: newWidth, height: newHeight })
     }
   }, [selectedElement, isDragging, isResizing, calculateSnapGuides, updateElementTransform, updateElementDimensions])
