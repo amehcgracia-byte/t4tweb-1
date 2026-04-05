@@ -127,10 +127,11 @@ export function PressKitSection() {
               className="group overflow-hidden rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg"
             >
               <div className="relative mb-4 h-48 w-full overflow-hidden rounded-lg">
-                <img
+                <Image
                   src="/images/Momo Garcia Manager.png"
                   alt="Momo Garcia Manager"
-                  className="h-full w-full object-cover transition-all duration-300 group-hover:scale-105"
+                  fill
+                  className="object-cover transition-all duration-300 group-hover:scale-105"
                 />
               </div>
               <h3 className="mb-1 font-medium text-foreground">Manager</h3>

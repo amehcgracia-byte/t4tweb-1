@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { HeroSection } from "@/components/hero-section"
 import { SectionDivider } from "@/components/section-divider"
 import { AboutSection } from "@/components/about-section"
@@ -28,10 +29,11 @@ export default function Home() {
         data-edit-field="introBanner"
         data-edit-label="Intro Banner"
       >
-        <img
+        <Image
           src="/images/t4tPics/banner-crop-ezgif.com-gif-maker.gif"
           alt="Animated banner"
-          className="absolute inset-0 h-full w-full object-cover opacity-30"
+          fill
+          className="object-cover opacity-30"
           data-editable
           data-edit-type="image"
           data-edit-field="introBanner.background"
