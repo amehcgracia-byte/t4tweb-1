@@ -1200,11 +1200,12 @@ export function VisualEditorOverlay() {
               </div>
             </div>
 
-            <div className="p-3 pointer-events-auto">
+            <div className="p-3 pointer-events-auto" key={selectedElement.id}>
               {(selectedElement.type === 'text' || selectedElement.type === 'button') && (
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold text-gray-700">Text</label>
                   <textarea
+                    key={`text-${selectedElement.id}`}
                     defaultValue={getElementValue(selectedElement)}
                     className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800 resize-none"
                     rows={3}
@@ -1221,6 +1222,7 @@ export function VisualEditorOverlay() {
                 <div className="space-y-2 mt-2 pt-2 border-t border-gray-100">
                   <label className="block text-xs font-semibold text-gray-700">Link</label>
                   <input
+                    key={`href-${selectedElement.id}`}
                     type="url"
                     defaultValue={selectedElement.element?.getAttribute('href') || ''}
                     className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800"
@@ -1246,6 +1248,7 @@ export function VisualEditorOverlay() {
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold text-gray-700">URL</label>
                   <input
+                    key={`url-${selectedElement.id}`}
                     type="url"
                     defaultValue={getElementValue(selectedElement)}
                     className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800"

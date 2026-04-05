@@ -181,6 +181,9 @@ export function HeroSection() {
         heroSectionRef.current = el
       }}
       id="top"
+      data-edit-id="hero-section"
+      data-edit-type="section"
+      data-edit-label="Hero Section"
       className="relative flex min-h-screen w-full items-stretch overflow-hidden bg-black"
     >
       <div className="absolute inset-0 z-0">
