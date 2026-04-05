@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from "react"
 import { motion } from "framer-motion"
+import Image from "next/image"
 import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { useVisualEditor } from "@/components/visual-editor"
 
@@ -144,11 +145,12 @@ export function LatestReleaseSection() {
         data-edit-label="Fondo Video YouTube"
         className="absolute inset-0 z-0"
       >
-        <img
+        <Image
           src="/images/sections/hero-bg.jpg"
           alt=""
+          fill
           aria-hidden="true"
-          className="h-full w-full object-cover opacity-40 md:hidden"
+          className="object-cover opacity-40 md:hidden"
         />
         <iframe
           src="https://www.youtube.com/embed/xofflmVqYGs?autoplay=1&mute=1&loop=1&playlist=xofflmVqYGs&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"

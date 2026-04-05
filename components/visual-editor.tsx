@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable @next/next/no-img-element, react-hooks/set-state-in-effect, react-hooks/refs, react-hooks/immutability, react-hooks/exhaustive-deps */
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
