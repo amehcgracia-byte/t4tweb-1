@@ -10,8 +10,9 @@ export function Footer() {
   const logoRef = useRef<HTMLDivElement>(null)
   const descRef = useRef<HTMLParagraphElement>(null)
   const ctaRef = useRef<HTMLAnchorElement>(null)
+  const socialGroupRef = useRef<HTMLDivElement>(null)
+  const dividerRef = useRef<HTMLDivElement>(null)
   const copyrightRef = useRef<HTMLParagraphElement>(null)
-  const socialRefs = useRef<(HTMLAnchorElement | null)[]>([])
 
   useEffect(() => {
     if (!isEditing) return
@@ -70,6 +71,32 @@ export function Footer() {
         })
       }
 
+      if (socialGroupRef.current) {
+        registerEditable({
+          id: 'footer-social-group',
+          type: 'box',
+          label: 'Footer Social Links',
+          parentId: null,
+          element: socialGroupRef.current,
+          originalRect: socialGroupRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: socialGroupRef.current.offsetWidth, height: socialGroupRef.current.offsetHeight },
+        })
+      }
+
+      if (dividerRef.current) {
+        registerEditable({
+          id: 'footer-divider',
+          type: 'box',
+          label: 'Footer Divider',
+          parentId: null,
+          element: dividerRef.current,
+          originalRect: dividerRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: dividerRef.current.offsetWidth, height: dividerRef.current.offsetHeight },
+        })
+      }
+
       if (copyrightRef.current) {
         registerEditable({
           id: 'footer-copyright',
@@ -82,22 +109,6 @@ export function Footer() {
           dimensions: { width: copyrightRef.current.offsetWidth, height: copyrightRef.current.offsetHeight },
         })
       }
-
-      // Register social icons that have valid refs
-      socialRefs.current.forEach((el, i) => {
-        if (el) {
-          registerEditable({
-            id: `footer-social-${i}`,
-            type: 'link',
-            label: `Footer Social: ${el.getAttribute('aria-label') || 'Link'}`,
-            parentId: null,
-            element: el,
-            originalRect: el.getBoundingClientRect(),
-            transform: { x: 0, y: 0 },
-            dimensions: { width: el.offsetWidth, height: el.offsetHeight },
-          })
-        }
-      })
     }, 100)
 
     return () => {
@@ -106,10 +117,9 @@ export function Footer() {
       unregisterEditable('footer-logo')
       unregisterEditable('footer-description')
       unregisterEditable('footer-cta')
+      unregisterEditable('footer-social-group')
+      unregisterEditable('footer-divider')
       unregisterEditable('footer-copyright')
-      socialRefs.current.forEach((_, i) => {
-        unregisterEditable(`footer-social-${i}`)
-      })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing])
@@ -223,18 +233,20 @@ export function Footer() {
           </a>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-          {socialLinks.map((link, i) => (
+        <div 
+          ref={socialGroupRef}
+          data-edit-id="footer-social-group"
+          data-edit-type="box"
+          data-edit-label="Footer Social Links"
+          className="flex flex-wrap items-center justify-center gap-3 mb-8"
+        >
+          {socialLinks.map((link) => (
             <a
               key={link.name}
-              ref={(el) => { socialRefs.current[i] = el }}
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={link.name}
-              data-edit-id={`footer-social-${i}`}
-              data-edit-type="link"
-              data-edit-label={`Footer Social: ${link.name}`}
               className="w-12 h-12 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-primary transition-colors"
             >
               <link.icon />
@@ -242,7 +254,13 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="border-t border-white/10 pt-6">
+        <div 
+          ref={dividerRef}
+          data-edit-id="footer-divider"
+          data-edit-type="box"
+          data-edit-label="Footer Divider"
+          className="border-t border-white/10 pt-6"
+        >
           <p 
             ref={copyrightRef}
             data-edit-id="footer-copyright"
