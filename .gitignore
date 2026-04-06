@@ -8,3 +8,4 @@ node_modules/
 .t4tPics/
 .qodo/
 .vercel
+.env.local

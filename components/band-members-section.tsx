@@ -39,7 +39,7 @@ export function BandMembersSection() {
           id: i + 1,
           fullName: m.fullName,
           role: m.role,
-          image: m.imageUrl || FALLBACK_MEMBERS[i]?.image || "",
+          image: m.imageUrl || FALLBACK_MEMBERS[i]?.image || FALLBACK_MEMBERS[0]?.image || "",
         })))
       }
     }).catch(() => {})
@@ -52,19 +52,22 @@ export function BandMembersSection() {
     }
   }
 
+  const activeMember = members[activeIndex]
+  const activeImage = activeMember?.image || FALLBACK_MEMBERS[0]?.image || ""
+
   return (
     <section
       ref={sectionRef}
-      data-edit-id="band-members-section"
-      data-edit-type="section"
-      data-edit-label="Sección Miembros de la Banda"
+      data-editor-node-id="band-members-section"
+      data-editor-node-type="section"
+      data-editor-node-label="Sección Miembros de la Banda"
       className="relative min-h-screen w-full overflow-hidden bg-black"
     >
       {/* Fondo full width */}
       <div 
-        data-edit-id="band-members-bg"
-        data-edit-type="image"
-        data-edit-label="Imagen de fondo banda"
+        data-editor-node-id="band-members-bg"
+        data-editor-node-type="background"
+        data-editor-node-label="Imagen de fondo banda"
         className="absolute inset-0 -z-10"
       >
         <Image
@@ -92,9 +95,9 @@ export function BandMembersSection() {
             eyebrow="The Musicians"
             title="Meet the Band"
             description="Five musicians from diverse backgrounds, united by a passion for rhythm and groove."
-            data-edit-id="band-members-header"
-            data-edit-type="text"
-            data-edit-label="Encabezado Miembros"
+            data-editor-node-id="band-members-header"
+            data-editor-node-type="text"
+            data-editor-node-label="Encabezado Miembros"
           />
         </motion.div>
 
@@ -113,9 +116,9 @@ export function BandMembersSection() {
                 className="absolute inset-0"
               >
                 <div 
-                  data-edit-id={`member-photo-${index}`}
-                  data-edit-type="image"
-                  data-edit-label={`Foto ${member.fullName}`}
+                  data-editor-node-id={`member-photo-${index}`}
+                  data-editor-node-type="image"
+                  data-editor-node-label={`Foto ${member.fullName}`}
                   className="absolute inset-0"
                 >
                   <Image
@@ -129,17 +132,17 @@ export function BandMembersSection() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
                   <h3 
-                    data-edit-id={`member-name-${index}`}
-                    data-edit-type="text"
-                    data-edit-label={`Nombre ${member.fullName}`}
+                    data-editor-node-id={`member-name-${index}`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`Nombre ${member.fullName}`}
                     className="text-2xl md:text-3xl lg:text-4xl font-serif text-white mb-2 tracking-tight"
                   >
                     {member.fullName}
                   </h3>
                   <p 
-                    data-edit-id={`member-role-${index}`}
-                    data-edit-type="text"
-                    data-edit-label={`Rol ${member.fullName}`}
+                    data-editor-node-id={`member-role-${index}`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`Rol ${member.fullName}`}
                     className="text-xl text-orange-400 font-medium"
                   >
                     {member.role}
@@ -152,15 +155,17 @@ export function BandMembersSection() {
           <div className="space-y-3 md:space-y-4">
             {members.map((member, index) => (
               <motion.button
+                type="button"
                 key={member.id}
                 onClick={() => handleMemberClick(index)}
                 onMouseEnter={() => !isMobile && setActiveIndex(index)}
                 whileHover={{ scale: 1.02, x: 8 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                data-edit-id={`member-item-${index}`}
-                data-edit-type="object"
-                data-edit-label={member.fullName}
-                className={`group w-full text-left p-4 md:p-6 rounded-xl md:rounded-2xl border transition-all duration-300 flex justify-between items-center min-h-[64px] md:min-h-[88px]
+                data-editor-node-id={`member-item-${index}`}
+                data-editor-node-type="card"
+                data-editor-node-label={member.fullName}
+                data-editor-grouped="true"
+                className={`group w-full text-left p-4 md:p-6 rounded-xl md:rounded-2xl border transition-all duration-300 flex justify-between items-center min-h-[64px] md:min-h-[88px] touch-manipulation
                   ${
                     activeIndex === index
                       ? "border-orange-500 bg-zinc-900/80"
@@ -169,9 +174,9 @@ export function BandMembersSection() {
               >
                 <div className="min-w-0 flex-1">
                   <h4
-                    data-edit-id={`member-list-name-${index}`}
-                    data-edit-type="text"
-                    data-edit-label={`Nombre en lista ${member.fullName}`}
+                    data-editor-node-id={`member-list-name-${index}`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`Nombre en lista ${member.fullName}`}
                     className={`text-base md:text-xl font-medium transition-colors truncate ${
                       activeIndex === index ? "text-white" : "text-white/80 group-hover:text-white"
                     }`}
@@ -179,9 +184,9 @@ export function BandMembersSection() {
                     {member.fullName}
                   </h4>
                   <p
-                    data-edit-id={`member-list-role-${index}`}
-                    data-edit-type="text"
-                    data-edit-label={`Rol en lista ${member.fullName}`}
+                    data-editor-node-id={`member-list-role-${index}`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`Rol en lista ${member.fullName}`}
                     className={`text-xs md:text-sm mt-0.5 md:mt-1 transition-colors ${
                       activeIndex === index ? "text-orange-400" : "text-white/50"
                     }`}
@@ -207,51 +212,53 @@ export function BandMembersSection() {
 
       {/* Mobile modal */}
       <AnimatePresence>
-        {modalOpen && (
+        {modalOpen && activeMember && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:hidden"
             onClick={() => setModalOpen(false)}
           >
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/80" />
             
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-[90vw] max-w-sm aspect-[3/4] rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl"
+            <div
+              className="relative w-[90vw] max-w-sm rounded-2xl overflow-hidden shadow-2xl"
+              style={{ maxHeight: '80vh' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <Image
-                src={members[activeIndex].image}
-                alt={members[activeIndex].fullName}
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-                <h3 className="text-xl md:text-2xl font-serif text-white mb-1 md:mb-2 truncate">
-                  {members[activeIndex].fullName}
-                </h3>
-                <p className="text-base md:text-lg text-orange-400 font-medium">
-                  {members[activeIndex].role}
-                </p>
+              <div className="relative w-full" style={{ aspectRatio: '3/4' }}>
+                <img
+                  src={activeImage}
+                  alt={activeMember.fullName}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ zIndex: 1 }}
+                  draggable={false}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" style={{ zIndex: 2 }} />
+                <div className="absolute bottom-0 left-0 right-0 p-6" style={{ zIndex: 3 }}>
+                  <h3 className="text-xl font-serif text-white mb-1 truncate">
+                    {activeMember.fullName}
+                  </h3>
+                  <p className="text-base text-orange-400 font-medium">
+                    {activeMember.role}
+                  </p>
+                </div>
               </div>
               
               <button
+                type="button"
                 onClick={() => setModalOpen(false)}
-                className="absolute top-3 right-3 w-9 h-9 md:w-10 md:h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-black/70 transition-colors"
+                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+                style={{ zIndex: 4 }}
                 aria-label="Close"
               >
-                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

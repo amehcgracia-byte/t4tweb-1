@@ -1,15 +1,203 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { SectionHeader } from "@/components/section-header"
+import { useVisualEditor } from "@/components/visual-editor"
 
 export function ContactSection() {
   const sectionRef = useRef<HTMLElement>(null)
+  const bgRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
+  const emailCardRef = useRef<HTMLAnchorElement>(null)
+  const emailTitleRef = useRef<HTMLHeadingElement>(null)
+  const emailDescRef = useRef<HTMLParagraphElement>(null)
+  const emailAddrRef = useRef<HTMLSpanElement>(null)
+  const telegramCardRef = useRef<HTMLAnchorElement>(null)
+  const telegramTitleRef = useRef<HTMLHeadingElement>(null)
+  const telegramDescRef = useRef<HTMLParagraphElement>(null)
+  const telegramHandleRef = useRef<HTMLSpanElement>(null)
+  const middleTextRef = useRef<HTMLParagraphElement>(null)
   const { opacity, y } = useScrollAnimation(sectionRef)
+  const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
+
+  useEffect(() => {
+    if (!isEditing) return
+
+    if (sectionRef.current) {
+      const existing = getElementById('contact-section')
+      registerEditable({
+        id: 'contact-section',
+        type: 'section',
+        label: 'Contact Section',
+        parentId: null,
+        element: sectionRef.current,
+        originalRect: sectionRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
+      })
+    }
+
+    if (bgRef.current) {
+      const existing = getElementById('contact-bg-image')
+      registerEditable({
+        id: 'contact-bg-image',
+        type: 'image',
+        label: 'Contact Background',
+        parentId: null,
+        element: bgRef.current,
+        originalRect: bgRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: bgRef.current.offsetWidth, height: bgRef.current.offsetHeight },
+      })
+    }
+
+    if (emailCardRef.current) {
+      const existing = getElementById('contact-email')
+      registerEditable({
+        id: 'contact-email',
+        type: 'link',
+        label: 'Contact Email',
+        parentId: null,
+        element: emailCardRef.current,
+        originalRect: emailCardRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: emailCardRef.current.offsetWidth, height: emailCardRef.current.offsetHeight },
+      })
+    }
+
+    if (emailTitleRef.current) {
+      const existing = getElementById('contact-email-title')
+      registerEditable({
+        id: 'contact-email-title',
+        type: 'text',
+        label: 'Email Title',
+        parentId: null,
+        element: emailTitleRef.current,
+        originalRect: emailTitleRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: emailTitleRef.current.offsetWidth, height: emailTitleRef.current.offsetHeight },
+      })
+    }
+
+    if (emailDescRef.current) {
+      const existing = getElementById('contact-email-description')
+      registerEditable({
+        id: 'contact-email-description',
+        type: 'text',
+        label: 'Email Description',
+        parentId: null,
+        element: emailDescRef.current,
+        originalRect: emailDescRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: emailDescRef.current.offsetWidth, height: emailDescRef.current.offsetHeight },
+      })
+    }
+
+    if (emailAddrRef.current) {
+      const existing = getElementById('contact-email-address')
+      registerEditable({
+        id: 'contact-email-address',
+        type: 'text',
+        label: 'Email Address',
+        parentId: null,
+        element: emailAddrRef.current,
+        originalRect: emailAddrRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: emailAddrRef.current.offsetWidth, height: emailAddrRef.current.offsetHeight },
+      })
+    }
+
+    if (telegramCardRef.current) {
+      const existing = getElementById('contact-telegram')
+      registerEditable({
+        id: 'contact-telegram',
+        type: 'link',
+        label: 'Contact Telegram',
+        parentId: null,
+        element: telegramCardRef.current,
+        originalRect: telegramCardRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: telegramCardRef.current.offsetWidth, height: telegramCardRef.current.offsetHeight },
+      })
+    }
+
+    if (telegramTitleRef.current) {
+      const existing = getElementById('contact-telegram-title')
+      registerEditable({
+        id: 'contact-telegram-title',
+        type: 'text',
+        label: 'Telegram Title',
+        parentId: null,
+        element: telegramTitleRef.current,
+        originalRect: telegramTitleRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: telegramTitleRef.current.offsetWidth, height: telegramTitleRef.current.offsetHeight },
+      })
+    }
+
+    if (telegramDescRef.current) {
+      const existing = getElementById('contact-telegram-description')
+      registerEditable({
+        id: 'contact-telegram-description',
+        type: 'text',
+        label: 'Telegram Description',
+        parentId: null,
+        element: telegramDescRef.current,
+        originalRect: telegramDescRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: telegramDescRef.current.offsetWidth, height: telegramDescRef.current.offsetHeight },
+      })
+    }
+
+    if (telegramHandleRef.current) {
+      const existing = getElementById('contact-telegram-handle')
+      registerEditable({
+        id: 'contact-telegram-handle',
+        type: 'text',
+        label: 'Telegram Handle',
+        parentId: null,
+        element: telegramHandleRef.current,
+        originalRect: telegramHandleRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: telegramHandleRef.current.offsetWidth, height: telegramHandleRef.current.offsetHeight },
+      })
+    }
+
+    if (middleTextRef.current) {
+      const existing = getElementById('contact-middle-text')
+      registerEditable({
+        id: 'contact-middle-text',
+        type: 'text',
+        label: 'Contact Middle Text',
+        parentId: null,
+        element: middleTextRef.current,
+        originalRect: middleTextRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: middleTextRef.current.offsetWidth, height: middleTextRef.current.offsetHeight },
+      })
+    }
+
+    return () => {
+      unregisterEditable('contact-section')
+      unregisterEditable('contact-bg-image')
+      unregisterEditable('contact-email')
+      unregisterEditable('contact-email-title')
+      unregisterEditable('contact-email-description')
+      unregisterEditable('contact-email-address')
+      unregisterEditable('contact-telegram')
+      unregisterEditable('contact-telegram-title')
+      unregisterEditable('contact-telegram-description')
+      unregisterEditable('contact-telegram-handle')
+      unregisterEditable('contact-middle-text')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing])
+
+  const currentYear = new Date().getFullYear()
 
   const contactMethods = [
     {
@@ -34,15 +222,16 @@ export function ContactSection() {
     <section
       ref={sectionRef}
       data-campaign-touchpoint="contact-booking"
-      data-edit-id="contact-section"
-      data-edit-type="section"
-      data-edit-label="Sección de Contacto"
+      data-editor-node-id="contact-section"
+      data-editor-node-type="section"
+      data-editor-node-label="Sección de Contacto"
       className="relative min-h-screen overflow-hidden"
     >
       <div 
-        data-edit-id="contact-bg-image"
-        data-edit-type="image"
-        data-edit-label="Imagen de fondo contacto"
+        ref={bgRef}
+        data-editor-node-id="contact-bg-image"
+        data-editor-node-type="background"
+        data-editor-node-label="Imagen de fondo contacto"
         className="absolute inset-0 -z-10"
       >
         <Image
@@ -59,23 +248,25 @@ export function ContactSection() {
       <div className="section-photo-fade-bottom" />
 
       <div className="relative z-10 mx-auto w-full max-w-5xl min-h-screen flex flex-col justify-end">
-        <motion.div style={{ opacity, y }} className="mb-10 md:mb-12">
+        <motion.div ref={headerRef} style={{ opacity, y }} className="mb-10 md:mb-12">
           <SectionHeader
             eyebrow="Contact"
             title="Book the Band"
             description="Get in touch for booking inquiries and event collaborations."
-            data-edit-id="contact-header"
-            data-edit-type="text"
-            data-edit-label="Encabezado Contacto"
+            dataEditId="contact-header"
+            dataEditType="text"
+            dataEditLabel="Encabezado Contacto"
           />
         </motion.div>
 
         {/* Contact Options */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8">
           <motion.a
-            data-edit-id="contact-email"
-            data-edit-type="link"
-            data-edit-label="Contacto Email"
+            ref={emailCardRef}
+            data-editor-node-id="contact-email"
+            data-editor-node-type="card"
+            data-editor-node-label="Contacto Email"
+            data-editor-grouped="true"
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             whileHover={{ y: -2, scale: 1.01 }}
@@ -87,26 +278,29 @@ export function ContactSection() {
               <EmailIcon className="h-6 w-6 text-primary md:h-7 md:w-7" />
             </div>
             <h3 
-              data-edit-id="contact-email-title"
-              data-edit-type="text"
-              data-edit-label="Título Email"
+              ref={emailTitleRef}
+              data-editor-node-id="contact-email-title"
+              data-editor-node-type="text"
+              data-editor-node-label="Título Email"
               className="font-serif text-lg md:text-xl text-foreground mb-2"
             >
               Email Us
             </h3>
             <p 
-              data-edit-id="contact-email-description"
-              data-edit-type="text"
-              data-edit-label="Descripción Email"
+              ref={emailDescRef}
+              data-editor-node-id="contact-email-description"
+              data-editor-node-type="text"
+              data-editor-node-label="Descripción Email"
               className="text-muted-foreground text-sm md:text-base mb-3 md:mb-4"
             >
               Momo Garcia - Management
             </p>
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs md:text-sm max-w-full ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
               <span 
-                data-edit-id="contact-email-address"
-                data-edit-type="text"
-                data-edit-label="Dirección Email"
+                ref={emailAddrRef}
+                data-editor-node-id="contact-email-address"
+                data-editor-node-type="text"
+                data-editor-node-label="Dirección Email"
                 className="truncate"
               >
                 talesforthetillerman@gmail.com
@@ -115,16 +309,18 @@ export function ContactSection() {
           </motion.a>
 
           <div className="text-center px-4">
-            <p className="text-muted-foreground text-sm md:text-base">
+            <p ref={middleTextRef} data-editor-node-id="contact-middle-text" data-editor-node-type="text" data-editor-node-label="Contact Middle Text" className="text-muted-foreground text-sm md:text-base">
               Choose your preferred<br />
               way to reach us
             </p>
           </div>
 
           <motion.a
-            data-edit-id="contact-telegram"
-            data-edit-type="link"
-            data-edit-label="Contacto Telegram"
+            ref={telegramCardRef}
+            data-editor-node-id="contact-telegram"
+            data-editor-node-type="card"
+            data-editor-node-label="Contacto Telegram"
+            data-editor-grouped="true"
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
             whileHover={{ y: -2, scale: 1.01 }}
@@ -138,26 +334,29 @@ export function ContactSection() {
               <TelegramIcon className="h-6 w-6 text-primary md:h-7 md:w-7" />
             </div>
             <h3 
-              data-edit-id="contact-telegram-title"
-              data-edit-type="text"
-              data-edit-label="Título Telegram"
+              ref={telegramTitleRef}
+              data-editor-node-id="contact-telegram-title"
+              data-editor-node-type="text"
+              data-editor-node-label="Título Telegram"
               className="font-serif text-lg md:text-xl text-foreground mb-2"
             >
               Telegram
             </h3>
             <p 
-              data-edit-id="contact-telegram-description"
-              data-edit-type="text"
-              data-edit-label="Descripción Telegram"
+              ref={telegramDescRef}
+              data-editor-node-id="contact-telegram-description"
+              data-editor-node-type="text"
+              data-editor-node-label="Descripción Telegram"
               className="text-muted-foreground text-sm md:text-base mb-3 md:mb-4"
             >
               Janosch Puhe - Quick response
             </p>
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs md:text-sm max-w-full ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
               <span 
-                data-edit-id="contact-telegram-handle"
-                data-edit-type="text"
-                data-edit-label="Handle Telegram"
+                ref={telegramHandleRef}
+                data-editor-node-id="contact-telegram-handle"
+                data-editor-node-type="text"
+                data-editor-node-label="Handle Telegram"
                 className="truncate"
               >
                 @Janoschpuhe

@@ -979,31 +979,25 @@ section {
    ============================================================================ */
 
 /* Editable elements cursor */
-body[data-edit-mode="true"] [data-edit-id] {
+body[data-editor-mode="true"] [data-editor-node-id] {
   cursor: move !important;
+  transition: none !important;
+  animation: none !important;
 }
 
 /* Hover state */
-body[data-edit-mode="true"] [data-edit-id]:hover {
+body[data-editor-mode="true"] [data-editor-node-id]:hover {
   outline: 2px dashed #FF8C21 !important;
   outline-offset: 2px;
 }
 
-/* Block navigation links */
-body[data-edit-mode="true"] a:not([data-edit-id]):not([data-edit-toolbar]):not([data-edit-modal]) {
-  pointer-events: none !important;
-}
-
 /* Editor UI always interactive */
-[data-edit-panel],
-[data-edit-panel] *,
-[data-edit-toolbar],
-[data-edit-toolbar] *,
-[data-edit-modal],
-[data-edit-modal] *,
+[data-editor-panel],
+[data-editor-panel] *,
+[data-editor-toolbar],
+[data-editor-toolbar] *,
+[data-editor-modal],
+[data-editor-modal] *,
 .resize-handle {
   pointer-events: auto !important;
 }
-
-
-
