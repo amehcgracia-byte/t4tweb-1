@@ -190,6 +190,7 @@ function scanRegistry(): Map<string, RuntimeEntry> {
   const map = new Map<string, RuntimeEntry>()
   const elements = document.querySelectorAll<HTMLElement>("[data-editor-node-id]")
   elements.forEach((el) => {
+    if (el.dataset.editorDeleted === "true") return
     const id = el.dataset.editorNodeId
     if (!id) return
     const rect = el.getBoundingClientRect()
@@ -275,6 +276,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const historyRef = useRef<Map<string, EditorNode>[]>([])
   const historyIndexRef = useRef(-1)
   const transactionRef = useRef<{ active: boolean; baseline: Map<string, EditorNode> | null }>({ active: false, baseline: null })
+  const deletedIdsRef = useRef<Set<string>>(new Set())
 
   const assets = useMemo<AssetItem[]>(() => {
     if (typeof document === "undefined") return []
@@ -465,6 +467,14 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           break
         }
         case "DELETE_NODE":
+          {
+            const entry = registry.get(command.nodeId)
+            if (entry?.element) {
+              entry.element.dataset.editorDeleted = "true"
+              entry.element.style.display = "none"
+              deletedIdsRef.current.add(command.nodeId)
+            }
+          }
           next.delete(command.nodeId)
           if (selectedId === command.nodeId) {
             setSelectedId(null)
@@ -479,6 +489,12 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         case "CUT_NODE": {
           const node = next.get(command.nodeId)
           if (node) clipboardRef.current = structuredClone(node)
+          const entry = registry.get(command.nodeId)
+          if (entry?.element) {
+            entry.element.dataset.editorDeleted = "true"
+            entry.element.style.display = "none"
+            deletedIdsRef.current.add(command.nodeId)
+          }
           next.delete(command.nodeId)
           if (selectedId === command.nodeId) {
             setSelectedId(null)
@@ -490,7 +506,23 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           const clip = clipboardRef.current
           if (!clip) break
           const id = `${clip.id}-copy-${Date.now()}`
-          next.set(id, { ...structuredClone(clip), id, geometry: { ...clip.geometry, x: clip.geometry.x + 20, y: clip.geometry.y + 20 } })
+          const sourceEntry = registry.get(clip.id)
+          if (sourceEntry?.element) {
+            const clone = sourceEntry.element.cloneNode(true)
+            if (clone instanceof HTMLElement) {
+              clone.dataset.editorNodeId = id
+              clone.dataset.editorManagedTransform = "true"
+              clone.querySelectorAll<HTMLElement>("[data-editor-node-id]").forEach((child) => {
+                if (child === clone) return
+                delete child.dataset.editorNodeId
+                delete child.dataset.editorNodeType
+                delete child.dataset.editorNodeLabel
+                delete child.dataset.editorGrouped
+              })
+              sourceEntry.element.insertAdjacentElement("afterend", clone)
+            }
+          }
+          next.set(id, { ...structuredClone(clip), id, geometry: { ...clip.geometry, x: clip.geometry.x + 24, y: clip.geometry.y + 24 }, explicitPosition: true })
           setSelectedId(id)
           setOpenPanel(true)
           break
@@ -502,7 +534,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (shouldSnapshot && !transactionRef.current.active) snapshot(next)
       return next
     })
-  }, [selectedId, snapshot])
+  }, [registry, selectedId, snapshot])
 
   const undo = useCallback(() => {
     if (historyIndexRef.current <= 0) return
@@ -540,6 +572,13 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     candidates.sort((a, b) => typePriority[a.type] - typePriority[b.type])
 
     const best = candidates[0]
+    if (best) {
+      const groupedAncestor = best.element.parentElement?.closest<HTMLElement>("[data-editor-grouped='true'][data-editor-node-id]")
+      if (groupedAncestor?.dataset.editorNodeId && groupedAncestor.dataset.editorNodeId !== best.id) {
+        const groupedEntry = registry.get(groupedAncestor.dataset.editorNodeId)
+        if (groupedEntry) return groupedEntry
+      }
+    }
     if (best.type !== "section") return best
 
     const child = candidates.find((c) => c.type !== "section")
@@ -669,6 +708,7 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
           <div
             key={handle}
             data-editor-resize-handle={handle}
+            data-editor-resize-node-id={entry.id}
             className={`absolute h-3 w-3 rounded-sm border border-white bg-[#FF8C21] shadow ${
               handle === "nw" ? "-left-2 -top-2 cursor-nwse-resize" :
               handle === "n" ? "left-1/2 -top-2 -translate-x-1/2 cursor-ns-resize" :
@@ -713,6 +753,27 @@ export function VisualEditorOverlay() {
 
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement
+      const handleEl = target.closest<HTMLElement>("[data-editor-resize-handle]")
+      if (handleEl) {
+        e.preventDefault()
+        e.stopPropagation()
+        const handle = (handleEl.dataset.editorResizeHandle || null) as "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | null
+        const resizeNodeId = handleEl.dataset.editorResizeNodeId || selectedId
+        if (!resizeNodeId) return
+        const n = nodes.get(resizeNodeId)
+        if (!n || !handle) return
+        dispatch({ type: "SELECT_NODE", nodeId: resizeNodeId })
+        dispatch({ type: "BEGIN_TRANSACTION" })
+        pointerRef.current = {
+          mode: "resize",
+          start: { x: e.clientX, y: e.clientY },
+          origin: { ...n.geometry },
+          handle,
+          nodeId: resizeNodeId,
+          lastGeometry: { ...n.geometry },
+        }
+        return
+      }
       if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]")) return
       const handleEl = target.closest<HTMLElement>("[data-editor-resize-handle]")
       if (handleEl && selectedId) {
@@ -746,13 +807,12 @@ export function VisualEditorOverlay() {
     }
 
     const onPointerMove = (e: PointerEvent) => {
-      if (!selectedId) return
       const state = pointerRef.current
-      if (!state.mode || !state.origin) return
+      if (!state.mode || !state.origin || !state.nodeId) return
       const dx = e.clientX - state.start.x
       const dy = e.clientY - state.start.y
       if (state.mode === "move") {
-        dispatch({ type: "MOVE_NODE", nodeId: selectedId, dx, dy, transient: true })
+        dispatch({ type: "MOVE_NODE", nodeId: state.nodeId, dx, dy, transient: true })
         pointerRef.current.start = { x: e.clientX, y: e.clientY }
       } else if (state.mode === "resize" && state.origin && state.nodeId && state.handle) {
         const handle = state.handle
@@ -996,13 +1056,13 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {(selectedNode.type === "image" || (selectedNode.type === "background" && !selectedNode.content.videoUrl)) && (
+            {selectedNode.type === "image" && (
               <>
                 <label className="text-xs font-semibold">Asset</label>
                 <select
                   className="w-full rounded border p-1 text-xs"
                   value={selectedNode.content.src || ""}
-                  onChange={(e) => dispatch({ type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { src: e.target.value } })}
+                  onChange={(e) => dispatch({ type: "UPDATE_IMAGE", nodeId: selectedNode.id, patch: { src: e.target.value } })}
                 >
                   <option value="">Select asset</option>
                   {assets.map((a) => (
@@ -1017,18 +1077,18 @@ export function VisualEditorOverlay() {
                     const file = e.target.files?.[0]
                     if (!file) return
                     const url = URL.createObjectURL(file)
-                    dispatch({ type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { src: url } })
+                    dispatch({ type: "UPDATE_IMAGE", nodeId: selectedNode.id, patch: { src: url } })
                   }}
                 />
               </>
             )}
 
-            {selectedNode.type === "background" && selectedNode.content.videoUrl && (
+            {selectedNode.type === "background" && (
               <>
                 <label className="text-xs font-semibold">Video Link</label>
                 <input
                   className="w-full rounded border p-1 text-xs"
-                  value={selectedNode.content.videoUrl}
+                  value={selectedNode.content.videoUrl || ""}
                   onChange={(e) => dispatch({ type: "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { videoUrl: e.target.value } })}
                 />
               </>
