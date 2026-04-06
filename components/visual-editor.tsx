@@ -753,12 +753,12 @@ export function VisualEditorOverlay() {
 
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement
-      const handleEl = target.closest<HTMLElement>("[data-editor-resize-handle]")
-      if (handleEl) {
+      const resizeHandleTarget = target.closest<HTMLElement>("[data-editor-resize-handle]")
+      if (resizeHandleTarget instanceof HTMLElement) {
         e.preventDefault()
         e.stopPropagation()
-        const handle = (handleEl.dataset.editorResizeHandle || null) as "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | null
-        const resizeNodeId = handleEl.dataset.editorResizeNodeId || selectedId
+        const handle = (resizeHandleTarget.dataset.editorResizeHandle || null) as "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | null
+        const resizeNodeId = resizeHandleTarget.dataset.editorResizeNodeId || selectedId
         if (!resizeNodeId) return
         const n = nodes.get(resizeNodeId)
         if (!n || !handle) return
