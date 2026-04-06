@@ -320,7 +320,7 @@ export function PressKitSection() {
                   ref={(el) => { resourceRefs.current[index] = el }}
                   key={resource.title}
                   custom={index}
-                  initial="hidden"
+                  initial={isEditing ? false : "hidden"}
                   whileInView={isEditing ? undefined : "visible"}
                   variants={resourceVariants}
                   whileHover={isEditing ? undefined : { y: -2 }}
@@ -417,7 +417,10 @@ function ManagerCard({ managerRef, isEditing }: { managerRef: React.RefObject<HT
         whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
         whileHover={isEditing ? undefined : { y: -2 }}
         transition={isEditing ? undefined : { duration: 0.45, delay: 0.06, type: "spring", stiffness: 320, damping: 22 }}
-        onClick={() => setShowModal(true)}
+        onClick={() => {
+          if (isEditing) return
+          setShowModal(true)
+        }}
         className="group flex w-full flex-col items-start rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg cursor-pointer text-left"
         data-editor-node-id="press-kit-manager"
         data-editor-node-type="card"

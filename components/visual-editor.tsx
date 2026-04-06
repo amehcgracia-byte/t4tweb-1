@@ -757,6 +757,41 @@ export function VisualEditorOverlay() {
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
+  const selectedBandMemberIndex = selectedNode?.id.startsWith("member-item-")
+    ? Number(selectedNode.id.replace("member-item-", ""))
+    : null
+
+  const getBandMemberFieldValue = useCallback((index: number, field: "number" | "name" | "role" | "photo"): string => {
+    if (typeof document === "undefined") return ""
+    if (field === "number") return document.querySelector<HTMLElement>(`[data-member-number-index="${index}"]`)?.textContent?.trim() || ""
+    if (field === "name") return document.querySelector<HTMLElement>(`[data-member-name-index="${index}"]`)?.textContent?.trim() || ""
+    if (field === "role") return document.querySelector<HTMLElement>(`[data-member-role-index="${index}"]`)?.textContent?.trim() || ""
+    return document.querySelector<HTMLImageElement>(`[data-member-photo-index="${index}"]`)?.src || ""
+  }, [])
+
+  const updateBandMemberField = useCallback((index: number, field: "number" | "name" | "role" | "photo", value: string) => {
+    if (typeof document === "undefined") return
+    if (field === "number") {
+      const el = document.querySelector<HTMLElement>(`[data-member-number-index="${index}"]`)
+      if (el) el.textContent = value
+      return
+    }
+    if (field === "name") {
+      document.querySelectorAll<HTMLElement>(`[data-member-name-index="${index}"],[data-member-overlay-name-index="${index}"]`).forEach((el) => {
+        el.textContent = value
+      })
+      return
+    }
+    if (field === "role") {
+      document.querySelectorAll<HTMLElement>(`[data-member-role-index="${index}"],[data-member-overlay-role-index="${index}"]`).forEach((el) => {
+        el.textContent = value
+      })
+      return
+    }
+    document.querySelectorAll<HTMLImageElement>(`[data-member-photo-index="${index}"]`).forEach((img) => {
+      img.src = value
+    })
+  }, [])
   const exitEditor = () => {
     setIsEditing(false)
     window.location.reload()
@@ -1031,6 +1066,41 @@ export function VisualEditorOverlay() {
           </div>
 
           <div className="space-y-2 p-3 text-slate-900">
+            {selectedBandMemberIndex !== null && (
+              <div className="space-y-2 rounded border border-slate-200 p-2">
+                <label className="text-[11px] font-semibold">Member Number</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={getBandMemberFieldValue(selectedBandMemberIndex, "number")}
+                  onChange={(e) => updateBandMemberField(selectedBandMemberIndex, "number", e.target.value)}
+                />
+                <label className="text-[11px] font-semibold">Member Name</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={getBandMemberFieldValue(selectedBandMemberIndex, "name")}
+                  onChange={(e) => updateBandMemberField(selectedBandMemberIndex, "name", e.target.value)}
+                />
+                <label className="text-[11px] font-semibold">Member Role</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={getBandMemberFieldValue(selectedBandMemberIndex, "role")}
+                  onChange={(e) => updateBandMemberField(selectedBandMemberIndex, "role", e.target.value)}
+                />
+                <label className="text-[11px] font-semibold">Upload/Change Picture</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-xs"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const url = URL.createObjectURL(file)
+                    updateBandMemberField(selectedBandMemberIndex, "photo", url)
+                  }}
+                />
+              </div>
+            )}
+
             {(selectedNode.type === "text" || selectedNode.type === "button") && (
               <>
                 <label className="text-xs font-semibold">Content</label>
