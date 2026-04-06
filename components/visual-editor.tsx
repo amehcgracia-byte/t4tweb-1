@@ -317,7 +317,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       el.style.removeProperty("height")
     }
 
-    if (node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
+    if (node.explicitStyle && node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
     if (node.type === "text" || node.type === "button") {
       if (node.explicitContent && node.content.text !== undefined) el.textContent = node.content.text
       if (node.style.color) el.style.color = node.style.color
@@ -331,7 +331,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (node.explicitContent && node.content.href !== undefined && (el.tagName === "A" || el.tagName === "BUTTON")) {
         el.setAttribute("href", node.content.href)
       }
-      if (node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
+      if (node.explicitStyle && node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
     }
     if (node.type === "image" || node.type === "background") {
       const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
@@ -342,9 +342,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (iframe && node.content.videoUrl) iframe.setAttribute("src", node.content.videoUrl)
     }
     if (node.type === "section") {
-      if (node.style.minHeight) el.style.minHeight = node.style.minHeight
-      if (node.style.paddingTop) el.style.paddingTop = node.style.paddingTop
-      if (node.style.paddingBottom) el.style.paddingBottom = node.style.paddingBottom
+      if (node.explicitStyle) {
+        if (node.style.minHeight) el.style.minHeight = node.style.minHeight
+        if (node.style.paddingTop) el.style.paddingTop = node.style.paddingTop
+        if (node.style.paddingBottom) el.style.paddingBottom = node.style.paddingBottom
+      }
     }
   }, [])
 
@@ -624,6 +626,10 @@ export function VisualEditorOverlay() {
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
+  const exitEditor = () => {
+    setIsEditing(false)
+    window.location.reload()
+  }
 
   const pointerRef = useRef<{ mode: "move" | "resize" | null; start: Point; origin: NodeGeometry | null }>({ mode: null, start: { x: 0, y: 0 }, origin: null })
 
@@ -750,7 +756,7 @@ export function VisualEditorOverlay() {
         <button onClick={undo} disabled={!canUndo}>Undo</button>
         <button onClick={redo} disabled={!canRedo}>Redo</button>
         <button onClick={() => dispatch({ type: "DESELECT_NODE" })}>Deselect</button>
-        <button onClick={() => setIsEditing(false)}>Exit</button>
+        <button onClick={exitEditor}>Exit</button>
       </div>
 
       {selectedEntry && <SelectionOverlay entry={selectedEntry} />}
@@ -776,6 +782,61 @@ export function VisualEditorOverlay() {
                   value={selectedNode.content.text || ""}
                   onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { text: e.target.value } })}
                 />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px]">Text Color</label>
+                    <input
+                      type="color"
+                      className="h-8 w-full rounded border p-1"
+                      value={selectedNode.style.color || "#ffffff"}
+                      onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { color: e.target.value } })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px]">Font Size</label>
+                    <input
+                      className="w-full rounded border p-1 text-xs"
+                      value={selectedNode.style.fontSize || ""}
+                      onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { fontSize: e.target.value } })}
+                      placeholder="e.g. 24px"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px]">Opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    className="w-full"
+                    value={selectedNode.style.opacity ?? 1}
+                    onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs ${selectedNode.style.fontWeight === "700" ? "bg-slate-900 text-white" : ""}`}
+                    onClick={() => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { fontWeight: selectedNode.style.fontWeight === "700" ? "400" : "700" } })}
+                  >
+                    B
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs italic ${selectedNode.style.fontStyle === "italic" ? "bg-slate-900 text-white" : ""}`}
+                    onClick={() => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { fontStyle: selectedNode.style.fontStyle === "italic" ? "normal" : "italic" } })}
+                  >
+                    I
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs underline ${selectedNode.style.textDecoration === "underline" ? "bg-slate-900 text-white" : ""}`}
+                    onClick={() => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { textDecoration: selectedNode.style.textDecoration === "underline" ? "none" : "underline" } })}
+                  >
+                    U
+                  </button>
+                </div>
               </>
             )}
 
@@ -845,7 +906,7 @@ export function VisualEditorOverlay() {
                     onBlur={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height })}
                   />
                 </div>
-              </div>
+              </details>
             )}
 
             {selectedNode.type === "section" && (
