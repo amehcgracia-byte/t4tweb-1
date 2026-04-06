@@ -3,6 +3,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
+import { MotionConfig } from "framer-motion"
 
 type NodeType = "section" | "background" | "card" | "text" | "button" | "image"
 
@@ -42,7 +43,10 @@ interface EditorNode {
     href?: string
     src?: string
     alt?: string
+    videoUrl?: string
   }
+  explicitPosition: boolean
+  explicitSize: boolean
 }
 
 interface RuntimeEntry {
@@ -102,8 +106,8 @@ interface VisualEditorContextType {
 type Command =
   | { type: "SELECT_NODE"; nodeId: string }
   | { type: "DESELECT_NODE" }
-  | { type: "MOVE_NODE"; nodeId: string; dx: number; dy: number }
-  | { type: "RESIZE_NODE"; nodeId: string; width: number; height: number }
+  | { type: "MOVE_NODE"; nodeId: string; dx: number; dy: number; transient?: boolean }
+  | { type: "RESIZE_NODE"; nodeId: string; width: number; height: number; transient?: boolean }
   | { type: "UPDATE_TEXT"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_BUTTON"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_IMAGE"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
@@ -114,6 +118,8 @@ type Command =
   | { type: "COPY_NODE"; nodeId: string }
   | { type: "CUT_NODE"; nodeId: string }
   | { type: "PASTE_NODE"; targetNodeId?: string }
+  | { type: "BEGIN_TRANSACTION" }
+  | { type: "END_TRANSACTION" }
 
 const typePriority: Record<NodeType, number> = {
   button: 1,
@@ -219,6 +225,10 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
     content.src = img?.getAttribute("src") || ""
     content.alt = img?.getAttribute("alt") || ""
+    if (entry.type === "background") {
+      const iframe = el.querySelector("iframe")
+      content.videoUrl = iframe?.getAttribute("src") || ""
+    }
   }
   const cs = getComputedStyle(el)
   return {
@@ -231,7 +241,6 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     style: {
       color: rgbToHex(cs.color),
       backgroundColor: cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)" ? rgbToHex(cs.backgroundColor) : "#000000",
-      opacity: Number(cs.opacity || "1"),
       fontSize: cs.fontSize,
       fontFamily: cs.fontFamily,
       fontWeight: cs.fontWeight,
@@ -242,6 +251,8 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       paddingBottom: cs.paddingBottom,
     },
     content,
+    explicitPosition: false,
+    explicitSize: false,
   }
 }
 
@@ -254,6 +265,9 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<Map<string, EditorNode>[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const clipboardRef = useRef<EditorNode | null>(null)
+  const historyRef = useRef<Map<string, EditorNode>[]>([])
+  const historyIndexRef = useRef(-1)
+  const transactionRef = useRef<{ active: boolean; baseline: Map<string, EditorNode> | null }>({ active: false, baseline: null })
 
   const assets = useMemo<AssetItem[]>(() => {
     if (typeof document === "undefined") return []
@@ -262,14 +276,16 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   }, [isEditing])
 
   const snapshot = useCallback((state: Map<string, EditorNode>) => {
-    setHistory((prev) => {
-      const next = prev.slice(0, historyIndex + 1)
-      next.push(new Map(state))
-      if (next.length > 80) next.shift()
-      return next
-    })
-    setHistoryIndex((prev) => Math.min(prev + 1, 79))
-  }, [historyIndex])
+    const base = historyRef.current.slice(0, historyIndexRef.current + 1)
+    base.push(new Map(state))
+    if (base.length > 80) {
+      base.shift()
+    }
+    historyRef.current = base
+    historyIndexRef.current = base.length - 1
+    setHistory(base)
+    setHistoryIndex(base.length - 1)
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -293,10 +309,20 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const applyNodeToDom = useCallback((node: EditorNode, entry: RuntimeEntry) => {
     const el = entry.element
     const g = node.geometry
-    el.style.transform = `translate(${g.x}px, ${g.y}px)`
-    el.style.transformOrigin = "top left"
-    el.style.width = `${Math.max(8, g.width)}px`
-    el.style.height = `${Math.max(8, g.height)}px`
+    if (node.explicitPosition) {
+      el.style.transform = `translate(${g.x}px, ${g.y}px)`
+      el.style.transformOrigin = "top left"
+    } else {
+      el.style.removeProperty("transform")
+      el.style.removeProperty("transform-origin")
+    }
+    if (node.explicitSize) {
+      el.style.width = `${Math.max(8, g.width)}px`
+      el.style.height = `${Math.max(8, g.height)}px`
+    } else {
+      el.style.removeProperty("width")
+      el.style.removeProperty("height")
+    }
 
     if (node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
     if (node.type === "text" || node.type === "button") {
@@ -316,9 +342,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     }
     if (node.type === "image" || node.type === "background") {
       const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
+      const iframe = node.type === "background" ? el.querySelector("iframe") : null
       if (img && node.content.src) img.src = node.content.src
       if (img && node.content.alt !== undefined) img.alt = node.content.alt
       if (!img && node.content.src) el.style.backgroundImage = `url(${node.content.src})`
+      if (iframe && node.content.videoUrl) iframe.setAttribute("src", node.content.videoUrl)
     }
     if (node.type === "section") {
       if (node.style.minHeight) el.style.minHeight = node.style.minHeight
@@ -345,20 +373,39 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         next.set(nodeId, updater(node))
       }
 
+      let shouldSnapshot = true
       switch (command.type) {
         case "SELECT_NODE":
           setSelectedId(command.nodeId)
           setOpenPanel(true)
+          shouldSnapshot = false
           return next
         case "DESELECT_NODE":
           setSelectedId(null)
           setOpenPanel(false)
+          shouldSnapshot = false
           return next
+        case "BEGIN_TRANSACTION":
+          transactionRef.current = { active: true, baseline: new Map(prev) }
+          shouldSnapshot = false
+          return next
+        case "END_TRANSACTION": {
+          const tx = transactionRef.current
+          transactionRef.current = { active: false, baseline: null }
+          shouldSnapshot = false
+          if (!tx.active || !tx.baseline) return next
+          const before = JSON.stringify(Array.from(tx.baseline.entries()))
+          const after = JSON.stringify(Array.from(next.entries()))
+          if (before !== after) snapshot(next)
+          return next
+        }
         case "MOVE_NODE":
-          patchNode(command.nodeId, (n) => ({ ...n, geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy } }))
+          patchNode(command.nodeId, (n) => ({ ...n, explicitPosition: true, geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy } }))
+          shouldSnapshot = !command.transient && !transactionRef.current.active
           break
         case "RESIZE_NODE":
-          patchNode(command.nodeId, (n) => ({ ...n, geometry: { ...n.geometry, width: command.width, height: command.height } }))
+          patchNode(command.nodeId, (n) => ({ ...n, explicitSize: true, geometry: { ...n.geometry, width: command.width, height: command.height } }))
+          shouldSnapshot = !command.transient && !transactionRef.current.active
           break
         case "UPDATE_TEXT":
         case "UPDATE_BUTTON":
@@ -412,24 +459,28 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           break
       }
 
-      snapshot(next)
+      if (shouldSnapshot && !transactionRef.current.active) snapshot(next)
       return next
     })
   }, [selectedId, snapshot])
 
   const undo = useCallback(() => {
-    if (historyIndex <= 0) return
-    const idx = historyIndex - 1
+    if (historyIndexRef.current <= 0) return
+    const idx = historyIndexRef.current - 1
+    historyIndexRef.current = idx
     setHistoryIndex(idx)
-    setNodes(new Map(history[idx]))
-  }, [history, historyIndex])
+    const nextState = historyRef.current[idx]
+    if (nextState) setNodes(new Map(nextState))
+  }, [])
 
   const redo = useCallback(() => {
-    if (historyIndex >= history.length - 1) return
-    const idx = historyIndex + 1
+    if (historyIndexRef.current >= historyRef.current.length - 1) return
+    const idx = historyIndexRef.current + 1
+    historyIndexRef.current = idx
     setHistoryIndex(idx)
-    setNodes(new Map(history[idx]))
-  }, [history, historyIndex])
+    const nextState = historyRef.current[idx]
+    if (nextState) setNodes(new Map(nextState))
+  }, [])
 
   const getEditableAtPosition = useCallback((x: number, y: number): RuntimeEntry | null => {
     const els = document.elementsFromPoint(x, y)
@@ -520,23 +571,33 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     getEditableAtPosition,
   }
 
-  return <VisualEditorContext.Provider value={value}>{children}</VisualEditorContext.Provider>
+  return (
+    <VisualEditorContext.Provider value={value}>
+      <MotionConfig reducedMotion={isEditing ? "always" : "never"}>
+        {children}
+      </MotionConfig>
+    </VisualEditorContext.Provider>
+  )
 }
 
 function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
   const [rect, setRect] = useState(entry.rect)
 
   useEffect(() => {
-    const update = () => setRect(entry.element.getBoundingClientRect())
-    update()
-    const observer = new ResizeObserver(update)
+    let rafId: number | null = null
+    const tick = () => {
+      setRect(entry.element.getBoundingClientRect())
+      rafId = window.requestAnimationFrame(tick)
+    }
+    tick()
+    const syncOnce = () => setRect(entry.element.getBoundingClientRect())
+    const observer = new ResizeObserver(syncOnce)
     observer.observe(entry.element)
-    window.addEventListener("scroll", update, true)
-    window.addEventListener("resize", update)
+    window.addEventListener("resize", syncOnce)
     return () => {
       observer.disconnect()
-      window.removeEventListener("scroll", update, true)
-      window.removeEventListener("resize", update)
+      window.removeEventListener("resize", syncOnce)
+      if (rafId !== null) window.cancelAnimationFrame(rafId)
     }
   }, [entry])
 
@@ -569,7 +630,9 @@ export function VisualEditorOverlay() {
       const hit = getEditableAtPosition(e.clientX, e.clientY)
       if (hit) {
         e.preventDefault()
+        e.stopPropagation()
         dispatch({ type: "SELECT_NODE", nodeId: hit.id })
+        dispatch({ type: "BEGIN_TRANSACTION" })
         const n = nodes.get(hit.id)
         pointerRef.current = { mode: "move", start: { x: e.clientX, y: e.clientY }, origin: n ? { ...n.geometry } : null }
       } else {
@@ -584,7 +647,7 @@ export function VisualEditorOverlay() {
       const dx = e.clientX - state.start.x
       const dy = e.clientY - state.start.y
       if (state.mode === "move") {
-        dispatch({ type: "MOVE_NODE", nodeId: selectedId, dx, dy })
+        dispatch({ type: "MOVE_NODE", nodeId: selectedId, dx, dy, transient: true })
         pointerRef.current.start = { x: e.clientX, y: e.clientY }
       }
     }
@@ -592,10 +655,32 @@ export function VisualEditorOverlay() {
     const onPointerUp = () => {
       pointerRef.current.mode = null
       pointerRef.current.origin = null
+      dispatch({ type: "END_TRANSACTION" })
+    }
+
+    const shouldBlockPublicAction = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false
+      if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]")) return false
+      return Boolean(target.closest("[data-editor-node-id]"))
+    }
+
+    const blockPublicAction = (e: Event) => {
+      if (!shouldBlockPublicAction(e.target)) return
+      e.preventDefault()
+      e.stopPropagation()
+      if ("stopImmediatePropagation" in e) {
+        e.stopImmediatePropagation()
+      }
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (isEditingInput(e.target)) return
+      const isActivation = e.key === "Enter" || e.key === " "
+      if (isActivation && shouldBlockPublicAction(e.target)) {
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
         e.preventDefault()
         undo()
@@ -622,12 +707,18 @@ export function VisualEditorOverlay() {
     document.addEventListener("pointerdown", onPointerDown, true)
     document.addEventListener("pointermove", onPointerMove)
     document.addEventListener("pointerup", onPointerUp)
+    document.addEventListener("click", blockPublicAction, true)
+    document.addEventListener("auxclick", blockPublicAction, true)
+    document.addEventListener("submit", blockPublicAction, true)
     window.addEventListener("keydown", onKeyDown)
 
     return () => {
       document.removeEventListener("pointerdown", onPointerDown, true)
       document.removeEventListener("pointermove", onPointerMove)
       document.removeEventListener("pointerup", onPointerUp)
+      document.removeEventListener("click", blockPublicAction, true)
+      document.removeEventListener("auxclick", blockPublicAction, true)
+      document.removeEventListener("submit", blockPublicAction, true)
       window.removeEventListener("keydown", onKeyDown)
       document.body.removeAttribute("data-editor-mode")
     }
@@ -658,7 +749,7 @@ export function VisualEditorOverlay() {
       {selectedEntry && <SelectionOverlay entry={selectedEntry} />}
 
       {openPanel && selectedNode && (
-        <div data-editor-panel className="fixed top-16 right-3 z-[9997] w-72 rounded-xl bg-white shadow-2xl">
+        <div data-editor-panel className="fixed top-16 right-3 z-[9997] w-72 rounded-xl bg-white text-slate-900 shadow-2xl">
           <div className="bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -669,7 +760,7 @@ export function VisualEditorOverlay() {
             </div>
           </div>
 
-          <div className="p-3 space-y-2">
+          <div className="space-y-2 p-3 text-slate-900">
             {(selectedNode.type === "text" || selectedNode.type === "button") && (
               <>
                 <label className="text-xs font-semibold">Content</label>
@@ -692,7 +783,7 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {(selectedNode.type === "image" || selectedNode.type === "background") && (
+            {(selectedNode.type === "image" || (selectedNode.type === "background" && !selectedNode.content.videoUrl)) && (
               <>
                 <label className="text-xs font-semibold">Asset</label>
                 <select
@@ -719,6 +810,12 @@ export function VisualEditorOverlay() {
               </>
             )}
 
+            {selectedNode.type === "background" && selectedNode.content.videoUrl && (
+              <div className="rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-700">
+                Video background detected. Media URL is preserved in editor mode.
+              </div>
+            )}
+
             {(selectedNode.type === "text" || selectedNode.type === "button") && (
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -727,7 +824,8 @@ export function VisualEditorOverlay() {
                     type="number"
                     className="w-full rounded border p-1 text-xs"
                     value={Math.round(selectedNode.geometry.width)}
-                    onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height })}
+                    onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height, transient: true })}
+                    onBlur={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height })}
                   />
                 </div>
                 <div>
@@ -736,7 +834,8 @@ export function VisualEditorOverlay() {
                     type="number"
                     className="w-full rounded border p-1 text-xs"
                     value={Math.round(selectedNode.geometry.height)}
-                    onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height })}
+                    onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height, transient: true })}
+                    onBlur={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height })}
                   />
                 </div>
               </div>
