@@ -319,7 +319,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
 
     if (node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
     if (node.type === "text" || node.type === "button") {
-      if (node.content.text !== undefined) el.textContent = node.content.text
+      if (node.explicitContent && node.content.text !== undefined) el.textContent = node.content.text
       if (node.style.color) el.style.color = node.style.color
       if (node.style.fontSize) el.style.fontSize = node.style.fontSize
       if (node.style.fontFamily) el.style.fontFamily = node.style.fontFamily
@@ -328,7 +328,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
     }
     if (node.type === "button") {
-      if (node.content.href !== undefined && (el.tagName === "A" || el.tagName === "BUTTON")) {
+      if (node.explicitContent && node.content.href !== undefined && (el.tagName === "A" || el.tagName === "BUTTON")) {
         el.setAttribute("href", node.content.href)
       }
       if (node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
@@ -409,11 +409,15 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           patchNode(command.nodeId, (n) => {
             const content: EditorNode["content"] = { ...n.content }
             const style = { ...n.style }
+            let isContentEdit = !!n.explicitContent
             Object.entries(command.patch).forEach(([k, v]) => {
-              if (["text", "href", "src", "alt"].includes(k)) (content as Record<string, unknown>)[k] = v
+              if (["text", "href", "src", "alt", "videoUrl"].includes(k)) {
+                isContentEdit = true;
+                (content as Record<string, unknown>)[k] = v
+              }
               else (style as Record<string, unknown>)[k] = v
             })
-            return { ...n, content, style }
+            return { ...n, content, style, explicitContent: isContentEdit }
           })
           break
         }
@@ -574,7 +578,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
 }
 
 function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
-  const [rect, setRect] = useState(entry.rect)
+  const boxRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let rafId: number | null = null
@@ -597,8 +601,8 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
   return createPortal(
     <div data-editor-overlay className="fixed inset-0 pointer-events-none z-[9990]">
       <div
+        ref={boxRef}
         className="absolute border-2 border-[#FF8C21] shadow-[0_0_0_1px_rgba(255,140,33,0.3),0_0_12px_rgba(255,140,33,0.15)]"
-        style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
       />
     </div>,
     document.body
