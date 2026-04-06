@@ -69,6 +69,7 @@ export function BandMembersSection() {
       <div 
         data-editor-node-id="band-members-bg"
         data-editor-node-type="background"
+        data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo banda"
         className="absolute inset-0 -z-10"
       >

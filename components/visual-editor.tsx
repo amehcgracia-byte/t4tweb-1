@@ -34,6 +34,7 @@ interface EditorNode {
     fontWeight?: string
     fontStyle?: string
     textDecoration?: string
+    scale?: number
     minHeight?: string
     paddingTop?: string
     paddingBottom?: string
@@ -44,6 +45,7 @@ interface EditorNode {
     src?: string
     alt?: string
     videoUrl?: string
+    mediaKind?: "image" | "video"
   }
   explicitContent: boolean
   explicitStyle: boolean
@@ -112,6 +114,7 @@ type Command =
   | { type: "MOVE_NODE"; nodeId: string; dx: number; dy: number; transient?: boolean }
   | { type: "RESIZE_NODE"; nodeId: string; width: number; height: number; transient?: boolean }
   | { type: "SET_NODE_GEOMETRY"; nodeId: string; x: number; y: number; width: number; height: number; transient?: boolean }
+  | { type: "SET_NODE_SCALE"; nodeId: string; scale: number; transient?: boolean }
   | { type: "UPDATE_TEXT"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_BUTTON"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_IMAGE"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
@@ -232,6 +235,12 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     content.alt = img?.getAttribute("alt") || ""
     if (entry.type === "background") {
       const iframe = el.querySelector("iframe")
+      const mediaKindAttr = el.dataset.editorMediaKind
+      if (mediaKindAttr === "video" || iframe) {
+        content.mediaKind = "video"
+      } else {
+        content.mediaKind = "image"
+      }
       content.videoUrl = iframe?.getAttribute("src") || ""
     }
   }
@@ -245,12 +254,13 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     geometry: { x: 0, y: 0, width: entry.rect.width, height: entry.rect.height },
     style: {
       color: rgbToHex(cs.color),
-      backgroundColor: cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)" ? rgbToHex(cs.backgroundColor) : "#000000",
+      backgroundColor: cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)" ? rgbToHex(cs.backgroundColor) : undefined,
       fontSize: cs.fontSize,
       fontFamily: cs.fontFamily,
       fontWeight: cs.fontWeight,
       fontStyle: cs.fontStyle,
       textDecoration: cs.textDecorationLine,
+      scale: 1,
       minHeight: cs.minHeight,
       paddingTop: cs.paddingTop,
       paddingBottom: cs.paddingBottom,
@@ -320,8 +330,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const g = node.geometry
     const hasManagedTransform = el.dataset.editorManagedTransform === "true"
     const hasManagedSize = el.dataset.editorManagedSize === "true"
-    if (node.explicitPosition) {
-      el.style.transform = `translate(${g.x}px, ${g.y}px)`
+    const nodeScale = Math.max(0.1, node.style.scale ?? 1)
+    if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
+      el.style.transform = nodeScale !== 1
+        ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})`
+        : `translate(${g.x}px, ${g.y}px)`
       el.style.transformOrigin = "top left"
       el.dataset.editorManagedTransform = "true"
     } else {
@@ -365,10 +378,13 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
       const iframe = node.type === "background" ? el.querySelector("iframe") : null
       if (node.explicitContent) {
-        if (img && node.content.src) img.src = node.content.src
-        if (img && node.content.alt !== undefined) img.alt = node.content.alt
-        if (!img && node.content.src) el.style.backgroundImage = `url(${node.content.src})`
-        if (iframe && node.content.videoUrl) iframe.setAttribute("src", node.content.videoUrl)
+        if (node.type === "background" && node.content.mediaKind === "video") {
+          if (iframe && node.content.videoUrl) iframe.setAttribute("src", node.content.videoUrl)
+        } else {
+          if (img && node.content.src) img.src = node.content.src
+          if (img && node.content.alt !== undefined) img.alt = node.content.alt
+          if (!img && node.content.src) el.style.backgroundImage = `url(${node.content.src})`
+        }
       }
     }
     if (node.type === "section") {
@@ -438,6 +454,14 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             explicitPosition: true,
             explicitSize: true,
             geometry: { ...n.geometry, x: command.x, y: command.y, width: command.width, height: command.height },
+          }))
+          shouldSnapshot = !command.transient && !transactionRef.current.active
+          break
+        case "SET_NODE_SCALE":
+          patchNode(command.nodeId, (n) => ({
+            ...n,
+            explicitStyle: true,
+            style: { ...n.style, scale: Math.max(0.1, command.scale) },
           }))
           shouldSnapshot = !command.transient && !transactionRef.current.active
           break
@@ -742,10 +766,12 @@ export function VisualEditorOverlay() {
     mode: "move" | "resize" | null
     start: Point
     origin: NodeGeometry | null
+    originScale: number
     handle: "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | null
     nodeId: string | null
     lastGeometry: NodeGeometry | null
-  }>({ mode: null, start: { x: 0, y: 0 }, origin: null, handle: null, nodeId: null, lastGeometry: null })
+    lastScale: number
+  }>({ mode: null, start: { x: 0, y: 0 }, origin: null, originScale: 1, handle: null, nodeId: null, lastGeometry: null, lastScale: 1 })
 
   useEffect(() => {
     if (!isEditing) return
@@ -768,9 +794,11 @@ export function VisualEditorOverlay() {
           mode: "resize",
           start: { x: e.clientX, y: e.clientY },
           origin: { ...n.geometry },
+          originScale: n.style.scale ?? 1,
           handle,
           nodeId: resizeNodeId,
           lastGeometry: { ...n.geometry },
+          lastScale: n.style.scale ?? 1,
         }
         return
       }
@@ -800,7 +828,16 @@ export function VisualEditorOverlay() {
         dispatch({ type: "SELECT_NODE", nodeId: hit.id })
         dispatch({ type: "BEGIN_TRANSACTION" })
         const n = nodes.get(hit.id)
-        pointerRef.current = { mode: "move", start: { x: e.clientX, y: e.clientY }, origin: n ? { ...n.geometry } : null, handle: null, nodeId: hit.id, lastGeometry: n ? { ...n.geometry } : null }
+        pointerRef.current = {
+          mode: "move",
+          start: { x: e.clientX, y: e.clientY },
+          origin: n ? { ...n.geometry } : null,
+          originScale: n?.style.scale ?? 1,
+          handle: null,
+          nodeId: hit.id,
+          lastGeometry: n ? { ...n.geometry } : null,
+          lastScale: n?.style.scale ?? 1,
+        }
       } else {
         dispatch({ type: "DESELECT_NODE" })
       }
@@ -833,12 +870,18 @@ export function VisualEditorOverlay() {
         }
 
         if (handle.length === 2) {
-          const ratio = state.origin.width / Math.max(1, state.origin.height)
           const scale = Math.max(nextWidth / Math.max(1, state.origin.width), nextHeight / Math.max(1, state.origin.height))
-          nextWidth = state.origin.width * scale
-          nextHeight = nextWidth / ratio
+          const safeScale = Math.max(0.2, scale * state.originScale)
+          nextWidth = state.origin.width
+          nextHeight = state.origin.height
           if (handle.includes("w")) nextX = state.origin.x + (state.origin.width - nextWidth)
           if (handle.includes("n")) nextY = state.origin.y + (state.origin.height - nextHeight)
+          pointerRef.current.lastScale = safeScale
+          dispatch({ type: "SET_NODE_SCALE", nodeId: state.nodeId, scale: safeScale, transient: true })
+          const geometry: NodeGeometry = { x: nextX, y: nextY, width: nextWidth, height: nextHeight }
+          pointerRef.current.lastGeometry = geometry
+          dispatch({ type: "SET_NODE_GEOMETRY", nodeId: state.nodeId, ...geometry, transient: true })
+          return
         }
 
         nextWidth = Math.max(8, nextWidth)
@@ -855,12 +898,15 @@ export function VisualEditorOverlay() {
       if (state.mode === "resize" && state.nodeId && state.lastGeometry) {
         const g = state.lastGeometry
         dispatch({ type: "SET_NODE_GEOMETRY", nodeId: state.nodeId, x: g.x, y: g.y, width: g.width, height: g.height })
+        dispatch({ type: "SET_NODE_SCALE", nodeId: state.nodeId, scale: state.lastScale })
       }
       pointerRef.current.mode = null
       pointerRef.current.origin = null
+      pointerRef.current.originScale = 1
       pointerRef.current.handle = null
       pointerRef.current.nodeId = null
       pointerRef.current.lastGeometry = null
+      pointerRef.current.lastScale = 1
       dispatch({ type: "END_TRANSACTION" })
     }
 
@@ -1056,13 +1102,17 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {selectedNode.type === "image" && (
+            {(selectedNode.type === "image" || (selectedNode.type === "background" && selectedNode.content.mediaKind !== "video")) && (
               <>
                 <label className="text-xs font-semibold">Asset</label>
                 <select
                   className="w-full rounded border p-1 text-xs"
                   value={selectedNode.content.src || ""}
-                  onChange={(e) => dispatch({ type: "UPDATE_IMAGE", nodeId: selectedNode.id, patch: { src: e.target.value } })}
+                  onChange={(e) => dispatch({
+                    type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
+                    nodeId: selectedNode.id,
+                    patch: { src: e.target.value, mediaKind: "image" },
+                  })}
                 >
                   <option value="">Select asset</option>
                   {assets.map((a) => (
@@ -1077,19 +1127,23 @@ export function VisualEditorOverlay() {
                     const file = e.target.files?.[0]
                     if (!file) return
                     const url = URL.createObjectURL(file)
-                    dispatch({ type: "UPDATE_IMAGE", nodeId: selectedNode.id, patch: { src: url } })
+                    dispatch({
+                      type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
+                      nodeId: selectedNode.id,
+                      patch: { src: url, mediaKind: "image" },
+                    })
                   }}
                 />
               </>
             )}
 
-            {selectedNode.type === "background" && (
+            {selectedNode.type === "background" && selectedNode.content.mediaKind === "video" && (
               <>
                 <label className="text-xs font-semibold">Video Link</label>
                 <input
                   className="w-full rounded border p-1 text-xs"
                   value={selectedNode.content.videoUrl || ""}
-                  onChange={(e) => dispatch({ type: "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { videoUrl: e.target.value } })}
+                  onChange={(e) => dispatch({ type: "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { videoUrl: e.target.value, mediaKind: "video" } })}
                 />
               </>
             )}

@@ -183,6 +183,7 @@ Their performances balance musical depth with danceable power, bringing together
         ref={bgRef}
         data-editor-node-id="about-bg-image"
         data-editor-node-type="background"
+        data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo"
         className="absolute inset-0 -z-10"
       >

@@ -231,6 +231,7 @@ export function ContactSection() {
         ref={bgRef}
         data-editor-node-id="contact-bg-image"
         data-editor-node-type="background"
+        data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo contacto"
         className="absolute inset-0 -z-10"
       >

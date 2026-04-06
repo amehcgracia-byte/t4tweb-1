@@ -141,6 +141,7 @@ export function LatestReleaseSection() {
         ref={bgRef}
         data-editor-node-id="latest-release-bg"
         data-editor-node-type="background"
+        data-editor-media-kind="video"
         data-editor-node-label="Fondo Video YouTube"
         className="absolute inset-0 z-0"
       >

@@ -124,6 +124,7 @@ export function LiveSection() {
     fill
     data-editor-node-id="live-section-bg-image"
     data-editor-node-type="background"
+    data-editor-media-kind="image"
     data-editor-node-label="Live Section Background Image"
     className="object-cover"
     sizes="100vw"

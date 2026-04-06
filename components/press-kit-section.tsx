@@ -31,10 +31,31 @@ export function PressKitSection() {
       download: true,
     },
     {
+      title: "Press Photos",
+      description: "Official high-res band photography",
+      icon: ImageIcon,
+      href: "/images/about-bg-main.jpg",
+      download: true,
+    },
+    {
+      title: "Stage Plot",
+      description: "Live setup technical rider",
+      icon: FolderIcon,
+      href: "/PressKit T40 2025.26_compressed.pdf",
+      download: true,
+    },
+    {
       title: "Linktree",
       description: "All links in one place",
       icon: LinkIcon,
       href: "https://linktr.ee/tales4tillerman",
+    },
+    {
+      title: "Download Logo Pack",
+      description: "Transparent and monochrome variants",
+      icon: DownloadIcon,
+      href: "/images/logo-transparent.png",
+      download: true,
     },
   ]
 
@@ -216,6 +237,7 @@ export function PressKitSection() {
           sizes="100vw"
           data-editor-node-id="press-kit-bg"
           data-editor-node-type="background"
+          data-editor-media-kind="image"
           data-editor-node-label="Background Image"
         />
       </div>
