@@ -1070,21 +1070,24 @@ export function VisualEditorOverlay() {
               <div className="space-y-2 rounded border border-slate-200 p-2">
                 <label className="text-[11px] font-semibold">Member Number</label>
                 <input
+                  key={`member-number-${selectedBandMemberIndex}`}
                   className="w-full rounded border p-1 text-xs"
-                  value={getBandMemberFieldValue(selectedBandMemberIndex, "number")}
-                  onChange={(e) => updateBandMemberField(selectedBandMemberIndex, "number", e.target.value)}
+                  defaultValue={getBandMemberFieldValue(selectedBandMemberIndex, "number")}
+                  onInput={(e) => updateBandMemberField(selectedBandMemberIndex, "number", (e.target as HTMLInputElement).value)}
                 />
                 <label className="text-[11px] font-semibold">Member Name</label>
                 <input
+                  key={`member-name-${selectedBandMemberIndex}`}
                   className="w-full rounded border p-1 text-xs"
-                  value={getBandMemberFieldValue(selectedBandMemberIndex, "name")}
-                  onChange={(e) => updateBandMemberField(selectedBandMemberIndex, "name", e.target.value)}
+                  defaultValue={getBandMemberFieldValue(selectedBandMemberIndex, "name")}
+                  onInput={(e) => updateBandMemberField(selectedBandMemberIndex, "name", (e.target as HTMLInputElement).value)}
                 />
                 <label className="text-[11px] font-semibold">Member Role</label>
                 <input
+                  key={`member-role-${selectedBandMemberIndex}`}
                   className="w-full rounded border p-1 text-xs"
-                  value={getBandMemberFieldValue(selectedBandMemberIndex, "role")}
-                  onChange={(e) => updateBandMemberField(selectedBandMemberIndex, "role", e.target.value)}
+                  defaultValue={getBandMemberFieldValue(selectedBandMemberIndex, "role")}
+                  onInput={(e) => updateBandMemberField(selectedBandMemberIndex, "role", (e.target as HTMLInputElement).value)}
                 />
                 <label className="text-[11px] font-semibold">Upload/Change Picture</label>
                 <input

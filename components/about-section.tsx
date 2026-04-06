@@ -279,10 +279,12 @@ Their performances balance musical depth with danceable power, bringing together
               data-editor-node-id="about-copy-button"
               data-editor-node-type="button"
               data-editor-node-label="Copy Bio Button"
-              className={`inline-flex items-center justify-center rounded-2xl border px-8 py-3.5 text-base font-semibold shadow-lg transition-all md:text-lg ${
+              className={`inline-flex items-center justify-center rounded-2xl border px-8 py-3.5 text-base font-semibold shadow-lg md:text-lg ${
                 copied
                   ? "border-[#FF8C21] bg-[#FF8C21] text-white shadow-[#FF8C21]/50"
-                  : "border-[#FF8C21]/70 bg-[#FF8C21]/90 text-white shadow-[#FF8C21]/30 hover:bg-[#FF8C21] hover:shadow-[#FF8C21]/40"
+                  : isEditing
+                    ? "border-[#FF8C21]/70 bg-[#FF8C21]/90 text-white shadow-[#FF8C21]/30"
+                    : "border-[#FF8C21]/70 bg-[#FF8C21]/90 text-white shadow-[#FF8C21]/30 transition-all hover:bg-[#FF8C21] hover:shadow-[#FF8C21]/40"
               }`}
             >
               {copied ? "✓ Copied to clipboard" : "Copy band bio"}

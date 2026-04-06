@@ -273,7 +273,9 @@ export function ContactSection() {
             whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
             transition={isEditing ? undefined : { duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
             href={contactMethods[0].href}
-            className="group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg flex-1 max-w-xs"
+            className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
+              isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
+            }`}
           >
             <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/18 group-hover:bg-primary/26 md:mb-4 md:h-14 md:w-14">
               <EmailIcon className="h-6 w-6 text-primary md:h-7 md:w-7" />
@@ -329,7 +331,9 @@ export function ContactSection() {
             href={contactMethods[1].href}
             target="_blank"
             rel="noopener noreferrer"
-            className="group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg flex-1 max-w-xs"
+            className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
+              isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
+            }`}
           >
             <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/18 group-hover:bg-primary/26 md:mb-4 md:h-14 md:w-14">
               <TelegramIcon className="h-6 w-6 text-primary md:h-7 md:w-7" />

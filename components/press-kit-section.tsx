@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
@@ -22,7 +22,7 @@ export function PressKitSection() {
 
   const { opacity, y } = useScrollAnimation(sectionRef)
 
-  const resources = [
+  const resources = useMemo(() => [
     {
       title: "Band Logo",
       description: "High-resolution logo files",
@@ -57,7 +57,20 @@ export function PressKitSection() {
       href: "/images/logo-transparent.png",
       download: true,
     },
-  ]
+    {
+      title: "Artist Links",
+      description: "Streaming and social destination links",
+      icon: LinkIcon,
+      href: "https://linktr.ee/tales4tillerman",
+    },
+    {
+      title: "Contact Sheet",
+      description: "Management and booking contacts",
+      icon: FolderIcon,
+      href: "/PressKit T40 2025.26_compressed.pdf",
+      download: true,
+    },
+  ], [])
 
   const resourceVariants = {
     hidden: { opacity: 0, y: 12 },
