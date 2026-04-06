@@ -810,6 +810,9 @@ export function VisualEditorOverlay() {
     setIsEditing(false)
     window.location.reload()
   }
+  const onDeploy = () => {
+    // Placeholder: deploy backend integration can be wired here when available.
+  }
 
   const pointerRef = useRef<{
     mode: "move" | "resize" | null
@@ -1050,10 +1053,18 @@ export function VisualEditorOverlay() {
   return (
     <>
       <div data-editor-toolbar className="fixed top-3 left-3 z-[9999] flex items-center gap-2 rounded-full bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white">
-        <button onClick={undo} disabled={!canUndo}>Undo</button>
-        <button onClick={redo} disabled={!canRedo}>Redo</button>
-        <button onClick={() => dispatch({ type: "DESELECT_NODE" })}>Deselect</button>
-        <button onClick={exitEditor}>Exit</button>
+        <button aria-label="Undo" title="Undo" onClick={undo} disabled={!canUndo} className="rounded p-1.5 hover:bg-white/10 disabled:opacity-40">
+          ↶
+        </button>
+        <button aria-label="Redo" title="Redo" onClick={redo} disabled={!canRedo} className="rounded p-1.5 hover:bg-white/10 disabled:opacity-40">
+          ↷
+        </button>
+        <button aria-label="Deploy" title="Deploy" onClick={onDeploy} className="rounded p-1.5 hover:bg-white/10">
+          🚀
+        </button>
+        <button aria-label="Exit" title="Exit" onClick={exitEditor} className="rounded p-1.5 hover:bg-white/10">
+          ⎋
+        </button>
       </div>
 
       {selectedEntry && <SelectionOverlay entry={selectedEntry} />}

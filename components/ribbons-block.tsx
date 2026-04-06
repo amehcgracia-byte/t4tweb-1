@@ -2,10 +2,20 @@
 
 import { Ribbons } from "@/components/Ribbons"
 import { useVisualEditor } from "@/components/visual-editor"
+import { useState } from "react"
 
 export function RibbonsBlock() {
   const { isEditing } = useVisualEditor()
-  if (isEditing) return null
+  const [isTouchDevice] = useState(() => {
+    if (typeof window === "undefined") return false
+    return (
+      "ontouchstart" in window ||
+      navigator.maxTouchPoints > 0 ||
+      window.matchMedia("(pointer: coarse)").matches
+    )
+  })
+
+  if (isEditing || isTouchDevice) return null
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[1]">

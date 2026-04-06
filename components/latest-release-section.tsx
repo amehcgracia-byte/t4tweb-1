@@ -1,12 +1,14 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { useVisualEditor } from "@/components/visual-editor"
 
 export function LatestReleaseSection() {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
+  const [isIosMobile, setIsIosMobile] = useState(false)
+  const [isAndroidMobile, setIsAndroidMobile] = useState(false)
 
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
@@ -15,6 +17,16 @@ export function LatestReleaseSection() {
   const subtitleRef = useRef<HTMLParagraphElement>(null)
   const watchButtonRef = useRef<HTMLAnchorElement>(null)
   const showsButtonRef = useRef<HTMLAnchorElement>(null)
+
+  useEffect(() => {
+    const userAgent = navigator.userAgent || ""
+    const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches
+    const ios = /iPhone|iPad|iPod/i.test(userAgent) || ((navigator.platform === "MacIntel" || navigator.platform === "MacPPC") && navigator.maxTouchPoints > 1)
+    const android = /Android/i.test(userAgent)
+
+    setIsIosMobile(ios && hasCoarsePointer)
+    setIsAndroidMobile(android && hasCoarsePointer)
+  }, [])
 
   useEffect(() => {
     if (!isEditing) return
@@ -145,14 +157,27 @@ export function LatestReleaseSection() {
         data-editor-node-label="Fondo Video YouTube"
         className="absolute inset-0 z-0"
       >
-        <iframe
-          src="https://www.youtube.com/embed/xofflmVqYGs?autoplay=1&mute=1&loop=1&playlist=xofflmVqYGs&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
-          title=""
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-1/2 h-[125%] w-[125%] -translate-x-1/2 -translate-y-[40%]"
-          allow="autoplay; encrypted-media"
-          allowFullScreen={false}
-        />
+        {isIosMobile ? (
+          <img
+            src="https://i.ytimg.com/vi/xofflmVqYGs/maxresdefault.jpg"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <iframe
+            src="https://www.youtube.com/embed/xofflmVqYGs?autoplay=1&mute=1&loop=1&playlist=xofflmVqYGs&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
+            title=""
+            aria-hidden="true"
+            className={`pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 ${
+              isAndroidMobile
+                ? "h-[165%] w-[185%] -translate-y-1/2"
+                : "h-[125%] w-[125%] -translate-y-[40%]"
+            }`}
+            allow="autoplay; encrypted-media"
+            allowFullScreen={false}
+          />
+        )}
         <div className="section-photo-fade-top" />
         <div className="section-photo-fade-bottom" />
       </div>
