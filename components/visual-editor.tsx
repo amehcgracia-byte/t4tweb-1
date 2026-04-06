@@ -631,7 +631,14 @@ export function VisualEditorOverlay() {
     window.location.reload()
   }
 
-  const pointerRef = useRef<{ mode: "move" | "resize" | null; start: Point; origin: NodeGeometry | null }>({ mode: null, start: { x: 0, y: 0 }, origin: null })
+  const pointerRef = useRef<{
+    mode: "move" | "resize" | null
+    start: Point
+    origin: NodeGeometry | null
+    handle: "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | null
+    nodeId: string | null
+    lastGeometry: NodeGeometry | null
+  }>({ mode: null, start: { x: 0, y: 0 }, origin: null, handle: null, nodeId: null, lastGeometry: null })
 
   useEffect(() => {
     if (!isEditing) return
@@ -640,6 +647,24 @@ export function VisualEditorOverlay() {
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement
       if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]")) return
+      const handleEl = target.closest<HTMLElement>("[data-editor-resize-handle]")
+      if (handleEl && selectedId) {
+        e.preventDefault()
+        e.stopPropagation()
+        const handle = (handleEl.dataset.editorResizeHandle || null) as "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | null
+        const n = nodes.get(selectedId)
+        if (!n || !handle) return
+        dispatch({ type: "BEGIN_TRANSACTION" })
+        pointerRef.current = {
+          mode: "resize",
+          start: { x: e.clientX, y: e.clientY },
+          origin: { ...n.geometry },
+          handle,
+          nodeId: selectedId,
+          lastGeometry: { ...n.geometry },
+        }
+        return
+      }
       const hit = getEditableAtPosition(e.clientX, e.clientY)
       if (hit) {
         e.preventDefault()
@@ -647,7 +672,7 @@ export function VisualEditorOverlay() {
         dispatch({ type: "SELECT_NODE", nodeId: hit.id })
         dispatch({ type: "BEGIN_TRANSACTION" })
         const n = nodes.get(hit.id)
-        pointerRef.current = { mode: "move", start: { x: e.clientX, y: e.clientY }, origin: n ? { ...n.geometry } : null }
+        pointerRef.current = { mode: "move", start: { x: e.clientX, y: e.clientY }, origin: n ? { ...n.geometry } : null, handle: null, nodeId: hit.id, lastGeometry: n ? { ...n.geometry } : null }
       } else {
         dispatch({ type: "DESELECT_NODE" })
       }
@@ -662,10 +687,48 @@ export function VisualEditorOverlay() {
       if (state.mode === "move") {
         dispatch({ type: "MOVE_NODE", nodeId: selectedId, dx, dy, transient: true })
         pointerRef.current.start = { x: e.clientX, y: e.clientY }
+      } else if (state.mode === "resize" && state.origin && state.nodeId && state.handle) {
+        const handle = state.handle
+        let nextX = state.origin.x
+        let nextY = state.origin.y
+        let nextWidth = state.origin.width
+        let nextHeight = state.origin.height
+
+        if (handle.includes("e")) nextWidth = state.origin.width + dx
+        if (handle.includes("w")) {
+          nextWidth = state.origin.width - dx
+          nextX = state.origin.x + dx
+        }
+        if (handle.includes("s")) nextHeight = state.origin.height + dy
+        if (handle.includes("n")) {
+          nextHeight = state.origin.height - dy
+          nextY = state.origin.y + dy
+        }
+
+        if (handle.length === 2) {
+          const ratio = state.origin.width / Math.max(1, state.origin.height)
+          const scale = Math.max(nextWidth / Math.max(1, state.origin.width), nextHeight / Math.max(1, state.origin.height))
+          nextWidth = state.origin.width * scale
+          nextHeight = nextWidth / ratio
+          if (handle.includes("w")) nextX = state.origin.x + (state.origin.width - nextWidth)
+          if (handle.includes("n")) nextY = state.origin.y + (state.origin.height - nextHeight)
+        }
+
+        nextWidth = Math.max(8, nextWidth)
+        nextHeight = Math.max(8, nextHeight)
+
+        const geometry: NodeGeometry = { x: nextX, y: nextY, width: nextWidth, height: nextHeight }
+        pointerRef.current.lastGeometry = geometry
+        dispatch({ type: "SET_NODE_GEOMETRY", nodeId: state.nodeId, ...geometry, transient: true })
       }
     }
 
     const onPointerUp = () => {
+      const state = pointerRef.current
+      if (state.mode === "resize" && state.nodeId && state.lastGeometry) {
+        const g = state.lastGeometry
+        dispatch({ type: "SET_NODE_GEOMETRY", nodeId: state.nodeId, x: g.x, y: g.y, width: g.width, height: g.height })
+      }
       pointerRef.current.mode = null
       pointerRef.current.origin = null
       dispatch({ type: "END_TRANSACTION" })
