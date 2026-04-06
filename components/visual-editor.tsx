@@ -772,6 +772,18 @@ export function VisualEditorOverlay() {
     lastGeometry: NodeGeometry | null
     lastScale: number
   }>({ mode: null, start: { x: 0, y: 0 }, origin: null, originScale: 1, handle: null, nodeId: null, lastGeometry: null, lastScale: 1 })
+  const createPointerState = (
+    partial: Partial<typeof pointerRef.current>
+  ): typeof pointerRef.current => ({
+    mode: partial.mode ?? null,
+    start: partial.start ?? { x: 0, y: 0 },
+    origin: partial.origin ?? null,
+    originScale: partial.originScale ?? 1,
+    handle: partial.handle ?? null,
+    nodeId: partial.nodeId ?? null,
+    lastGeometry: partial.lastGeometry ?? null,
+    lastScale: partial.lastScale ?? 1,
+  })
 
   useEffect(() => {
     if (!isEditing) return
@@ -790,7 +802,7 @@ export function VisualEditorOverlay() {
         if (!n || !handle) return
         dispatch({ type: "SELECT_NODE", nodeId: resizeNodeId })
         dispatch({ type: "BEGIN_TRANSACTION" })
-        pointerRef.current = {
+        pointerRef.current = createPointerState({
           mode: "resize",
           start: { x: e.clientX, y: e.clientY },
           origin: { ...n.geometry },
@@ -799,7 +811,7 @@ export function VisualEditorOverlay() {
           nodeId: resizeNodeId,
           lastGeometry: { ...n.geometry },
           lastScale: n.style.scale ?? 1,
-        }
+        })
         return
       }
       if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]")) return
@@ -828,7 +840,7 @@ export function VisualEditorOverlay() {
         dispatch({ type: "SELECT_NODE", nodeId: hit.id })
         dispatch({ type: "BEGIN_TRANSACTION" })
         const n = nodes.get(hit.id)
-        pointerRef.current = {
+        pointerRef.current = createPointerState({
           mode: "move",
           start: { x: e.clientX, y: e.clientY },
           origin: n ? { ...n.geometry } : null,
@@ -837,7 +849,7 @@ export function VisualEditorOverlay() {
           nodeId: hit.id,
           lastGeometry: n ? { ...n.geometry } : null,
           lastScale: n?.style.scale ?? 1,
-        }
+        })
       } else {
         dispatch({ type: "DESELECT_NODE" })
       }
