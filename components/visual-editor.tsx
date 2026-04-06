@@ -45,9 +45,6 @@ interface EditorNode {
     alt?: string
     videoUrl?: string
   }
-  explicitContent: boolean
-  explicitStyle: boolean
-  explicitPosition: boolean
   explicitSize: boolean
 }
 
@@ -253,9 +250,6 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       paddingBottom: cs.paddingBottom,
     },
     content,
-    explicitContent: false,
-    explicitStyle: false,
-    explicitPosition: false,
     explicitSize: false,
   }
 }
@@ -269,7 +263,6 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<Map<string, EditorNode>[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const clipboardRef = useRef<EditorNode | null>(null)
-  const registryRafRef = useRef<number | null>(null)
   const historyRef = useRef<Map<string, EditorNode>[]>([])
   const historyIndexRef = useRef(-1)
   const transactionRef = useRef<{ active: boolean; baseline: Map<string, EditorNode> | null }>({ active: false, baseline: null })
@@ -314,42 +307,25 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const applyNodeToDom = useCallback((node: EditorNode, entry: RuntimeEntry) => {
     const el = entry.element
     const g = node.geometry
-    const hasManagedTransform = el.dataset.editorManagedTransform === "true"
-    const hasManagedSize = el.dataset.editorManagedSize === "true"
-    if (node.explicitPosition) {
-      el.style.transform = `translate(${g.x}px, ${g.y}px)`
-      el.style.transformOrigin = "top left"
-      el.dataset.editorManagedTransform = "true"
-    } else {
-      if (hasManagedTransform) {
-        el.style.removeProperty("transform")
-        el.style.removeProperty("transform-origin")
-        delete el.dataset.editorManagedTransform
-      }
-    }
+    el.style.transform = `translate(${g.x}px, ${g.y}px)`
+    el.style.transformOrigin = "top left"
     if (node.explicitSize) {
       el.style.width = `${Math.max(8, g.width)}px`
       el.style.height = `${Math.max(8, g.height)}px`
-      el.dataset.editorManagedSize = "true"
     } else {
-      if (hasManagedSize) {
-        el.style.removeProperty("width")
-        el.style.removeProperty("height")
-        delete el.dataset.editorManagedSize
-      }
+      el.style.removeProperty("width")
+      el.style.removeProperty("height")
     }
 
     if (node.explicitStyle && node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
     if (node.type === "text" || node.type === "button") {
       if (node.explicitContent && node.content.text !== undefined) el.textContent = node.content.text
-      if (node.explicitStyle) {
-        if (node.style.color) el.style.color = node.style.color
-        if (node.style.fontSize) el.style.fontSize = node.style.fontSize
-        if (node.style.fontFamily) el.style.fontFamily = node.style.fontFamily
-        if (node.style.fontWeight) el.style.fontWeight = node.style.fontWeight
-        if (node.style.fontStyle) el.style.fontStyle = node.style.fontStyle
-        if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
-      }
+      if (node.style.color) el.style.color = node.style.color
+      if (node.style.fontSize) el.style.fontSize = node.style.fontSize
+      if (node.style.fontFamily) el.style.fontFamily = node.style.fontFamily
+      if (node.style.fontWeight) el.style.fontWeight = node.style.fontWeight
+      if (node.style.fontStyle) el.style.fontStyle = node.style.fontStyle
+      if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
     }
     if (node.type === "button") {
       if (node.explicitContent && node.content.href !== undefined && (el.tagName === "A" || el.tagName === "BUTTON")) {
@@ -360,12 +336,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     if (node.type === "image" || node.type === "background") {
       const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
       const iframe = node.type === "background" ? el.querySelector("iframe") : null
-      if (node.explicitContent) {
-        if (img && node.content.src) img.src = node.content.src
-        if (img && node.content.alt !== undefined) img.alt = node.content.alt
-        if (!img && node.content.src) el.style.backgroundImage = `url(${node.content.src})`
-        if (iframe && node.content.videoUrl) iframe.setAttribute("src", node.content.videoUrl)
-      }
+      if (img && node.content.src) img.src = node.content.src
+      if (img && node.content.alt !== undefined) img.alt = node.content.alt
+      if (!img && node.content.src) el.style.backgroundImage = `url(${node.content.src})`
+      if (iframe && node.content.videoUrl) iframe.setAttribute("src", node.content.videoUrl)
     }
     if (node.type === "section") {
       if (node.explicitStyle) {
@@ -421,7 +395,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           return next
         }
         case "MOVE_NODE":
-          patchNode(command.nodeId, (n) => ({ ...n, explicitPosition: true, geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy } }))
+          patchNode(command.nodeId, (n) => ({ ...n, geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy } }))
           shouldSnapshot = !command.transient && !transactionRef.current.active
           break
         case "RESIZE_NODE":
@@ -438,18 +412,14 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             const content: EditorNode["content"] = { ...n.content }
             const style = { ...n.style }
             let isContentEdit = !!n.explicitContent
-            let isStyleEdit = !!n.explicitStyle
             Object.entries(command.patch).forEach(([k, v]) => {
               if (["text", "href", "src", "alt", "videoUrl"].includes(k)) {
                 isContentEdit = true;
                 (content as Record<string, unknown>)[k] = v
               }
-              else {
-                isStyleEdit = true;
-                (style as Record<string, unknown>)[k] = v
-              }
+              else (style as Record<string, unknown>)[k] = v
             })
-            return { ...n, content, style, explicitContent: isContentEdit, explicitStyle: isStyleEdit }
+            return { ...n, content, style, explicitContent: isContentEdit }
           })
           break
         }
@@ -624,20 +594,12 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
 
   useEffect(() => {
     let rafId: number | null = null
-    const applyRect = () => {
-      const rect = entry.element.getBoundingClientRect()
-      if (!boxRef.current) return
-      boxRef.current.style.left = `${rect.left}px`
-      boxRef.current.style.top = `${rect.top}px`
-      boxRef.current.style.width = `${rect.width}px`
-      boxRef.current.style.height = `${rect.height}px`
-    }
     const tick = () => {
-      applyRect()
+      setRect(entry.element.getBoundingClientRect())
       rafId = window.requestAnimationFrame(tick)
     }
     tick()
-    const syncOnce = () => applyRect()
+    const syncOnce = () => setRect(entry.element.getBoundingClientRect())
     const observer = new ResizeObserver(syncOnce)
     observer.observe(entry.element)
     window.addEventListener("resize", syncOnce)
@@ -712,9 +674,7 @@ export function VisualEditorOverlay() {
     const shouldBlockPublicAction = (target: EventTarget | null): boolean => {
       if (!(target instanceof HTMLElement)) return false
       if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]")) return false
-      if (target.closest("[data-editor-node-id]")) return true
-      if (target.closest("a,button,[role='button'],form")) return true
-      return false
+      return Boolean(target.closest("[data-editor-node-id]"))
     }
 
     const blockPublicAction = (e: Event) => {
@@ -760,13 +720,8 @@ export function VisualEditorOverlay() {
     document.addEventListener("pointerdown", onPointerDown, true)
     document.addEventListener("pointermove", onPointerMove)
     document.addEventListener("pointerup", onPointerUp)
-    document.addEventListener("mousedown", blockPublicAction, true)
-    document.addEventListener("mouseup", blockPublicAction, true)
-    document.addEventListener("touchend", blockPublicAction, true)
     document.addEventListener("click", blockPublicAction, true)
     document.addEventListener("auxclick", blockPublicAction, true)
-    document.addEventListener("contextmenu", blockPublicAction, true)
-    document.addEventListener("dragstart", blockPublicAction, true)
     document.addEventListener("submit", blockPublicAction, true)
     window.addEventListener("keydown", onKeyDown)
 
@@ -774,13 +729,8 @@ export function VisualEditorOverlay() {
       document.removeEventListener("pointerdown", onPointerDown, true)
       document.removeEventListener("pointermove", onPointerMove)
       document.removeEventListener("pointerup", onPointerUp)
-      document.removeEventListener("mousedown", blockPublicAction, true)
-      document.removeEventListener("mouseup", blockPublicAction, true)
-      document.removeEventListener("touchend", blockPublicAction, true)
       document.removeEventListener("click", blockPublicAction, true)
       document.removeEventListener("auxclick", blockPublicAction, true)
-      document.removeEventListener("contextmenu", blockPublicAction, true)
-      document.removeEventListener("dragstart", blockPublicAction, true)
       document.removeEventListener("submit", blockPublicAction, true)
       window.removeEventListener("keydown", onKeyDown)
       document.body.removeAttribute("data-editor-mode")
@@ -929,40 +879,32 @@ export function VisualEditorOverlay() {
             )}
 
             {selectedNode.type === "background" && selectedNode.content.videoUrl && (
-              <>
-                <label className="text-xs font-semibold">Video Link</label>
-                <input
-                  className="w-full rounded border p-1 text-xs"
-                  value={selectedNode.content.videoUrl}
-                  onChange={(e) => dispatch({ type: "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { videoUrl: e.target.value } })}
-                />
-              </>
+              <div className="rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-700">
+                Video background detected. Media URL is preserved in editor mode.
+              </div>
             )}
 
             {(selectedNode.type === "text" || selectedNode.type === "button") && (
-              <details>
-                <summary className="cursor-pointer text-xs font-semibold text-slate-600">Advanced Size</summary>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px]">Width</label>
-                    <input
-                      type="number"
-                      className="w-full rounded border p-1 text-xs"
-                      value={Math.round(selectedNode.geometry.width)}
-                      onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height, transient: true })}
-                      onBlur={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px]">Height</label>
-                    <input
-                      type="number"
-                      className="w-full rounded border p-1 text-xs"
-                      value={Math.round(selectedNode.geometry.height)}
-                      onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height, transient: true })}
-                      onBlur={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height })}
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px]">Width</label>
+                  <input
+                    type="number"
+                    className="w-full rounded border p-1 text-xs"
+                    value={Math.round(selectedNode.geometry.width)}
+                    onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height, transient: true })}
+                    onBlur={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px]">Height</label>
+                  <input
+                    type="number"
+                    className="w-full rounded border p-1 text-xs"
+                    value={Math.round(selectedNode.geometry.height)}
+                    onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height, transient: true })}
+                    onBlur={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height })}
+                  />
                 </div>
               </details>
             )}
