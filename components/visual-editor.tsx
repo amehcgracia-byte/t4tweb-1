@@ -1044,16 +1044,7 @@ export function VisualEditorOverlay() {
   }, [isEditing, dispatch, selectedId, nodes, undo, redo, getEditableAtPosition])
 
   if (!isEditing) {
-    return (
-      <button
-        data-editor-toolbar
-        onClick={() => setIsEditing(true)}
-        className="fixed bottom-6 right-6 z-[9999] w-14 h-14 rounded-full bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white shadow-xl"
-        title="Edit mode"
-      >
-        ✎
-      </button>
-    )
+    return null
   }
 
   return (
