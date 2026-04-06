@@ -116,7 +116,7 @@ export function LiveSection() {
   ]
 
   return (
-    <section ref={sectionRef} data-editor-node-id="live-section" data-editor-node-type="section" data-editor-node-label="Live Section" className="relative overflow-hidden">
+    <section ref={sectionRef} data-editor-node-id="live-section" data-editor-node-type="section" data-editor-node-label="Live Section" className="relative min-h-screen overflow-hidden">
 <div className="absolute inset-0 -z-10">
   <Image
     src="/images/sections/live-bg.jpg"
@@ -168,7 +168,7 @@ export function LiveSection() {
 
             {/* ── STREAM OUR MUSIC ── */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={isEditing ? false : { opacity: 0, y: 20 }}
               whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
               transition={isEditing ? undefined : { duration: 0.6, delay: 0.2 }}
               className="mb-12"
@@ -193,7 +193,7 @@ export function LiveSection() {
     data-editor-node-label={`Streaming: ${platform.name}`}
     data-editor-grouped="true"
     key={platform.name}
-    initial={{ opacity: 0, y: 20 }}
+    initial={isEditing ? false : { opacity: 0, y: 20 }}
     whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
     whileHover={isEditing ? undefined : { y: -2, scale: 1.02 }}
     transition={isEditing ? undefined : { duration: 0.35, delay: index * 0.04, type: "spring", stiffness: 320, damping: 22 }}
@@ -223,7 +223,7 @@ export function LiveSection() {
     data-editor-node-label={`Social: ${platform.name}`}
     data-editor-grouped="true"
     key={platform.name}
-    initial={{ opacity: 0, y: 20 }}
+    initial={isEditing ? false : { opacity: 0, y: 20 }}
     whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
     whileHover={isEditing ? undefined : { y: -2, scale: 1.02 }}
     transition={isEditing ? undefined : { duration: 0.35, delay: index * 0.04, type: "spring", stiffness: 320, damping: 22 }}
@@ -243,7 +243,7 @@ export function LiveSection() {
 
             {/* ── UPCOMING SHOWS ── */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={isEditing ? false : { opacity: 0, y: 20 }}
               whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
               transition={isEditing ? undefined : { duration: 0.6, delay: 0.3 }}
               className="mb-12 min-h-[440px]"
@@ -272,7 +272,7 @@ export function LiveSection() {
                   {upcomingConcerts.map((concert, index) => (
                     <motion.div
                       key={`upcoming-${index}`}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={isEditing ? false : { opacity: 0, y: 20 }}
                       whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
                       whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
                       transition={isEditing ? undefined : { duration: 0.4, delay: index * 0.03, type: "spring", stiffness: 300, damping: 20 }}
@@ -307,7 +307,7 @@ export function LiveSection() {
 
             {/* ── HISTORY ── */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={isEditing ? false : { opacity: 0, y: 20 }}
               whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
               transition={isEditing ? undefined : { duration: 0.6, delay: 0.35 }}
               className="mb-12"
@@ -326,7 +326,7 @@ export function LiveSection() {
                   {historyConcerts.map((concert, index) => (
                     <motion.div
                       key={`history-${index}`}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={isEditing ? false : { opacity: 0, y: 20 }}
                       whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
                       whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
                       transition={isEditing ? undefined : { duration: 0.4, delay: index * 0.03, type: "spring", stiffness: 300, damping: 20 }}

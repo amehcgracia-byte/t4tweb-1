@@ -249,7 +249,7 @@ export function PressKitSection() {
         <div className="relative z-10 mx-auto max-w-7xl">
           <motion.div 
             ref={headerRef}
-            style={{ opacity, y }} 
+            style={isEditing ? undefined : { opacity, y }} 
             className="mb-10 md:mb-12"
           >
             <SectionHeader
@@ -264,10 +264,10 @@ export function PressKitSection() {
 
           <motion.div
             ref={mainCardRef}
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.45 }}
+            initial={isEditing ? false : { opacity: 0, y: 12 }}
+            whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
+            viewport={isEditing ? undefined : { once: true, amount: 0.2 }}
+            transition={isEditing ? undefined : { duration: 0.45 }}
             className="mb-10 md:mb-12"
           >
             <div 
@@ -320,7 +320,7 @@ export function PressKitSection() {
                   ref={(el) => { resourceRefs.current[index] = el }}
                   key={resource.title}
                   custom={index}
-                  initial="hidden"
+                  initial={isEditing ? false : "hidden"}
                   whileInView={isEditing ? undefined : "visible"}
                   variants={resourceVariants}
                   whileHover={isEditing ? undefined : { y: -2 }}
@@ -417,7 +417,10 @@ function ManagerCard({ managerRef, isEditing }: { managerRef: React.RefObject<HT
         whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
         whileHover={isEditing ? undefined : { y: -2 }}
         transition={isEditing ? undefined : { duration: 0.45, delay: 0.06, type: "spring", stiffness: 320, damping: 22 }}
-        onClick={() => setShowModal(true)}
+        onClick={() => {
+          if (isEditing) return
+          setShowModal(true)
+        }}
         className="group flex w-full flex-col items-start rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg cursor-pointer text-left"
         data-editor-node-id="press-kit-manager"
         data-editor-node-type="card"

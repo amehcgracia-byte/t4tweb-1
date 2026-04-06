@@ -122,16 +122,17 @@ export function BandMembersSection() {
                     src={member.image}
                     alt={member.fullName}
                     fill
+                    data-member-photo-index={index}
                     className="object-cover"
                     priority={index === 0}
                   />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
-                  <h3 className="text-2xl md:text-3xl lg:text-4xl font-serif text-white mb-2 tracking-tight">
+                  <h3 data-member-overlay-name-index={index} className="text-2xl md:text-3xl lg:text-4xl font-serif text-white mb-2 tracking-tight">
                     {member.fullName}
                   </h3>
-                  <p className="text-xl text-orange-400 font-medium">
+                  <p data-member-overlay-role-index={index} className="text-xl text-orange-400 font-medium">
                     {member.role}
                   </p>
                 </div>
@@ -161,6 +162,7 @@ export function BandMembersSection() {
               >
                 <div className="min-w-0 flex-1">
                   <h4
+                    data-member-name-index={index}
                     className={`text-base md:text-xl font-medium transition-colors truncate ${
                       activeIndex === index ? "text-white" : "text-white/80 group-hover:text-white"
                     }`}
@@ -168,6 +170,7 @@ export function BandMembersSection() {
                     {member.fullName}
                   </h4>
                   <p
+                    data-member-role-index={index}
                     className={`text-xs md:text-sm mt-0.5 md:mt-1 transition-colors ${
                       activeIndex === index ? "text-orange-400" : "text-white/50"
                     }`}
@@ -177,6 +180,7 @@ export function BandMembersSection() {
                 </div>
 
                 <div
+                  data-member-number-index={index}
                   className={`w-7 h-7 md:w-8 md:h-8 shrink-0 ml-3 rounded-full flex items-center justify-center text-xs font-mono border transition-all ${
                     activeIndex === index
                       ? "border-orange-500 text-orange-400 bg-orange-950"
