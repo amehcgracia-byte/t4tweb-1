@@ -222,16 +222,16 @@ export function ContactSection() {
     <section
       ref={sectionRef}
       data-campaign-touchpoint="contact-booking"
-      data-edit-id="contact-section"
-      data-edit-type="section"
-      data-edit-label="Sección de Contacto"
+      data-editor-node-id="contact-section"
+      data-editor-node-type="section"
+      data-editor-node-label="Sección de Contacto"
       className="relative min-h-screen overflow-hidden"
     >
       <div 
         ref={bgRef}
-        data-edit-id="contact-bg-image"
-        data-edit-type="image"
-        data-edit-label="Imagen de fondo contacto"
+        data-editor-node-id="contact-bg-image"
+        data-editor-node-type="background"
+        data-editor-node-label="Imagen de fondo contacto"
         className="absolute inset-0 -z-10"
       >
         <Image
@@ -263,9 +263,10 @@ export function ContactSection() {
         <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8">
           <motion.a
             ref={emailCardRef}
-            data-edit-id="contact-email"
-            data-edit-type="link"
-            data-edit-label="Contacto Email"
+            data-editor-node-id="contact-email"
+            data-editor-node-type="card"
+            data-editor-node-label="Contacto Email"
+            data-editor-grouped="true"
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             whileHover={{ y: -2, scale: 1.01 }}
@@ -278,18 +279,18 @@ export function ContactSection() {
             </div>
             <h3 
               ref={emailTitleRef}
-              data-edit-id="contact-email-title"
-              data-edit-type="text"
-              data-edit-label="Título Email"
+              data-editor-node-id="contact-email-title"
+              data-editor-node-type="text"
+              data-editor-node-label="Título Email"
               className="font-serif text-lg md:text-xl text-foreground mb-2"
             >
               Email Us
             </h3>
             <p 
               ref={emailDescRef}
-              data-edit-id="contact-email-description"
-              data-edit-type="text"
-              data-edit-label="Descripción Email"
+              data-editor-node-id="contact-email-description"
+              data-editor-node-type="text"
+              data-editor-node-label="Descripción Email"
               className="text-muted-foreground text-sm md:text-base mb-3 md:mb-4"
             >
               Momo Garcia - Management
@@ -297,9 +298,9 @@ export function ContactSection() {
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs md:text-sm max-w-full ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
               <span 
                 ref={emailAddrRef}
-                data-edit-id="contact-email-address"
-                data-edit-type="text"
-                data-edit-label="Dirección Email"
+                data-editor-node-id="contact-email-address"
+                data-editor-node-type="text"
+                data-editor-node-label="Dirección Email"
                 className="truncate"
               >
                 talesforthetillerman@gmail.com
@@ -308,7 +309,7 @@ export function ContactSection() {
           </motion.a>
 
           <div className="text-center px-4">
-            <p ref={middleTextRef} data-edit-id="contact-middle-text" data-edit-type="text" data-edit-label="Contact Middle Text" className="text-muted-foreground text-sm md:text-base">
+            <p ref={middleTextRef} data-editor-node-id="contact-middle-text" data-editor-node-type="text" data-editor-node-label="Contact Middle Text" className="text-muted-foreground text-sm md:text-base">
               Choose your preferred<br />
               way to reach us
             </p>
@@ -316,9 +317,10 @@ export function ContactSection() {
 
           <motion.a
             ref={telegramCardRef}
-            data-edit-id="contact-telegram"
-            data-edit-type="link"
-            data-edit-label="Contacto Telegram"
+            data-editor-node-id="contact-telegram"
+            data-editor-node-type="card"
+            data-editor-node-label="Contacto Telegram"
+            data-editor-grouped="true"
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
             whileHover={{ y: -2, scale: 1.01 }}
@@ -333,18 +335,18 @@ export function ContactSection() {
             </div>
             <h3 
               ref={telegramTitleRef}
-              data-edit-id="contact-telegram-title"
-              data-edit-type="text"
-              data-edit-label="Título Telegram"
+              data-editor-node-id="contact-telegram-title"
+              data-editor-node-type="text"
+              data-editor-node-label="Título Telegram"
               className="font-serif text-lg md:text-xl text-foreground mb-2"
             >
               Telegram
             </h3>
             <p 
               ref={telegramDescRef}
-              data-edit-id="contact-telegram-description"
-              data-edit-type="text"
-              data-edit-label="Descripción Telegram"
+              data-editor-node-id="contact-telegram-description"
+              data-editor-node-type="text"
+              data-editor-node-label="Descripción Telegram"
               className="text-muted-foreground text-sm md:text-base mb-3 md:mb-4"
             >
               Janosch Puhe - Quick response
@@ -352,9 +354,9 @@ export function ContactSection() {
             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium text-xs md:text-sm max-w-full ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
               <span 
                 ref={telegramHandleRef}
-                data-edit-id="contact-telegram-handle"
-                data-edit-type="text"
-                data-edit-label="Handle Telegram"
+                data-editor-node-id="contact-telegram-handle"
+                data-editor-node-type="text"
+                data-editor-node-label="Handle Telegram"
                 className="truncate"
               >
                 @Janoschpuhe

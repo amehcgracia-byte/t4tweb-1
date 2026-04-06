@@ -46,9 +46,9 @@ export function SectionHeader({
         viewport={view}
         transition={{ duration: 0.4 }}
         className="mb-[var(--spacing-sm)] block text-[length:var(--text-small)] font-semibold uppercase tracking-[0.2em] text-primary"
-        data-edit-id={dataEditId ? `${dataEditId}-eyebrow` : undefined}
-        data-edit-type="text"
-        data-edit-label={dataEditLabel ? `${dataEditLabel} Eyebrow` : undefined}
+        data-editor-node-id={dataEditId ? `${dataEditId}-eyebrow` : undefined}
+        data-editor-node-type="text"
+        data-editor-node-label={dataEditLabel ? `${dataEditLabel} Eyebrow` : undefined}
       >
         {eyebrow}
       </motion.span>
@@ -59,9 +59,9 @@ export function SectionHeader({
         viewport={view}
         transition={{ duration: 0.45, delay: 0.04 }}
         className={`mb-[var(--spacing-md)] text-balance font-serif text-[length:var(--text-h2)] leading-[var(--line-height-tight)] text-foreground ${titleClassName}`}
-        data-edit-id={dataEditId ? `${dataEditId}-title` : undefined}
-        data-edit-type="text"
-        data-edit-label={dataEditLabel ? `${dataEditLabel} Title` : undefined}
+        data-editor-node-id={dataEditId ? `${dataEditId}-title` : undefined}
+        data-editor-node-type="text"
+        data-editor-node-label={dataEditLabel ? `${dataEditLabel} Title` : undefined}
       >
         {title}
       </motion.h2>
@@ -73,9 +73,9 @@ export function SectionHeader({
           viewport={view}
           transition={{ duration: 0.45, delay: 0.08 }}
           className={`mx-auto max-w-2xl text-[length:var(--text-body)] leading-[var(--line-height-relaxed)] text-muted-foreground ${descriptionClassName}`}
-          data-edit-id={dataEditId ? `${dataEditId}-description` : undefined}
-          data-edit-type="text"
-          data-edit-label={dataEditLabel ? `${dataEditLabel} Description` : undefined}
+          data-editor-node-id={dataEditId ? `${dataEditId}-description` : undefined}
+          data-editor-node-type="text"
+          data-editor-node-label={dataEditLabel ? `${dataEditLabel} Description` : undefined}
         >
           {description}
         </motion.p>

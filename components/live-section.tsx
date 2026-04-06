@@ -116,15 +116,15 @@ export function LiveSection() {
   ]
 
   return (
-    <section ref={sectionRef} data-edit-id="live-section-background" data-edit-type="section" data-edit-label="Live Section Background" className="relative overflow-hidden">
+    <section ref={sectionRef} data-editor-node-id="live-section" data-editor-node-type="section" data-editor-node-label="Live Section" className="relative overflow-hidden">
 <div className="absolute inset-0 -z-10">
   <Image
     src="/images/sections/live-bg.jpg"
     alt="Live section background"
     fill
-    data-edit-id="live-section-bg-image"
-    data-edit-type="image"
-    data-edit-label="Live Section Background Image"
+    data-editor-node-id="live-section-bg-image"
+    data-editor-node-type="background"
+    data-editor-node-label="Live Section Background Image"
     className="object-cover"
     sizes="100vw"
   />
@@ -133,7 +133,7 @@ export function LiveSection() {
       <div className="section-photo-fade-top" />
 
       <div className="relative z-10 w-full">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8" data-edit-id="live-section-content" data-edit-type="section" data-edit-label="Live Section Content">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
           {/* ── SEE ALL SHOWS ── */}
           <motion.div
@@ -146,9 +146,9 @@ export function LiveSection() {
               description="From intimate club shows to festival main stages, Tales for the Tillerman delivers an unforgettable live experience."
             />
 <motion.a
-  data-edit-id="live-section-see-shows-button"
-  data-edit-type="button"
-  data-edit-label="See All Shows Button"
+  data-editor-node-id="live-section-see-shows-button"
+  data-editor-node-type="button"
+  data-editor-node-label="See All Shows Button"
   whileHover={{ scale: 1.02, y: -2 }}
   transition={{ type: "spring", stiffness: 320, damping: 22 }}
   href="https://www.bandsintown.com/e/108124718-tales-for-the-tillerman-at-mauerpark?came_from=250&utm_medium=web&utm_source=artist_page&utm_campaign=search_bar"
@@ -183,9 +183,10 @@ export function LiveSection() {
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
 {platforms.filter(p => p.category === "streaming").map((platform, index) => (
   <motion.a
-    data-edit-id={`live-streaming-${platform.name.toLowerCase().replace(/\s+/g, '-')}`}
-    data-edit-type="link"
-    data-edit-label={`Streaming: ${platform.name}`}
+    data-editor-node-id={`live-streaming-${platform.name.toLowerCase().replace(/\s+/g, '-')}`}
+    data-editor-node-type="card"
+    data-editor-node-label={`Streaming: ${platform.name}`}
+    data-editor-grouped="true"
     key={platform.name}
     initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}
@@ -212,9 +213,10 @@ export function LiveSection() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
 {platforms.filter(p => p.category === "social").map((platform, index) => (
   <motion.a
-    data-edit-id={`live-social-${platform.name.toLowerCase().replace(/\s+/g, '-')}`}
-    data-edit-type="link"
-    data-edit-label={`Social: ${platform.name}`}
+    data-editor-node-id={`live-social-${platform.name.toLowerCase().replace(/\s+/g, '-')}`}
+    data-editor-node-type="card"
+    data-editor-node-label={`Social: ${platform.name}`}
+    data-editor-grouped="true"
     key={platform.name}
     initial={{ opacity: 0, y: 20 }}
     whileInView={{ opacity: 1, y: 0 }}

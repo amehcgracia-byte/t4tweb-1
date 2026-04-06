@@ -173,16 +173,16 @@ Their performances balance musical depth with danceable power, bringing together
   return (
     <section 
       ref={sectionRef} 
-      data-edit-id="about-section"
-      data-edit-type="section"
-      data-edit-label="Sección Sobre Nosotros"
+      data-editor-node-id="about-section"
+      data-editor-node-type="section"
+      data-editor-node-label="Sección Sobre Nosotros"
       className={`relative min-h-screen w-full overflow-hidden bg-black ${className}`}
     >
       <div 
         ref={bgRef}
-        data-edit-id="about-bg-image"
-        data-edit-type="image"
-        data-edit-label="Imagen de fondo"
+        data-editor-node-id="about-bg-image"
+        data-editor-node-type="background"
+        data-editor-node-label="Imagen de fondo"
         className="absolute inset-0 -z-10"
       >
         <Image
@@ -210,18 +210,18 @@ Their performances balance musical depth with danceable power, bringing together
               title="A Journey Through Sound"
               titleClassName="text-white"
               className="mb-10 max-w-4xl md:mb-12"
-              data-edit-id="about-header"
-              data-edit-type="text"
-              data-edit-label="Sección Sobre Nosotros"
+              data-editor-node-id="about-header"
+              data-editor-node-type="text"
+              data-editor-node-label="Sección Sobre Nosotros"
             />
           </div>
 
           {/* Box de texto reducido ~20% */}
           <motion.div
             ref={textCardRef}
-            data-edit-id="about-text-card"
-            data-edit-type="box"
-            data-edit-label="About Text Card"
+            data-editor-node-id="about-text-card"
+            data-editor-node-type="card"
+            data-editor-node-label="About Text Card"
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
@@ -231,9 +231,9 @@ Their performances balance musical depth with danceable power, bringing together
             <div className="space-y-6 text-white md:space-y-8">
               <p 
                 ref={text1Ref}
-                data-edit-id="about-text-1"
-                data-edit-type="text"
-                data-edit-label="Descripción 1"
+                data-editor-node-id="about-text-1"
+                data-editor-node-type="text"
+                data-editor-node-label="Descripción 1"
                 className="mb-0 max-w-none text-base leading-relaxed text-white/95 md:text-lg"
               >
                 Tales for the Tillerman is a Berlin-based collective blending world music, 
@@ -244,9 +244,9 @@ Their performances balance musical depth with danceable power, bringing together
 
               <p 
                 ref={text2Ref}
-                data-edit-id="about-text-2"
-                data-edit-type="text"
-                data-edit-label="Descripción 2"
+                data-editor-node-id="about-text-2"
+                data-editor-node-type="text"
+                data-editor-node-label="Descripción 2"
                 className="mb-0 max-w-none text-base leading-relaxed text-white/90 md:text-lg"
               >
                 Their performances balance musical depth with danceable power, bringing 
@@ -257,9 +257,9 @@ Their performances balance musical depth with danceable power, bringing together
 
               <p 
                 ref={tagsRef}
-                data-edit-id="about-tags"
-                data-edit-type="text"
-                data-edit-label="Etiquetas"
+                data-editor-node-id="about-tags"
+                data-editor-node-type="text"
+                data-editor-node-label="Etiquetas"
                 className="mb-0 max-w-none pt-2 text-sm leading-relaxed md:text-base text-[#FF8C21]"
               >
                 5 musicians • Berlin-based • World music fusion • Live experience
@@ -275,9 +275,9 @@ Their performances balance musical depth with danceable power, bringing together
               whileTap={{ scale: 0.98 }}
               animate={copied ? { scale: [1, 1.04, 1] } : { scale: 1 }}
               transition={{ duration: 0.3 }}
-              data-edit-id="about-copy-button"
-              data-edit-type="button"
-              data-edit-label="Copy Bio Button"
+              data-editor-node-id="about-copy-button"
+              data-editor-node-type="button"
+              data-editor-node-label="Copy Bio Button"
               className={`inline-flex items-center justify-center rounded-2xl border px-8 py-3.5 text-base font-semibold shadow-lg transition-all md:text-lg ${
                 copied
                   ? "border-[#FF8C21] bg-[#FF8C21] text-white shadow-[#FF8C21]/50"

@@ -96,20 +96,26 @@ export default function Home() {
       <SectionDivider />
 
       <div 
+        data-editor-node-id="intro-section"
+        data-editor-node-type="section"
+        data-editor-node-label="Intro Section"
         className="relative flex flex-col items-center justify-center gap-4 px-2 pt-8 pb-12 sm:px-4 sm:pt-12 sm:pb-16"
       >
         <img
           ref={bannerGifRef}
           src="/images/t4tPics/banner-crop-ezgif.com-gif-maker.gif"
           alt="Animated banner"
-          data-edit-id="intro-banner-gif"
-          data-edit-type="image"
-          data-edit-label="Banner GIF"
+          data-editor-node-id="intro-banner-gif"
+          data-editor-node-type="image"
+          data-editor-node-label="Banner GIF"
           className="absolute inset-0 h-full w-full object-cover opacity-30"
         />
         <div className="relative z-10 flex flex-col items-center justify-center gap-4">
           <p 
             ref={bannerTextRef}
+            data-editor-node-id="intro-banner-text"
+            data-editor-node-type="text"
+            data-editor-node-label="Banner Text"
             className="max-w-2xl text-center text-base leading-relaxed text-white/90 sm:text-lg md:text-xl px-4"
           >
             Tales for the Tillerman brings groove-driven live energy to festivals, 
@@ -119,9 +125,9 @@ export default function Home() {
             <a
               ref={bookButtonRef}
               href="#contact"
-              data-edit-id="intro-book-button"
-              data-edit-type="button"
-              data-edit-label="Book Band Button"
+              data-editor-node-id="intro-book-button"
+              data-editor-node-type="button"
+              data-editor-node-label="Book Band Button"
               className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-10 py-7 text-lg font-bold text-white shadow-xl shadow-[#FF8C21]/50 transition-all min-h-[80px]"
             >
               Book the Band
@@ -130,9 +136,9 @@ export default function Home() {
             <a
               ref={pressButtonRef}
               href="#press-kit"
-              data-edit-id="intro-press-button"
-              data-edit-type="button"
-              data-edit-label="Press Kit Button"
+              data-editor-node-id="intro-press-button"
+              data-editor-node-type="button"
+              data-editor-node-label="Press Kit Button"
               className="w-full sm:w-auto rounded-2xl border border-white/40 bg-white/5 px-10 py-7 text-lg font-semibold text-white backdrop-blur-sm hover:border-white/65 hover:bg-white/15 transition-all min-h-[80px]"
             >
               View Press Kit

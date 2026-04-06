@@ -185,9 +185,9 @@ export function Footer() {
   return (
     <footer 
       ref={footerRef}
-      data-edit-id="footer-section"
-      data-edit-type="section"
-      data-edit-label="Footer Section"
+      data-editor-node-id="footer-section"
+      data-editor-node-type="section"
+      data-editor-node-label="Footer Section"
       className="bg-black"
     >
       <div className="h-8 bg-gradient-to-b from-black/40 to-black" />
@@ -196,9 +196,9 @@ export function Footer() {
         
         <div 
           ref={logoRef}
-          data-edit-id="footer-logo"
-          data-edit-type="image"
-          data-edit-label="Footer Logo"
+          data-editor-node-id="footer-logo"
+          data-editor-node-type="image"
+          data-editor-node-label="Footer Logo"
           className="mb-6"
         >
           <Image
@@ -212,9 +212,9 @@ export function Footer() {
 
         <p 
           ref={descRef}
-          data-edit-id="footer-description"
-          data-edit-type="text"
-          data-edit-label="Footer Description"
+          data-editor-node-id="footer-description"
+          data-editor-node-type="text"
+          data-editor-node-label="Footer Description"
           className="text-lg text-white/70 mb-6 max-w-2xl mx-auto"
         >
           Berlin-based world music collective blending funk, soul, and reggae.
@@ -223,9 +223,9 @@ export function Footer() {
         <div className="mb-8">
           <a
             ref={ctaRef}
-            data-edit-id="footer-cta"
-            data-edit-type="button"
-            data-edit-label="Book the Band"
+            data-editor-node-id="footer-cta"
+            data-editor-node-type="button"
+            data-editor-node-label="Book the Band"
             href="#contact"
             className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-8 py-3 text-base font-bold text-white shadow-lg shadow-[#FF8C21]/30 hover:shadow-xl hover:shadow-[#FF8C21]/40 transition-all"
           >
@@ -235,9 +235,10 @@ export function Footer() {
 
         <div 
           ref={socialGroupRef}
-          data-edit-id="footer-social-group"
-          data-edit-type="box"
-          data-edit-label="Footer Social Links"
+          data-editor-node-id="footer-social-group"
+          data-editor-node-type="card"
+          data-editor-node-label="Footer Social Links"
+          data-editor-grouped="true"
           className="flex flex-wrap items-center justify-center gap-3 mb-8"
         >
           {socialLinks.map((link) => (
@@ -256,16 +257,16 @@ export function Footer() {
 
         <div 
           ref={dividerRef}
-          data-edit-id="footer-divider"
-          data-edit-type="box"
-          data-edit-label="Footer Divider"
+          data-editor-node-id="footer-divider"
+          data-editor-node-type="card"
+          data-editor-node-label="Footer Divider"
           className="border-t border-white/10 pt-6"
         >
           <p 
             ref={copyrightRef}
-            data-edit-id="footer-copyright"
-            data-edit-type="text"
-            data-edit-label="Footer Copyright"
+            data-editor-node-id="footer-copyright"
+            data-editor-node-type="text"
+            data-editor-node-label="Footer Copyright"
             className="text-white/40 text-sm text-center"
           >
             &copy; {currentYear} Tales for the Tillerman

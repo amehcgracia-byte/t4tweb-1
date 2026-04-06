@@ -2,21 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================================================
-   EDITOR MODE - Minimal layout adjustments for editing freedom
-   Applied only to section content wrappers, not globally to all elements
-   ============================================================================ */
-[data-edit-mode="true"] section > div[class*="max-w-"],
-[data-edit-mode="true"] section [class*="max-w-"].mx-auto {
-  max-width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-
-[data-edit-mode="true"] section {
-  overflow: visible !important;
-}
-
 :root {
   --font-inter: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, sans-serif;
   --font-playfair: "Playfair Display", Georgia, "Times New Roman", serif;
@@ -994,31 +979,24 @@ section {
    ============================================================================ */
 
 /* Editable elements cursor */
-body[data-edit-mode="true"] [data-edit-id] {
+body[data-editor-mode="true"] [data-editor-node-id] {
   cursor: move !important;
 }
 
 /* Hover state */
-body[data-edit-mode="true"] [data-edit-id]:hover {
+body[data-editor-mode="true"] [data-editor-node-id]:hover {
   outline: 2px dashed #FF8C21 !important;
   outline-offset: 2px;
 }
 
-/* Block navigation links */
-body[data-edit-mode="true"] a:not([data-edit-id]):not([data-edit-toolbar]):not([data-edit-modal]) {
-  pointer-events: none !important;
-}
-
 /* Editor UI always interactive */
-[data-edit-panel],
-[data-edit-panel] *,
-[data-edit-toolbar],
-[data-edit-toolbar] *,
-[data-edit-modal],
-[data-edit-modal] *,
+[data-editor-panel],
+[data-editor-panel] *,
+[data-editor-toolbar],
+[data-editor-toolbar] *,
+[data-editor-modal],
+[data-editor-modal] *,
 .resize-handle {
   pointer-events: auto !important;
 }
-
-
 

@@ -181,13 +181,13 @@ export function Navigation() {
             <a
               ref={logoLinkRef}
               href="#top"
-              data-edit-id="nav-logo-link"
-              data-edit-type="link"
-              data-edit-label="Logo Link"
               className="inline-flex h-12 shrink-0 items-center justify-center gap-3 rounded-full p-0 transition-transform duration-300 hover:-translate-y-0.5 md:h-14"
             >
               <div
                 ref={logoRef}
+                data-editor-node-id="nav-logo"
+                data-editor-node-type="image"
+                data-editor-node-label="Logo Image"
                 className="relative h-full w-auto rounded-full shadow-lg shadow-black/30 overflow-hidden"
                 style={{ width: 56, height: 56 }}
               >
@@ -201,9 +201,9 @@ export function Navigation() {
               <span 
                 ref={brandNameRef}
                 className="hidden font-serif text-lg font-medium tracking-wide text-white sm:text-xl md:block lg:text-2xl"
-                data-edit-id="nav-brand-name"
-                data-edit-type="text"
-                data-edit-label="Brand Name"
+                data-editor-node-id="nav-brand-name"
+                data-editor-node-type="text"
+                data-editor-node-label="Brand Name"
               >
                 Tales for the Tillerman
               </span>
@@ -216,9 +216,9 @@ export function Navigation() {
                   ref={(el) => { navLinkRefs.current[index] = el }}
                   href={link.href} 
                   className={navLinkClass}
-                  data-edit-id={`nav-link-${index}`}
-                  data-edit-type="link"
-                  data-edit-label={`Nav Link: ${link.label}`}
+                  data-editor-node-id={`nav-link-${index}`}
+                  data-editor-node-type="button"
+                  data-editor-node-label={`Nav Link: ${link.label}`}
                 >
                   {link.label}
                 </a>
@@ -263,9 +263,9 @@ export function Navigation() {
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex min-h-[48px] w-full items-center border-b border-white/10 px-4 text-left text-base font-medium text-white/80 transition-colors hover:text-white last:border-b-0"
-                  data-edit-id={`nav-mobile-link-${index}`}
-                  data-edit-type="link"
-                  data-edit-label={`Mobile Nav: ${link.label}`}
+                  data-editor-node-id={`nav-mobile-link-${index}`}
+                  data-editor-node-type="button"
+                  data-editor-node-label={`Mobile Nav: ${link.label}`}
                 >
                   {link.label}
                 </a>
@@ -276,9 +276,9 @@ export function Navigation() {
                   href="#contact"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`${primaryCtaClass} flex min-h-[48px] w-full items-center justify-center py-3.5 text-center`}
-                  data-edit-id="nav-mobile-book-button"
-                  data-edit-type="button"
-                  data-edit-label="Mobile Book Button"
+                  data-editor-node-id="nav-mobile-book-button"
+                  data-editor-node-type="button"
+                  data-editor-node-label="Mobile Book Button"
                 >
                   Book the band
                 </a>

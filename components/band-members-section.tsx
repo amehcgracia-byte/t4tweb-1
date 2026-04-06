@@ -58,16 +58,16 @@ export function BandMembersSection() {
   return (
     <section
       ref={sectionRef}
-      data-edit-id="band-members-section"
-      data-edit-type="section"
-      data-edit-label="Sección Miembros de la Banda"
+      data-editor-node-id="band-members-section"
+      data-editor-node-type="section"
+      data-editor-node-label="Sección Miembros de la Banda"
       className="relative min-h-screen w-full overflow-hidden bg-black"
     >
       {/* Fondo full width */}
       <div 
-        data-edit-id="band-members-bg"
-        data-edit-type="image"
-        data-edit-label="Imagen de fondo banda"
+        data-editor-node-id="band-members-bg"
+        data-editor-node-type="background"
+        data-editor-node-label="Imagen de fondo banda"
         className="absolute inset-0 -z-10"
       >
         <Image
@@ -95,9 +95,9 @@ export function BandMembersSection() {
             eyebrow="The Musicians"
             title="Meet the Band"
             description="Five musicians from diverse backgrounds, united by a passion for rhythm and groove."
-            data-edit-id="band-members-header"
-            data-edit-type="text"
-            data-edit-label="Encabezado Miembros"
+            data-editor-node-id="band-members-header"
+            data-editor-node-type="text"
+            data-editor-node-label="Encabezado Miembros"
           />
         </motion.div>
 
@@ -116,9 +116,9 @@ export function BandMembersSection() {
                 className="absolute inset-0"
               >
                 <div 
-                  data-edit-id={`member-photo-${index}`}
-                  data-edit-type="image"
-                  data-edit-label={`Foto ${member.fullName}`}
+                  data-editor-node-id={`member-photo-${index}`}
+                  data-editor-node-type="image"
+                  data-editor-node-label={`Foto ${member.fullName}`}
                   className="absolute inset-0"
                 >
                   <Image
@@ -132,17 +132,17 @@ export function BandMembersSection() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
                   <h3 
-                    data-edit-id={`member-name-${index}`}
-                    data-edit-type="text"
-                    data-edit-label={`Nombre ${member.fullName}`}
+                    data-editor-node-id={`member-name-${index}`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`Nombre ${member.fullName}`}
                     className="text-2xl md:text-3xl lg:text-4xl font-serif text-white mb-2 tracking-tight"
                   >
                     {member.fullName}
                   </h3>
                   <p 
-                    data-edit-id={`member-role-${index}`}
-                    data-edit-type="text"
-                    data-edit-label={`Rol ${member.fullName}`}
+                    data-editor-node-id={`member-role-${index}`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`Rol ${member.fullName}`}
                     className="text-xl text-orange-400 font-medium"
                   >
                     {member.role}
@@ -161,9 +161,10 @@ export function BandMembersSection() {
                 onMouseEnter={() => !isMobile && setActiveIndex(index)}
                 whileHover={{ scale: 1.02, x: 8 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                data-edit-id={`member-item-${index}`}
-                data-edit-type="object"
-                data-edit-label={member.fullName}
+                data-editor-node-id={`member-item-${index}`}
+                data-editor-node-type="card"
+                data-editor-node-label={member.fullName}
+                data-editor-grouped="true"
                 className={`group w-full text-left p-4 md:p-6 rounded-xl md:rounded-2xl border transition-all duration-300 flex justify-between items-center min-h-[64px] md:min-h-[88px] touch-manipulation
                   ${
                     activeIndex === index
@@ -173,9 +174,9 @@ export function BandMembersSection() {
               >
                 <div className="min-w-0 flex-1">
                   <h4
-                    data-edit-id={`member-list-name-${index}`}
-                    data-edit-type="text"
-                    data-edit-label={`Nombre en lista ${member.fullName}`}
+                    data-editor-node-id={`member-list-name-${index}`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`Nombre en lista ${member.fullName}`}
                     className={`text-base md:text-xl font-medium transition-colors truncate ${
                       activeIndex === index ? "text-white" : "text-white/80 group-hover:text-white"
                     }`}
@@ -183,9 +184,9 @@ export function BandMembersSection() {
                     {member.fullName}
                   </h4>
                   <p
-                    data-edit-id={`member-list-role-${index}`}
-                    data-edit-type="text"
-                    data-edit-label={`Rol en lista ${member.fullName}`}
+                    data-editor-node-id={`member-list-role-${index}`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`Rol en lista ${member.fullName}`}
                     className={`text-xs md:text-sm mt-0.5 md:mt-1 transition-colors ${
                       activeIndex === index ? "text-orange-400" : "text-white/50"
                     }`}
