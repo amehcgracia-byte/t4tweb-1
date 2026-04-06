@@ -106,6 +106,7 @@ interface VisualEditorContextType {
 }
 
 type Command =
+  // Conflict-resolution baseline keeps geometry commit command for resize handles.
   | { type: "SELECT_NODE"; nodeId: string }
   | { type: "DESELECT_NODE" }
   | { type: "MOVE_NODE"; nodeId: string; dx: number; dy: number; transient?: boolean }

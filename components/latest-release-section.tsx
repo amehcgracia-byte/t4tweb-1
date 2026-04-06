@@ -145,6 +145,7 @@ export function LatestReleaseSection() {
         data-editor-node-label="Fondo Video YouTube"
         className="absolute inset-0 z-0"
       >
+        {/* In editor mode we keep one canonical YouTube background layer to avoid media duplication conflicts. */}
         {isEditing ? (
           <iframe
             src="https://www.youtube.com/embed/xofflmVqYGs?autoplay=1&mute=1&loop=1&playlist=xofflmVqYGs&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
