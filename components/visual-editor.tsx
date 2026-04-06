@@ -1,15 +1,67 @@
 "use client"
-/* eslint-disable @next/next/no-img-element, react-hooks/set-state-in-effect, react-hooks/refs, react-hooks/immutability, react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { createPortal } from 'react-dom'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { createPortal } from "react-dom"
 
-// ==================== EDITABLE ELEMENT MODEL ====================
+type NodeType = "section" | "background" | "card" | "text" | "button" | "image"
 
-interface EditableElementData {
+type Point = { x: number; y: number }
+
+type Size = { width: number; height: number }
+
+interface NodeGeometry {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+interface EditorNode {
   id: string
-  type: 'button' | 'link' | 'image' | 'box' | 'section' | 'logo' | 'text' | 'video'
+  type: NodeType
+  sectionId: string
+  label: string
+  isGrouped: boolean
+  geometry: NodeGeometry
+  style: {
+    color?: string
+    backgroundColor?: string
+    opacity?: number
+    fontSize?: string
+    fontFamily?: string
+    fontWeight?: string
+    fontStyle?: string
+    textDecoration?: string
+    minHeight?: string
+    paddingTop?: string
+    paddingBottom?: string
+  }
+  content: {
+    text?: string
+    href?: string
+    src?: string
+    alt?: string
+  }
+}
+
+interface RuntimeEntry {
+  id: string
+  type: NodeType
+  sectionId: string
+  label: string
+  isGrouped: boolean
+  element: HTMLElement
+  rect: DOMRect
+  visible: boolean
+  eligible: boolean
+  transform: { x: number; y: number }
+  dimensions: { width: number; height: number }
+}
+
+interface LegacyEditable {
+  id: string
+  type: NodeType
   label: string
   parentId: string | null
   element: HTMLElement | null
@@ -18,46 +70,85 @@ interface EditableElementData {
   dimensions: { width: number; height: number }
 }
 
+interface AssetItem {
+  id: string
+  url: string
+  filename: string
+}
+
 interface VisualEditorContextType {
   isEditing: boolean
-  setIsEditing: (value: boolean) => void
+  setIsEditing: (v: boolean) => void
   selectedId: string | null
   setSelectedId: (id: string | null) => void
   openPanel: boolean
-  setOpenPanel: (open: boolean) => void
-  snapEnabled: boolean
-  setSnapEnabled: (value: boolean) => void
-  editableElements: Map<string, EditableElementData>
-  registerEditable: (data: EditableElementData) => void
-  unregisterEditable: (id: string) => void
-  updateElementTransform: (id: string, transform: { x: number; y: number }) => void
-  updateElementDimensions: (id: string, dimensions: { width: number; height: number }) => void
-  getElementById: (id: string) => EditableElementData | undefined
-  getEditableAtPosition: (x: number, y: number) => EditableElementData | null
+  setOpenPanel: (v: boolean) => void
+  nodes: Map<string, EditorNode>
+  editableElements: Map<string, LegacyEditable>
+  registry: Map<string, RuntimeEntry>
+  dispatch: (command: Command) => void
   undo: () => void
   redo: () => void
   canUndo: boolean
   canRedo: boolean
+  assets: AssetItem[]
+  // legacy no-op compat
+  registerEditable: (_: unknown) => void
+  unregisterEditable: (_: string) => void
+  getElementById: (id: string) => LegacyEditable | undefined
+  getEditableAtPosition: (x: number, y: number) => RuntimeEntry | null
 }
 
-// ==================== CONSTANTS ====================
+type Command =
+  | { type: "SELECT_NODE"; nodeId: string }
+  | { type: "DESELECT_NODE" }
+  | { type: "MOVE_NODE"; nodeId: string; dx: number; dy: number }
+  | { type: "RESIZE_NODE"; nodeId: string; width: number; height: number }
+  | { type: "UPDATE_TEXT"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
+  | { type: "UPDATE_BUTTON"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
+  | { type: "UPDATE_IMAGE"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
+  | { type: "UPDATE_CARD"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
+  | { type: "UPDATE_BACKGROUND"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
+  | { type: "UPDATE_SECTION"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
+  | { type: "DELETE_NODE"; nodeId: string }
+  | { type: "COPY_NODE"; nodeId: string }
+  | { type: "CUT_NODE"; nodeId: string }
+  | { type: "PASTE_NODE"; targetNodeId?: string }
 
-const MIN_SIZE = 40
-const SNAP_THRESHOLD = 8
-const CORNER_HANDLES = [
-  { handle: 'nw', cursor: 'nwse-resize' },
-  { handle: 'ne', cursor: 'nesw-resize' },
-  { handle: 'se', cursor: 'nwse-resize' },
-  { handle: 'sw', cursor: 'nesw-resize' },
-]
-const SIDE_HANDLES = [
-  { handle: 'n', cursor: 'ns-resize' },
-  { handle: 's', cursor: 'ns-resize' },
-  { handle: 'e', cursor: 'ew-resize' },
-  { handle: 'w', cursor: 'ew-resize' },
-]
+const typePriority: Record<NodeType, number> = {
+  button: 1,
+  text: 2,
+  card: 3,
+  background: 4,
+  section: 5,
+  image: 3,
+}
 
-// ==================== CONTEXT ====================
+function isEditingInput(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable
+}
+
+function normalizeType(raw: string): NodeType {
+  if (raw === "section" || raw === "background" || raw === "card" || raw === "text" || raw === "button" || raw === "image") {
+    return raw
+  }
+  return "text"
+}
+
+function parseGrouped(value: string | null): boolean {
+  return value === "true"
+}
+
+function rgbToHex(rgb: string): string {
+  if (!rgb) return "#ffffff"
+  if (rgb.startsWith("#")) return rgb
+  const match = rgb.match(/\d+/g)
+  if (!match || match.length < 3) return "#ffffff"
+  const [r, g, b] = match.slice(0, 3).map(Number)
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+}
 
 const VisualEditorContext = createContext<VisualEditorContextType>({
   isEditing: false,
@@ -66,1573 +157,616 @@ const VisualEditorContext = createContext<VisualEditorContextType>({
   setSelectedId: () => {},
   openPanel: false,
   setOpenPanel: () => {},
-  snapEnabled: true,
-  setSnapEnabled: () => {},
+  nodes: new Map(),
   editableElements: new Map(),
-  registerEditable: () => {},
-  unregisterEditable: () => {},
-  updateElementTransform: () => {},
-  updateElementDimensions: () => {},
-  getElementById: () => undefined,
-  getEditableAtPosition: () => null,
+  registry: new Map(),
+  dispatch: () => {},
   undo: () => {},
   redo: () => {},
   canUndo: false,
   canRedo: false,
+  assets: [],
+  registerEditable: () => {},
+  unregisterEditable: () => {},
+  getElementById: () => undefined,
+  getEditableAtPosition: () => null,
 })
 
 export function useVisualEditor() {
   return useContext(VisualEditorContext)
 }
 
+function scanRegistry(): Map<string, RuntimeEntry> {
+  const map = new Map<string, RuntimeEntry>()
+  const elements = document.querySelectorAll<HTMLElement>("[data-editor-node-id]")
+  elements.forEach((el) => {
+    const id = el.dataset.editorNodeId
+    if (!id) return
+    const rect = el.getBoundingClientRect()
+    const style = getComputedStyle(el)
+    const visible = style.display !== "none" && style.visibility !== "hidden" && parseFloat(style.opacity || "1") > 0
+    const type = normalizeType(el.dataset.editorNodeType || "text")
+    const sectionId = el.dataset.editorSectionId || "root"
+    const label = el.dataset.editorNodeLabel || id
+    const isGrouped = parseGrouped(el.dataset.editorGrouped || null)
+    map.set(id, {
+      id,
+      type,
+      sectionId,
+      label,
+      isGrouped,
+      element: el,
+      rect,
+      visible,
+      eligible: visible,
+      transform: { x: 0, y: 0 },
+      dimensions: { width: rect.width, height: rect.height },
+    })
+  })
+  return map
+}
+
+function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
+  const el = entry.element
+  const content: EditorNode["content"] = {}
+  if (entry.type === "text" || entry.type === "button" || entry.type === "card") {
+    content.text = el.textContent?.trim() || ""
+  }
+  if (entry.type === "button") {
+    content.href = el.getAttribute("href") || ""
+  }
+  if (entry.type === "image" || entry.type === "background") {
+    const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
+    content.src = img?.getAttribute("src") || ""
+    content.alt = img?.getAttribute("alt") || ""
+  }
+  const cs = getComputedStyle(el)
+  return {
+    id: entry.id,
+    type: entry.type,
+    sectionId: entry.sectionId,
+    label: entry.label,
+    isGrouped: entry.isGrouped,
+    geometry: { x: 0, y: 0, width: entry.rect.width, height: entry.rect.height },
+    style: {
+      color: rgbToHex(cs.color),
+      backgroundColor: cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)" ? rgbToHex(cs.backgroundColor) : "#000000",
+      opacity: Number(cs.opacity || "1"),
+      fontSize: cs.fontSize,
+      fontFamily: cs.fontFamily,
+      fontWeight: cs.fontWeight,
+      fontStyle: cs.fontStyle,
+      textDecoration: cs.textDecorationLine,
+      minHeight: cs.minHeight,
+      paddingTop: cs.paddingTop,
+      paddingBottom: cs.paddingBottom,
+    },
+    content,
+  }
+}
+
 export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const [isEditing, setIsEditing] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [openPanel, setOpenPanel] = useState(false)
-  const [snapEnabled, setSnapEnabled] = useState(true)
-  const [editableElements, setEditableElements] = useState<Map<string, EditableElementData>>(new Map())
-
-  // History for undo/redo
-  const [history, setHistory] = useState<Map<string, EditableElementData>[]>([])
+  const [nodes, setNodes] = useState<Map<string, EditorNode>>(new Map())
+  const [registry, setRegistry] = useState<Map<string, RuntimeEntry>>(new Map())
+  const [history, setHistory] = useState<Map<string, EditorNode>[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
+  const clipboardRef = useRef<EditorNode | null>(null)
 
-  const pushHistory = useCallback((state: Map<string, EditableElementData>) => {
-    setHistory(prev => {
-      const newHistory = prev.slice(0, historyIndex + 1)
-      newHistory.push(new Map(state))
-      if (newHistory.length > 50) newHistory.shift()
-      return newHistory
+  const assets = useMemo<AssetItem[]>(() => {
+    if (typeof document === "undefined") return []
+    const imgs = Array.from(document.querySelectorAll<HTMLImageElement>("img[src]"))
+    return imgs.map((img, i) => ({ id: `${i}-${img.src}`, url: img.src, filename: img.src.split("/").pop() || `asset-${i}` }))
+  }, [isEditing])
+
+  const snapshot = useCallback((state: Map<string, EditorNode>) => {
+    setHistory((prev) => {
+      const next = prev.slice(0, historyIndex + 1)
+      next.push(new Map(state))
+      if (next.length > 80) next.shift()
+      return next
     })
-    setHistoryIndex(prev => Math.min(prev + 1, 49))
+    setHistoryIndex((prev) => Math.min(prev + 1, 79))
   }, [historyIndex])
-
-  const undo = useCallback(() => {
-    if (historyIndex <= 0) return
-    const newIndex = historyIndex - 1
-    setHistoryIndex(newIndex)
-    setEditableElements(new Map(history[newIndex]))
-  }, [history, historyIndex])
-
-  const redo = useCallback(() => {
-    if (historyIndex >= history.length - 1) return
-    const newIndex = historyIndex + 1
-    setHistoryIndex(newIndex)
-    setEditableElements(new Map(history[newIndex]))
-  }, [history, historyIndex])
-
-  const canUndo = historyIndex > 0
-  const canRedo = historyIndex < history.length - 1
-
-  const registerEditable = useCallback((data: EditableElementData) => {
-    setEditableElements(prev => {
-      const next = new Map(prev)
-      next.set(data.id, data)
-      pushHistory(next)
-      return next
-    })
-  }, [pushHistory])
-
-  const unregisterEditable = useCallback((id: string) => {
-    setEditableElements(prev => {
-      const next = new Map(prev)
-      next.delete(id)
-      pushHistory(next)
-      return next
-    })
-  }, [pushHistory])
-
-  const updateElementTransform = useCallback((id: string, transform: { x: number; y: number }) => {
-    setEditableElements(prev => {
-      const existing = prev.get(id)
-      if (!existing) return prev
-      const next = new Map(prev)
-      next.set(id, { ...existing, transform })
-      pushHistory(next)
-      return next
-    })
-  }, [pushHistory])
-
-  const updateElementDimensions = useCallback((id: string, dimensions: { width: number; height: number }) => {
-    setEditableElements(prev => {
-      const existing = prev.get(id)
-      if (!existing) return prev
-      const next = new Map(prev)
-      next.set(id, { ...existing, dimensions })
-      pushHistory(next)
-      return next
-    })
-  }, [pushHistory])
-
-  const getElementById = useCallback((id: string) => {
-    return editableElements.get(id)
-  }, [editableElements])
-
-  const getEditableAtPosition = useCallback((x: number, y: number): EditableElementData | null => {
-    // Use browser's native hit-testing first - this correctly handles z-index and stacking
-    const allElements = document.elementsFromPoint(x, y)
-    
-    for (const el of allElements) {
-      if (!(el instanceof HTMLElement)) continue
-      if (isEditorUI(el)) continue
-      
-      const id = el.getAttribute('data-edit-id')
-      if (!id) continue
-      
-      // Check if this element is in our registry
-      const registered = editableElements.get(id)
-      if (registered) {
-        return registered
-      }
-      
-      // It has a data-edit-id but isn't in registry yet - create on the fly
-      const rawType = el.getAttribute('data-edit-type') || 'text'
-      const label = el.getAttribute('data-edit-label') || id
-      let typeCategory: string = rawType
-      if (rawType === 'link') typeCategory = 'link'
-      else if (rawType === 'button') typeCategory = 'button'
-      else if (rawType === 'image') typeCategory = 'image'
-      else if (rawType === 'section') typeCategory = 'section'
-      else typeCategory = 'text'
-      
-      const rect = el.getBoundingClientRect()
-      return {
-        id,
-        type: typeCategory as EditableElementData['type'],
-        label,
-        parentId: null,
-        element: el,
-        originalRect: rect,
-        transform: { x: 0, y: 0 },
-        dimensions: { width: el.offsetWidth, height: el.offsetHeight },
-      }
-    }
-
-    // Fallback: check registry elements that might not have data-edit-id
-    const elements = Array.from(editableElements.values())
-    for (const el of elements) {
-      if (!el.element) continue
-      const rect = el.element.getBoundingClientRect()
-      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-        return el
-      }
-    }
-
-    return null
-  }, [editableElements])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get('editMode') === 'true' || window.location.pathname === '/editor') {
+    if (params.get("editMode") === "true" || window.location.pathname === "/editor") {
       setIsEditing(true)
     }
   }, [])
 
-  return (
-    <VisualEditorContext.Provider
-      value={{
-        isEditing,
-        setIsEditing,
-        selectedId,
-        setSelectedId,
-        openPanel,
-        setOpenPanel,
-        snapEnabled,
-        setSnapEnabled,
-        editableElements,
-        registerEditable,
-        unregisterEditable,
-        updateElementTransform,
-        updateElementDimensions,
-        getElementById,
-        getEditableAtPosition,
-        undo,
-        redo,
-        canUndo,
-        canRedo,
-      }}
-    >
-      {children}
-    </VisualEditorContext.Provider>
-  )
-}
-
-function getDepth(element: HTMLElement | null): number {
-  if (!element) return 0
-  let depth = 0
-  let current: Node | null = element
-  while (current && current !== document.body) {
-    depth++
-    current = current.parentNode
-  }
-  return depth
-}
-
-// ==================== UTILITY FUNCTIONS ====================
-
-function rgbToHex(rgb: string): string {
-  if (rgb.startsWith('#')) return rgb
-  const match = rgb.match(/\d+/g)
-  if (!match || match.length < 3) return '#000000'
-  const [r, g, b] = match.slice(0, 3).map(Number)
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
-}
-
-function isEditorUI(element: HTMLElement): boolean {
-  return !!(
-    element.closest('[data-edit-panel]') ||
-    element.closest('[data-edit-toolbar]') ||
-    element.closest('[data-edit-modal]') ||
-    element.closest('[data-ve-overlay]')
-  )
-}
-
-// ==================== SELECTION OVERLAY ====================
-
-interface SelectionOverlayProps {
-  element: EditableElementData
-  onDragStart: (e: React.PointerEvent) => void
-  onResizeStart: (e: React.PointerEvent, handle: string) => void
-}
-
-function SelectionOverlay({ element, onDragStart, onResizeStart }: SelectionOverlayProps) {
-  const rectRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null)
-  const [, setTick] = useState(0)
-
   useEffect(() => {
-    if (!element.element) return
-    
-    const update = () => {
-      const r = element.element!.getBoundingClientRect()
-      rectRef.current = {
-        x: r.left,
-        y: r.top,
-        width: element.dimensions.width || r.width,
-        height: element.dimensions.height || r.height,
-      }
-      setTick(t => t + 1)
-    }
-    update()
-    
-    const observer = new ResizeObserver(update)
-    observer.observe(element.element)
-    window.addEventListener('resize', update)
-    
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', update)
-    }
-  }, [element.element, element.dimensions.width, element.dimensions.height])
-
-  // Force re-render when transform changes (element moved)
-  useEffect(() => {
-    if (!element.element) return
-    requestAnimationFrame(() => {
-      if (!element.element) return
-      const r = element.element.getBoundingClientRect()
-      rectRef.current = {
-        x: r.left,
-        y: r.top,
-        width: element.dimensions.width || r.width,
-        height: element.dimensions.height || r.height,
-      }
-      setTick(t => t + 1)
+    if (!isEditing) return
+    const nextRegistry = scanRegistry()
+    setRegistry(nextRegistry)
+    const nextNodes = new Map<string, EditorNode>()
+    nextRegistry.forEach((entry, id) => {
+      nextNodes.set(id, buildNodeFromEntry(entry))
     })
-  }, [element.transform.x, element.transform.y, element.dimensions.width, element.dimensions.height, element.element])
+    setNodes(nextNodes)
+    snapshot(nextNodes)
+  }, [isEditing, snapshot])
 
-  const rect = rectRef.current
-  if (!rect) return null
+  const applyNodeToDom = useCallback((node: EditorNode, entry: RuntimeEntry) => {
+    const el = entry.element
+    const g = node.geometry
+    el.style.transform = `translate(${g.x}px, ${g.y}px)`
+    el.style.transformOrigin = "top left"
+    el.style.width = `${Math.max(8, g.width)}px`
+    el.style.height = `${Math.max(8, g.height)}px`
 
-  const isSectionOrImage = element.type === 'section' || element.type === 'image'
-  const overlayZ = isSectionOrImage ? 9988 : 9990
-
-  return createPortal(
-    <div data-ve-overlay className="ve-overlay fixed inset-0 pointer-events-none" style={{ zIndex: overlayZ }}>
-      {/* Drag surface - only for non-section/image elements, full area */}
-      {!isSectionOrImage && (
-        <div
-          className="absolute pointer-events-auto cursor-move"
-          style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height, touchAction: 'none' }}
-          onPointerDown={onDragStart}
-        />
-      )}
-      
-      {/* For sections/images, drag surface is just the border frame */}
-      {isSectionOrImage && (
-        <div
-          className="absolute pointer-events-auto cursor-move"
-          style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height, touchAction: 'none' }}
-          onPointerDown={onDragStart}
-        />
-      )}
-      
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          left: rect.x,
-          top: rect.y,
-          width: rect.width,
-          height: rect.height,
-          border: '2px solid #FF8C21',
-          boxShadow: '0 0 0 1px rgba(255,140,33,0.3), 0 0 12px rgba(255,140,33,0.15)',
-        }}
-      />
-      
-      {CORNER_HANDLES.map(({ handle, cursor }) => {
-        const isRight = handle.includes('e')
-        const isBottom = handle.includes('s')
-        return (
-          <div
-            key={handle}
-            className="absolute w-4 h-4 bg-white border-2 border-[#FF8C21] rounded-sm pointer-events-auto"
-            style={{
-              left: isRight ? rect.x + rect.width : rect.x,
-              top: isBottom ? rect.y + rect.height : rect.y,
-              transform: `translate(${isRight ? '-50%' : '50%'}, ${isBottom ? '-50%' : '50%'})`,
-              cursor,
-            }}
-            onPointerDown={(e) => onResizeStart(e, handle)}
-          />
-        )
-      })}
-
-      {SIDE_HANDLES.map(({ handle, cursor }) => {
-        const isTop = handle === 'n'
-        const isBottom = handle === 's'
-        const isLeft = handle === 'w'
-        const isRight = handle === 'e'
-        
-        if (isTop || isBottom) {
-          return (
-            <div
-              key={handle}
-              className="absolute w-8 h-4 bg-white border-2 border-[#FF8C21] rounded-sm pointer-events-auto"
-              style={{
-                left: rect.x + rect.width / 2,
-                top: isTop ? rect.y : rect.y + rect.height,
-                transform: 'translate(-50%, -50%)',
-                cursor,
-              }}
-              onPointerDown={(e) => onResizeStart(e, handle)}
-            />
-          )
-        }
-        
-        if (isLeft || isRight) {
-          return (
-            <div
-              key={handle}
-              className="absolute w-4 h-8 bg-white border-2 border-[#FF8C21] rounded-sm pointer-events-auto"
-              style={{
-                left: isLeft ? rect.x : rect.x + rect.width,
-                top: rect.y + rect.height / 2,
-                transform: 'translate(-50%, -50%)',
-                cursor,
-              }}
-              onPointerDown={(e) => onResizeStart(e, handle)}
-            />
-          )
-        }
-        
-        return null
-      })}
-
-      <div
-        className="absolute pointer-events-none px-2 py-1 bg-[#FF8C21] text-white text-[11px] font-medium rounded"
-        style={{ left: rect.x + rect.width / 2, top: rect.y + rect.height + 10, transform: 'translateX(-50%)' }}
-      >
-        {Math.round(rect.width)} × {Math.round(rect.height)}
-      </div>
-    </div>,
-    document.body
-  )
-}
-
-// ==================== HOVER INDICATOR ====================
-
-function HoverIndicator({ element }: { element: EditableElementData }) {
-  const [rect, setRect] = useState({ x: 0, y: 0, width: 0, height: 0 })
+    if (node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
+    if (node.type === "text" || node.type === "button") {
+      if (node.content.text !== undefined) el.textContent = node.content.text
+      if (node.style.color) el.style.color = node.style.color
+      if (node.style.fontSize) el.style.fontSize = node.style.fontSize
+      if (node.style.fontFamily) el.style.fontFamily = node.style.fontFamily
+      if (node.style.fontWeight) el.style.fontWeight = node.style.fontWeight
+      if (node.style.fontStyle) el.style.fontStyle = node.style.fontStyle
+      if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
+    }
+    if (node.type === "button") {
+      if (node.content.href !== undefined && (el.tagName === "A" || el.tagName === "BUTTON")) {
+        el.setAttribute("href", node.content.href)
+      }
+      if (node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
+    }
+    if (node.type === "image" || node.type === "background") {
+      const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
+      if (img && node.content.src) img.src = node.content.src
+      if (img && node.content.alt !== undefined) img.alt = node.content.alt
+      if (!img && node.content.src) el.style.backgroundImage = `url(${node.content.src})`
+    }
+    if (node.type === "section") {
+      if (node.style.minHeight) el.style.minHeight = node.style.minHeight
+      if (node.style.paddingTop) el.style.paddingTop = node.style.paddingTop
+      if (node.style.paddingBottom) el.style.paddingBottom = node.style.paddingBottom
+    }
+  }, [])
 
   useEffect(() => {
-    if (!element.element) return
-    
-    const update = () => {
-      const r = element.element!.getBoundingClientRect()
-      setRect({ x: r.left, y: r.top, width: r.width, height: r.height })
+    if (!isEditing) return
+    nodes.forEach((node, id) => {
+      const entry = registry.get(id)
+      if (!entry) return
+      applyNodeToDom(node, entry)
+    })
+  }, [nodes, registry, isEditing, applyNodeToDom])
+
+  const dispatch = useCallback((command: Command) => {
+    setNodes((prev) => {
+      const next = new Map(prev)
+      const patchNode = (nodeId: string, updater: (node: EditorNode) => EditorNode) => {
+        const node = next.get(nodeId)
+        if (!node) return
+        next.set(nodeId, updater(node))
+      }
+
+      switch (command.type) {
+        case "SELECT_NODE":
+          setSelectedId(command.nodeId)
+          setOpenPanel(true)
+          return next
+        case "DESELECT_NODE":
+          setSelectedId(null)
+          setOpenPanel(false)
+          return next
+        case "MOVE_NODE":
+          patchNode(command.nodeId, (n) => ({ ...n, geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy } }))
+          break
+        case "RESIZE_NODE":
+          patchNode(command.nodeId, (n) => ({ ...n, geometry: { ...n.geometry, width: command.width, height: command.height } }))
+          break
+        case "UPDATE_TEXT":
+        case "UPDATE_BUTTON":
+        case "UPDATE_IMAGE":
+        case "UPDATE_CARD":
+        case "UPDATE_BACKGROUND":
+        case "UPDATE_SECTION": {
+          patchNode(command.nodeId, (n) => {
+            const content: EditorNode["content"] = { ...n.content }
+            const style = { ...n.style }
+            Object.entries(command.patch).forEach(([k, v]) => {
+              if (["text", "href", "src", "alt"].includes(k)) (content as Record<string, unknown>)[k] = v
+              else (style as Record<string, unknown>)[k] = v
+            })
+            return { ...n, content, style }
+          })
+          break
+        }
+        case "DELETE_NODE":
+          next.delete(command.nodeId)
+          if (selectedId === command.nodeId) {
+            setSelectedId(null)
+            setOpenPanel(false)
+          }
+          break
+        case "COPY_NODE": {
+          const node = next.get(command.nodeId)
+          if (node) clipboardRef.current = structuredClone(node)
+          break
+        }
+        case "CUT_NODE": {
+          const node = next.get(command.nodeId)
+          if (node) clipboardRef.current = structuredClone(node)
+          next.delete(command.nodeId)
+          if (selectedId === command.nodeId) {
+            setSelectedId(null)
+            setOpenPanel(false)
+          }
+          break
+        }
+        case "PASTE_NODE": {
+          const clip = clipboardRef.current
+          if (!clip) break
+          const id = `${clip.id}-copy-${Date.now()}`
+          next.set(id, { ...structuredClone(clip), id, geometry: { ...clip.geometry, x: clip.geometry.x + 20, y: clip.geometry.y + 20 } })
+          setSelectedId(id)
+          setOpenPanel(true)
+          break
+        }
+        default:
+          break
+      }
+
+      snapshot(next)
+      return next
+    })
+  }, [selectedId, snapshot])
+
+  const undo = useCallback(() => {
+    if (historyIndex <= 0) return
+    const idx = historyIndex - 1
+    setHistoryIndex(idx)
+    setNodes(new Map(history[idx]))
+  }, [history, historyIndex])
+
+  const redo = useCallback(() => {
+    if (historyIndex >= history.length - 1) return
+    const idx = historyIndex + 1
+    setHistoryIndex(idx)
+    setNodes(new Map(history[idx]))
+  }, [history, historyIndex])
+
+  const getEditableAtPosition = useCallback((x: number, y: number): RuntimeEntry | null => {
+    const els = document.elementsFromPoint(x, y)
+    const candidates: RuntimeEntry[] = []
+
+    for (const candidate of els) {
+      if (!(candidate instanceof HTMLElement)) continue
+      if (candidate.closest("[data-editor-toolbar]") || candidate.closest("[data-editor-panel]")) continue
+      const bound = candidate.closest<HTMLElement>("[data-editor-node-id]")
+      if (!bound?.dataset.editorNodeId) continue
+      const entry = registry.get(bound.dataset.editorNodeId)
+      if (!entry || !entry.eligible) continue
+      if (!candidates.find((c) => c.id === entry.id)) candidates.push(entry)
     }
-    update()
-    
-    const observer = new ResizeObserver(update)
-    observer.observe(element.element)
-    window.addEventListener('scroll', update, true)
-    window.addEventListener('resize', update)
-    
+
+    if (candidates.length === 0) return null
+    candidates.sort((a, b) => typePriority[a.type] - typePriority[b.type])
+
+    const best = candidates[0]
+    if (best.type !== "section") return best
+
+    const child = candidates.find((c) => c.type !== "section")
+    if (child) return child
+
+    return best
+  }, [registry])
+
+  useEffect(() => {
+    if (!isEditing) return
+    const observer = new ResizeObserver(() => setRegistry(scanRegistry()))
+    registry.forEach((entry) => observer.observe(entry.element))
+    const refresh = () => setRegistry(scanRegistry())
+    window.addEventListener("scroll", refresh, true)
+    window.addEventListener("resize", refresh)
     return () => {
       observer.disconnect()
-      window.removeEventListener('scroll', update, true)
-      window.removeEventListener('resize', update)
+      window.removeEventListener("scroll", refresh, true)
+      window.removeEventListener("resize", refresh)
     }
-  }, [element.element])
+  }, [isEditing, registry])
 
-  return createPortal(
-    <div
-      data-ve-overlay
-      className="ve-overlay fixed pointer-events-none z-[9989]"
-      style={{
-        left: rect.x - 2,
-        top: rect.y - 2,
-        width: rect.width + 4,
-        height: rect.height + 4,
-        border: '2px dashed #FF8C21',
-        borderRadius: 4,
-      }}
-    >
-      <div
-        className="absolute px-2 py-0.5 text-[10px] font-medium text-white bg-[#FF8C21] rounded whitespace-nowrap"
-        style={{ transform: 'translateY(-100%)', marginTop: -4 }}
-      >
-        {element.label}
-      </div>
-    </div>,
-    document.body
-  )
-}
-
-// ==================== MAIN EDITOR OVERLAY ====================
-
-function checkAuthCookie(): boolean {
-  if (typeof document === 'undefined') return false
-  return document.cookie.includes('t4t-editor-auth=authorized')
-}
-
-export function VisualEditorOverlay() {
-  const {
+  const value: VisualEditorContextType = {
     isEditing,
     setIsEditing,
     selectedId,
     setSelectedId,
     openPanel,
     setOpenPanel,
-    snapEnabled,
-    setSnapEnabled,
-    editableElements,
-    registerEditable,
-    unregisterEditable,
-    getElementById,
-    getEditableAtPosition,
-    updateElementTransform,
-    updateElementDimensions,
+    nodes,
+    editableElements: new Map(Array.from(nodes.entries()).map(([id, n]) => {
+      const entry = registry.get(id)
+      const legacy: LegacyEditable = {
+        id,
+        type: n.type,
+        label: n.label,
+        parentId: null,
+        element: entry?.element || null,
+        originalRect: entry?.rect || null,
+        transform: { x: n.geometry.x, y: n.geometry.y },
+        dimensions: { width: n.geometry.width, height: n.geometry.height },
+      }
+      return [id, legacy]
+    })),
+    registry,
+    dispatch,
     undo,
     redo,
-    canUndo,
-    canRedo,
-  } = useVisualEditor()
+    canUndo: historyIndex > 0,
+    canRedo: historyIndex < history.length - 1,
+    assets,
+    registerEditable: () => {},
+    unregisterEditable: () => {},
+    getElementById: (id: string) => {
+      const node = nodes.get(id)
+      const entry = registry.get(id)
+      if (!node) return undefined
+      return {
+        id,
+        type: node.type,
+        label: node.label,
+        parentId: null,
+        element: entry?.element || null,
+        originalRect: entry?.rect || null,
+        transform: { x: node.geometry.x, y: node.geometry.y },
+        dimensions: { width: node.geometry.width, height: node.geometry.height },
+      }
+    },
+    getEditableAtPosition,
+  }
 
-  const [showSaveModal, setShowSaveModal] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  
-  const [guides, setGuides] = useState<{ type: 'vertical' | 'horizontal'; position: number; start: number; end: number }[]>([])
-  const [isDragging, setIsDragging] = useState(false)
-  const [isResizing, setIsResizing] = useState(false)
-  const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'deployed'>('idle')
-  
-  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, startX: 0, startY: 0 })
-  const resizeStartRef = useRef({ mouseX: 0, mouseY: 0, width: 0, height: 0, startX: 0, startY: 0, handle: '' })
+  return <VisualEditorContext.Provider value={value}>{children}</VisualEditorContext.Provider>
+}
 
-  const selectedElement = useMemo(() => {
-    return selectedId ? editableElements.get(selectedId) || null : null
-  }, [selectedId, editableElements])
-
-  const hoveredElement = useMemo(() => {
-    return hoveredId ? getElementById(hoveredId) : null
-  }, [hoveredId, getElementById])
+function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
+  const [rect, setRect] = useState(entry.rect)
 
   useEffect(() => {
-    setIsAuthenticated(checkAuthCookie())
-  }, [])
-
-  // Apply registry state to selected element's DOM node
-  useEffect(() => {
-    if (!isEditing || !selectedElement || !selectedElement.element) return
-
-    const el = selectedElement.element
-    const { transform, dimensions } = selectedElement
-    const orig = selectedElement.originalRect
-
-    if (!orig) return
-
-    const computedStyle = getComputedStyle(el)
-    const isAbsolute = computedStyle.position === 'absolute' || computedStyle.position === 'fixed'
-    const isSection = selectedElement.type === 'section'
-    const isImage = selectedElement.type === 'image'
-    const isBox = selectedElement.type === 'box'
-
-    // For sections, only apply transform (no position/zIndex changes)
-    if (isSection) {
-      el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
-      el.style.transformOrigin = 'top left'
-      return
-    }
-
-    // For absolute/fixed images and boxes, allow movement + resize via transform
-    if (isAbsolute && (isImage || isBox)) {
-      const scaleX = orig.width > 0 ? dimensions.width / orig.width : 1
-      const scaleY = orig.height > 0 ? dimensions.height / orig.height : 1
-      const hasResize = Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01
-      
-      if (hasResize) {
-        el.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY})`
-      } else {
-        el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
-      }
-      el.style.transformOrigin = 'top left'
-      // Ensure absolute elements stay visible above siblings
-      el.style.zIndex = '100'
-      return
-    }
-
-    // Skip other absolute/fixed elements (they would break layout)
-    if (isAbsolute) {
-      return
-    }
-
-    console.log('[Editor] Applying state to', selectedElement.id, 'transform:', transform, 'dimensions:', dimensions)
-
-    const scaleX = orig.width > 0 ? dimensions.width / orig.width : 1
-    const scaleY = orig.height > 0 ? dimensions.height / orig.height : 1
-    const isText = selectedElement.type === 'text' || selectedElement.type === 'button'
-    const hasResize = Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01
-    const hasMove = transform.x !== 0 || transform.y !== 0
-
-    if (isImage) {
-      // Image elements: translate + high z-index to stay above background
-      el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
-      el.style.transformOrigin = 'top left'
-      el.style.position = 'relative'
-      el.style.zIndex = '100'
-      if (Math.abs(dimensions.width - orig.width) > 0.5) {
-        el.style.width = `${dimensions.width}px`
-      } else {
-        el.style.width = ''
-      }
-      if (Math.abs(dimensions.height - orig.height) > 0.5) {
-        el.style.height = `${dimensions.height}px`
-      } else {
-        el.style.height = ''
-      }
-    } else if (isText && hasResize) {
-      // For text and button elements, use scale transform to resize the content
-      el.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY})`
-      el.style.transformOrigin = 'top left'
-      el.style.position = 'relative'
-      el.style.zIndex = '1'
-      el.style.width = ''
-      el.style.height = ''
-    } else if (isText && !hasResize) {
-      // Text/button with only movement, no resize
-      el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
-      el.style.transformOrigin = 'top left'
-      el.style.position = 'relative'
-      el.style.zIndex = '1'
-    } else if (isBox) {
-      // For boxes/cards, use scale transform so inner content scales proportionally
-      if (hasResize) {
-        el.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY})`
-      } else {
-        el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
-      }
-      el.style.transformOrigin = 'top left'
-      el.style.position = 'relative'
-      el.style.zIndex = '1'
-    } else if (selectedElement.type === 'link' && hasResize) {
-      // For links (cards) with resize, use scale so inner content scales too
-      el.style.transform = `translate(${transform.x}px, ${transform.y}px) scale(${scaleX}, ${scaleY})`
-      el.style.transformOrigin = 'top left'
-      el.style.position = 'relative'
-      el.style.zIndex = '1'
-    } else {
-      // For non-text elements, use width/height + translate
-      el.style.transform = `translate(${transform.x}px, ${transform.y}px)`
-      el.style.transformOrigin = 'top left'
-      el.style.position = 'relative'
-      el.style.zIndex = '1'
-
-      if (Math.abs(dimensions.width - orig.width) > 0.5) {
-        el.style.width = `${dimensions.width}px`
-      } else {
-        el.style.width = ''
-      }
-
-      if (Math.abs(dimensions.height - orig.height) > 0.5) {
-        el.style.height = `${dimensions.height}px`
-      } else {
-        el.style.height = ''
-      }
-    }
-  }, [isEditing, selectedElement?.id, selectedElement?.transform?.x, selectedElement?.transform?.y, selectedElement?.dimensions?.width, selectedElement?.dimensions?.height])
-
-    // Clean up styles when selection changes or editing stops
-  useEffect(() => {
-    if (!isEditing) return
-    
+    const update = () => setRect(entry.element.getBoundingClientRect())
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(entry.element)
+    window.addEventListener("scroll", update, true)
+    window.addEventListener("resize", update)
     return () => {
-      editableElements.forEach((el) => {
-        if (el.element) {
-          el.element.style.transform = ''
-          el.element.style.transformOrigin = ''
-          el.element.style.position = ''
-          el.element.style.zIndex = ''
-          el.element.style.width = ''
-          el.element.style.height = ''
-          el.element.style.maxWidth = ''
-          el.element.style.maxHeight = ''
-        }
-      })
+      observer.disconnect()
+      window.removeEventListener("scroll", update, true)
+      window.removeEventListener("resize", update)
     }
-  }, [isEditing])
+  }, [entry])
 
-  // Reset zIndex when element is deselected
+  return createPortal(
+    <div data-editor-overlay className="fixed inset-0 pointer-events-none z-[9990]">
+      <div
+        className="absolute border-2 border-[#FF8C21] shadow-[0_0_0_1px_rgba(255,140,33,0.3),0_0_12px_rgba(255,140,33,0.15)]"
+        style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
+      />
+    </div>,
+    document.body
+  )
+}
+
+export function VisualEditorOverlay() {
+  const { isEditing, setIsEditing, selectedId, nodes, registry, dispatch, openPanel, setOpenPanel, undo, redo, canUndo, canRedo, assets, getEditableAtPosition } = useVisualEditor()
+
+  const selectedEntry = selectedId ? registry.get(selectedId) || null : null
+  const selectedNode = selectedId ? nodes.get(selectedId) || null : null
+
+  const pointerRef = useRef<{ mode: "move" | "resize" | null; start: Point; origin: NodeGeometry | null }>({ mode: null, start: { x: 0, y: 0 }, origin: null })
+
   useEffect(() => {
-    if (!selectedElement) {
-      // Reset all elements' z-index
-      editableElements.forEach((el) => {
-        if (el.element && el.element.style.zIndex === '100') {
-          el.element.style.zIndex = ''
-        }
-      })
-    }
-  }, [selectedElement, editableElements])
-
-  const calculateSnapGuides = useCallback((x: number, y: number, w: number, h: number): { type: 'vertical' | 'horizontal'; position: number; start: number; end: number }[] => {
-    if (!snapEnabled) return []
-    
-    const guideList: { type: 'vertical' | 'horizontal'; position: number; start: number; end: number }[] = []
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    const centerX = viewportWidth / 2
-    const centerY = viewportHeight / 2
-    const elementCenterX = x + w / 2
-    const elementCenterY = y + h / 2
-    
-    if (Math.abs(elementCenterX - centerX) < SNAP_THRESHOLD) {
-      guideList.push({ type: 'vertical', position: centerX, start: y, end: y + h })
-    }
-    if (Math.abs(elementCenterY - centerY) < SNAP_THRESHOLD) {
-      guideList.push({ type: 'horizontal', position: centerY, start: x, end: x + w })
-    }
-    if (Math.abs(x) < SNAP_THRESHOLD) {
-      guideList.push({ type: 'vertical', position: 0, start: y, end: y + h })
-    }
-    if (Math.abs(x + w - viewportWidth) < SNAP_THRESHOLD) {
-      guideList.push({ type: 'vertical', position: viewportWidth, start: y, end: y + h })
-    }
-    if (Math.abs(y) < SNAP_THRESHOLD) {
-      guideList.push({ type: 'horizontal', position: 0, start: x, end: x + w })
-    }
-    
-    return guideList
-  }, [snapEnabled])
-
-  // Handle drag start
-  const handleDragStart = useCallback((e: React.PointerEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
-    if (!selectedElement) return
-    
-    console.log('[Editor] Drag start:', selectedElement.id)
-    
-    dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      startX: selectedElement.transform.x,
-      startY: selectedElement.transform.y,
-    }
-    setIsDragging(true)
-  }, [selectedElement])
-
-  // Handle resize start
-  const handleResizeStart = useCallback((e: React.PointerEvent, handle: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
-    if (!selectedElement) return
-    
-    console.log('[Editor] Resize start:', selectedElement.id, handle)
-    
-    resizeStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      width: selectedElement.dimensions.width || (selectedElement.element?.getBoundingClientRect().width || 0),
-      height: selectedElement.dimensions.height || (selectedElement.element?.getBoundingClientRect().height || 0),
-      startX: selectedElement.transform.x,
-      startY: selectedElement.transform.y,
-      handle,
-    }
-    setIsResizing(true)
-  }, [selectedElement])
-
-  // Handle pointer down - selection only
-  const handlePointerDown = useCallback((e: PointerEvent) => {
     if (!isEditing) return
-    
-    const target = e.target as HTMLElement
-    if (isEditorUI(target)) return
+    document.body.setAttribute("data-editor-mode", "true")
 
-    const editable = getEditableAtPosition(e.clientX, e.clientY)
-    
-    if (editable) {
-      e.preventDefault()
-      e.stopPropagation()
-      setSelectedId(editable.id)
-      setOpenPanel(true)
-    } else {
-      setSelectedId(null)
-      setOpenPanel(false)
-    }
-  }, [isEditing, getEditableAtPosition, setSelectedId, setOpenPanel])
-
-  // Handle pointer move - drag/resize updates registry state
-  const handlePointerMove = useCallback((e: PointerEvent) => {
-    if (!selectedElement) return
-    
-    if (isDragging) {
-      const deltaX = e.clientX - dragStartRef.current.mouseX
-      const deltaY = e.clientY - dragStartRef.current.mouseY
-      
-      let newX = dragStartRef.current.startX + deltaX
-      let newY = dragStartRef.current.startY + deltaY
-      
-      const elementRect = selectedElement.element?.getBoundingClientRect()
-      if (!elementRect) return
-      
-      const visualX = elementRect.left + newX
-      const visualY = elementRect.top + newY
-      const w = selectedElement.dimensions.width || elementRect.width
-      const h = selectedElement.dimensions.height || elementRect.height
-      
-      const newGuides = calculateSnapGuides(visualX, visualY, w, h)
-      setGuides(newGuides)
-      
-      // Update registry state - element will follow via useEditable styles
-      updateElementTransform(selectedElement.id, { x: newX, y: newY })
-    }
-    
-    if (isResizing) {
-      const deltaX = e.clientX - resizeStartRef.current.mouseX
-      const deltaY = e.clientY - resizeStartRef.current.mouseY
-      
-      let newWidth = resizeStartRef.current.width
-      let newHeight = resizeStartRef.current.height
-      const h = resizeStartRef.current.handle
-      const aspectRatio = resizeStartRef.current.width / resizeStartRef.current.height
-      
-      if (h.includes('e')) {
-        newWidth = Math.max(MIN_SIZE, resizeStartRef.current.width + deltaX)
-      } else if (h.includes('w')) {
-        newWidth = Math.max(MIN_SIZE, resizeStartRef.current.width - deltaX)
-      }
-      
-      if (h.includes('s')) {
-        newHeight = Math.max(MIN_SIZE, resizeStartRef.current.height + deltaY)
-      } else if (h.includes('n')) {
-        newHeight = Math.max(MIN_SIZE, resizeStartRef.current.height - deltaY)
-      }
-      
-      if (h.length === 2) {
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-          newHeight = newWidth / aspectRatio
-        } else {
-          newWidth = newHeight * aspectRatio
-        }
-      }
-      
-      // For scale-based resize (boxes, text, buttons, links), do NOT adjust position
-      // The scale transform handles the visual resize from top-left origin
-      const isBox = selectedElement.type === 'box' || selectedElement.type === 'section'
-      const isText = selectedElement.type === 'text' || selectedElement.type === 'button'
-      const isLink = selectedElement.type === 'link'
-      
-      if (isBox || isText || isLink) {
-        // Scale-based resize: keep position unchanged
-        updateElementTransform(selectedElement.id, { x: selectedElement.transform.x, y: selectedElement.transform.y })
-      } else {
-        // For absolute elements, adjust position when resizing from left/top
-        let newX = resizeStartRef.current.startX
-        let newY = resizeStartRef.current.startY
-        if (h.includes('w')) {
-          const widthDiff = newWidth - resizeStartRef.current.width
-          newX = resizeStartRef.current.startX - widthDiff
-        }
-        if (h.includes('n')) {
-          const heightDiff = newHeight - resizeStartRef.current.height
-          newY = resizeStartRef.current.startY - heightDiff
-        }
-        updateElementTransform(selectedElement.id, { x: newX, y: newY })
-      }
-      
-      updateElementDimensions(selectedElement.id, { width: newWidth, height: newHeight })
-    }
-  }, [selectedElement, isDragging, isResizing, calculateSnapGuides, updateElementTransform, updateElementDimensions])
-
-  // Handle pointer up
-  const handlePointerUp = useCallback(() => {
-    setIsDragging(false)
-    setIsResizing(false)
-    setGuides([])
-  }, [])
-
-  // Hover detection
-  const handleMouseOver = useCallback((e: MouseEvent) => {
-    if (!isEditing) return
-    
-    const target = e.target as HTMLElement
-    if (isEditorUI(target)) {
-      setHoveredId(null)
-      return
-    }
-    
-    const editable = getEditableAtPosition(e.clientX, e.clientY)
-    setHoveredId(editable?.id || null)
-  }, [isEditing, getEditableAtPosition])
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName
-      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable
-
-      if (e.key === 'Escape') {
-        if (showSaveModal) setShowSaveModal(false)
-        else if (openPanel) { setOpenPanel(false); setSelectedId(null) }
-        else if (isEditing) setIsEditing(false)
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]")) return
+      const hit = getEditableAtPosition(e.clientX, e.clientY)
+      if (hit) {
         e.preventDefault()
-        setShowSaveModal(true)
+        dispatch({ type: "SELECT_NODE", nodeId: hit.id })
+        const n = nodes.get(hit.id)
+        pointerRef.current = { mode: "move", start: { x: e.clientX, y: e.clientY }, origin: n ? { ...n.geometry } : null }
+      } else {
+        dispatch({ type: "DESELECT_NODE" })
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey && !isTyping) {
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!selectedId) return
+      const state = pointerRef.current
+      if (!state.mode || !state.origin) return
+      const dx = e.clientX - state.start.x
+      const dy = e.clientY - state.start.y
+      if (state.mode === "move") {
+        dispatch({ type: "MOVE_NODE", nodeId: selectedId, dx, dy })
+        pointerRef.current.start = { x: e.clientX, y: e.clientY }
+      }
+    }
+
+    const onPointerUp = () => {
+      pointerRef.current.mode = null
+      pointerRef.current.origin = null
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isEditingInput(e.target)) return
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
         e.preventDefault()
         undo()
-      }
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'Z' || (e.key === 'z' && e.shiftKey)) && !isTyping) {
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && e.shiftKey) {
         e.preventDefault()
         redo()
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'y' && !isTyping) {
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "c" && selectedId) {
         e.preventDefault()
-        redo()
-      }
-      // Delete selected element
-      if ((e.key === 'Delete' || e.key === 'Backspace') && !isTyping && selectedId) {
+        dispatch({ type: "COPY_NODE", nodeId: selectedId })
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "x" && selectedId) {
         e.preventDefault()
-        const el = editableElements.get(selectedId)
-        if (el && el.element) {
-          el.element.style.display = 'none'
-        }
-        unregisterEditable(selectedId)
-        setSelectedId(null)
-        setOpenPanel(false)
+        dispatch({ type: "CUT_NODE", nodeId: selectedId })
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "v") {
+        e.preventDefault()
+        dispatch({ type: "PASTE_NODE" })
+      } else if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+        e.preventDefault()
+        dispatch({ type: "DELETE_NODE", nodeId: selectedId })
+      } else if (e.key === "Escape") {
+        dispatch({ type: "DESELECT_NODE" })
       }
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isEditing, showSaveModal, openPanel, setSelectedId, setOpenPanel, undo, redo, selectedId, editableElements, unregisterEditable])
 
-  // Global click interceptor
-  const handleGlobalClick = useCallback((e: MouseEvent) => {
-    if (!isEditing) return
-    
-    const target = e.target as HTMLElement
-    
-    if (
-      target.closest('[data-edit-toolbar]') ||
-      target.closest('[data-edit-panel]') ||
-      target.closest('[data-edit-modal]') ||
-      target.closest('.resize-handle')
-    ) {
-      return
-    }
-    
-    const isLink = target.tagName === 'A' || target.closest('a')
-    const isButton = target.tagName === 'BUTTON' || target.closest('button')
-    
-    if (isLink || isButton) {
-      e.preventDefault()
-      e.stopPropagation()
-      return false
-    }
-  }, [isEditing])
+    document.addEventListener("pointerdown", onPointerDown, true)
+    document.addEventListener("pointermove", onPointerMove)
+    document.addEventListener("pointerup", onPointerUp)
+    window.addEventListener("keydown", onKeyDown)
 
-  // Attach event listeners
-  useEffect(() => {
-    if (!isEditing) return
-    
-    document.addEventListener('pointerdown', handlePointerDown, true)
-    document.addEventListener('pointermove', handlePointerMove)
-    document.addEventListener('pointerup', handlePointerUp)
-    document.addEventListener('mouseover', handleMouseOver)
-    document.addEventListener('click', handleGlobalClick, true)
-    
-    document.body.style.userSelect = 'none'
-    document.body.style.cursor = 'default'
-    document.body.setAttribute('data-edit-mode', 'true')
-    
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown, true)
-      document.removeEventListener('pointermove', handlePointerMove)
-      document.removeEventListener('pointerup', handlePointerUp)
-      document.removeEventListener('mouseover', handleMouseOver)
-      document.removeEventListener('click', handleGlobalClick, true)
-      document.body.style.userSelect = ''
-      document.body.style.cursor = ''
-      document.body.removeAttribute('data-edit-mode')
+      document.removeEventListener("pointerdown", onPointerDown, true)
+      document.removeEventListener("pointermove", onPointerMove)
+      document.removeEventListener("pointerup", onPointerUp)
+      window.removeEventListener("keydown", onKeyDown)
+      document.body.removeAttribute("data-editor-mode")
     }
-  }, [isEditing, handlePointerDown, handlePointerMove, handlePointerUp, handleMouseOver, handleGlobalClick])
+  }, [isEditing, dispatch, selectedId, nodes, undo, redo, getEditableAtPosition])
 
-  const handleSave = async () => {
-    setSaveStatus('saving')
-    await new Promise(r => setTimeout(r, 1500))
-    setSaveStatus('saved')
-    setTimeout(() => {
-      setShowSaveModal(false)
-      setOpenPanel(false)
-      setSelectedId(null)
-      setSaveStatus('idle')
-    }, 1000)
-  }
-
-  const handleDeploy = async () => {
-    setDeployStatus('deploying')
-    try {
-      const res = await fetch('/api/deploy', { method: 'POST' })
-      if (res.ok) {
-        setDeployStatus('deployed')
-      } else {
-        setDeployStatus('idle')
-      }
-    } catch {
-      setDeployStatus('idle')
-    }
-    setTimeout(() => setDeployStatus('idle'), 3000)
-  }
-
-  const handleClosePanel = useCallback(() => {
-    setOpenPanel(false)
-    setSelectedId(null)
-  }, [setOpenPanel, setSelectedId])
-
-  const getElementValue = (el: EditableElementData) => {
-    if (!el.element) return ''
-    const type = el.type
-    
-    if (type === 'text' || type === 'button') {
-      return el.element.textContent?.trim() || ''
-    }
-    if (type === 'image') {
-      const img = el.element.querySelector('img') || el.element
-      return (img as HTMLImageElement).src || el.element.style.backgroundImage?.match(/url\("?([^"]+)"?\)/)?.[1] || ''
-    }
-    if (type === 'link') {
-      return el.element.getAttribute('href') || ''
-    }
-    return ''
+  if (!isEditing) {
+    return (
+      <button
+        data-editor-toolbar
+        onClick={() => setIsEditing(true)}
+        className="fixed bottom-6 right-6 z-[9999] w-14 h-14 rounded-full bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white shadow-xl"
+        title="Edit mode"
+      >
+        ✎
+      </button>
+    )
   }
 
   return (
     <>
-      {/* Snap guides */}
-      {isEditing && guides.length > 0 && (
-        <div data-ve-overlay className="fixed inset-0 pointer-events-none z-[9991]">
-          {guides.map((guide, i) => (
-            <div
-              key={i}
-              className="absolute bg-[#FF8C21]/40"
-              style={
-                guide.type === 'vertical'
-                  ? { left: guide.position - 0.5, top: guide.start, width: 1, height: guide.end - guide.start }
-                  : { left: guide.start, top: guide.position - 0.5, height: 1, width: guide.end - guide.start }
-              }
-            />
-          ))}
+      <div data-editor-toolbar className="fixed top-3 left-3 z-[9999] flex items-center gap-2 rounded-full bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white">
+        <button onClick={undo} disabled={!canUndo}>Undo</button>
+        <button onClick={redo} disabled={!canRedo}>Redo</button>
+        <button onClick={() => dispatch({ type: "DESELECT_NODE" })}>Deselect</button>
+        <button onClick={() => setIsEditing(false)}>Exit</button>
+      </div>
+
+      {selectedEntry && <SelectionOverlay entry={selectedEntry} />}
+
+      {openPanel && selectedNode && (
+        <div data-editor-panel className="fixed top-16 right-3 z-[9997] w-72 rounded-xl bg-white shadow-2xl">
+          <div className="bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">{selectedNode.label}</div>
+                <div className="text-[10px] capitalize">{selectedNode.type}</div>
+              </div>
+              <button onClick={() => { dispatch({ type: "DESELECT_NODE" }); setOpenPanel(false) }}>×</button>
+            </div>
+          </div>
+
+          <div className="p-3 space-y-2">
+            {(selectedNode.type === "text" || selectedNode.type === "button") && (
+              <>
+                <label className="text-xs font-semibold">Content</label>
+                <textarea
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.content.text || ""}
+                  onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { text: e.target.value } })}
+                />
+              </>
+            )}
+
+            {selectedNode.type === "button" && (
+              <>
+                <label className="text-xs font-semibold">Link</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.content.href || ""}
+                  onChange={(e) => dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { href: e.target.value } })}
+                />
+              </>
+            )}
+
+            {(selectedNode.type === "image" || selectedNode.type === "background") && (
+              <>
+                <label className="text-xs font-semibold">Asset</label>
+                <select
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.content.src || ""}
+                  onChange={(e) => dispatch({ type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { src: e.target.value } })}
+                >
+                  <option value="">Select asset</option>
+                  {assets.map((a) => (
+                    <option key={a.id} value={a.url}>{a.filename}</option>
+                  ))}
+                </select>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-xs"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const url = URL.createObjectURL(file)
+                    dispatch({ type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { src: url } })
+                  }}
+                />
+              </>
+            )}
+
+            {(selectedNode.type === "text" || selectedNode.type === "button") && (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px]">Width</label>
+                  <input
+                    type="number"
+                    className="w-full rounded border p-1 text-xs"
+                    value={Math.round(selectedNode.geometry.width)}
+                    onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px]">Height</label>
+                  <input
+                    type="number"
+                    className="w-full rounded border p-1 text-xs"
+                    value={Math.round(selectedNode.geometry.height)}
+                    onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedNode.type === "section" && (
+              <>
+                <label className="text-xs font-semibold">Min Height</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.style.minHeight || ""}
+                  onChange={(e) => dispatch({ type: "UPDATE_SECTION", nodeId: selectedNode.id, patch: { minHeight: e.target.value } })}
+                />
+                <label className="text-xs font-semibold">Padding Top</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.style.paddingTop || ""}
+                  onChange={(e) => dispatch({ type: "UPDATE_SECTION", nodeId: selectedNode.id, patch: { paddingTop: e.target.value } })}
+                />
+                <label className="text-xs font-semibold">Padding Bottom</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.style.paddingBottom || ""}
+                  onChange={(e) => dispatch({ type: "UPDATE_SECTION", nodeId: selectedNode.id, patch: { paddingBottom: e.target.value } })}
+                />
+              </>
+            )}
+          </div>
         </div>
       )}
-
-      {/* Toolbar */}
-      <AnimatePresence>
-        {isEditing && (
-          <motion.div
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -100, opacity: 0 }}
-            data-edit-toolbar
-            className="fixed top-3 left-3 z-[9999] flex items-center gap-2 bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] rounded-full shadow-xl px-3 py-2"
-          >
-            <button
-              onClick={() => setSnapEnabled(!snapEnabled)}
-              className={`p-1.5 rounded-full text-white/80 hover:text-white transition ${snapEnabled ? 'bg-white/30' : 'bg-white/10'}`}
-              title={snapEnabled ? 'Snap On' : 'Snap Off'}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-              </svg>
-            </button>
-
-            <button
-              onClick={() => setShowSaveModal(true)}
-              className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition"
-              title="Save Changes"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-              </svg>
-            </button>
-
-            <button
-              onClick={() => { setOpenPanel(false); setSelectedId(null) }}
-              className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition"
-              title="Deselect"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <button
-              onClick={handleDeploy}
-              disabled={deployStatus === 'deploying'}
-              className={`p-1.5 rounded-full text-white transition ${
-                deployStatus === 'deployed' ? 'bg-green-500' : 'bg-white/20 hover:bg-white/30'
-              }`}
-              title={deployStatus === 'deployed' ? 'Deployed!' : 'Deploy to Live Site'}
-            >
-              {deployStatus === 'deploying' ? (
-                <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              ) : deployStatus === 'deployed' ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-              )}
-            </button>
-
-            <button
-              onClick={async () => {
-                await fetch('/api/editor-auth/logout', { method: 'POST' })
-                window.location.href = '/'
-              }}
-              className="p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition"
-              title="Exit Editor"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Hover indicator */}
-      {isEditing && hoveredElement && hoveredElement.id !== selectedId && (
-        <HoverIndicator element={hoveredElement} />
-      )}
-
-      {/* Selection overlay */}
-      {isEditing && selectedElement && (
-        <SelectionOverlay
-          element={selectedElement}
-          onDragStart={handleDragStart}
-          onResizeStart={handleResizeStart}
-        />
-      )}
-
-      {/* Edit Panel - element-type-specific */}
-      <AnimatePresence>
-        {isEditing && openPanel && selectedElement && (
-          <motion.div
-            initial={{ x: 260, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 260, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            data-edit-panel
-            className={`fixed top-16 z-[9997] w-60 bg-white rounded-xl shadow-2xl overflow-hidden pointer-events-none ${
-              (() => {
-                const rect = selectedElement.element?.getBoundingClientRect()
-                if (!rect) return 'right-3'
-                const centerX = rect.left + rect.width / 2
-                const screenCenter = window.innerWidth / 2
-                return centerX > screenCenter ? 'left-3' : 'right-3'
-              })()
-            }`}
-          >
-            <div className="bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 pointer-events-auto">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-white font-semibold text-sm truncate">{selectedElement.label}</h3>
-                  <p className="text-white/70 text-[10px] capitalize">{selectedElement.type}</p>
-                </div>
-                <button
-                  data-edit-modal
-                  onClick={() => { setOpenPanel(false); setSelectedId(null) }}
-                  className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition shrink-0 ml-2"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div className="p-3 pointer-events-auto" key={selectedElement.id}>
-              {/* TEXT ELEMENTS */}
-              {selectedElement.type === 'text' && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-gray-700">Content</label>
-                  <textarea
-                    key={`text-${selectedElement.id}`}
-                    defaultValue={selectedElement.element?.textContent?.trim() || ''}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800 resize-none"
-                    rows={3}
-                    onChange={(e) => {
-                      if (selectedElement.element) selectedElement.element.textContent = e.target.value
-                    }}
-                  />
-                  <div className="flex items-center gap-1">
-                    <button
-                      className="p-1.5 rounded border border-gray-200 hover:bg-gray-100 text-xs font-bold"
-                      onClick={() => {
-                        if (selectedElement.element) {
-                          const cs = getComputedStyle(selectedElement.element)
-                          selectedElement.element.style.fontWeight = cs.fontWeight === 'bold' || parseInt(cs.fontWeight) >= 700 ? 'normal' : 'bold'
-                        }
-                      }}
-                    >B</button>
-                    <button
-                      className="p-1.5 rounded border border-gray-200 hover:bg-gray-100 text-xs italic"
-                      onClick={() => {
-                        if (selectedElement.element) {
-                          const cs = getComputedStyle(selectedElement.element)
-                          selectedElement.element.style.fontStyle = cs.fontStyle === 'italic' ? 'normal' : 'italic'
-                        }
-                      }}
-                    >I</button>
-                    <button
-                      className="p-1.5 rounded border border-gray-200 hover:bg-gray-100 text-xs underline"
-                      onClick={() => {
-                        if (selectedElement.element) {
-                          const cs = getComputedStyle(selectedElement.element)
-                          selectedElement.element.style.textDecoration = cs.textDecoration === 'underline' ? 'none' : 'underline'
-                        }
-                      }}
-                    >U</button>
-                    <div className="w-px h-5 bg-gray-200 mx-1" />
-                    <button
-                      className="p-1.5 rounded border border-gray-200 hover:bg-gray-100 text-xs"
-                      onClick={() => {
-                        if (selectedElement.element) selectedElement.element.style.textAlign = 'left'
-                      }}
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeWidth={2} d="M3 6h18M3 12h12M3 18h16" /></svg>
-                    </button>
-                    <button
-                      className="p-1.5 rounded border border-gray-200 hover:bg-gray-100 text-xs"
-                      onClick={() => {
-                        if (selectedElement.element) selectedElement.element.style.textAlign = 'center'
-                      }}
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeWidth={2} d="M3 6h18M6 12h12M4 18h16" /></svg>
-                    </button>
-                    <button
-                      className="p-1.5 rounded border border-gray-200 hover:bg-gray-100 text-xs"
-                      onClick={() => {
-                        if (selectedElement.element) selectedElement.element.style.textAlign = 'right'
-                      }}
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeWidth={2} d="M3 6h18M9 12h12M5 18h16" /></svg>
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-[10px] text-gray-500 shrink-0">Size</label>
-                    <input
-                      type="text"
-                      defaultValue={(() => {
-                        if (!selectedElement.element) return ''
-                        const fs = getComputedStyle(selectedElement.element).fontSize
-                        return fs
-                      })()}
-                      className="flex-1 px-2 py-1 border border-gray-200 rounded text-xs"
-                      onChange={(e) => {
-                        if (selectedElement.element) selectedElement.element.style.fontSize = e.target.value
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-[10px] text-gray-500 shrink-0">Color</label>
-                    <input
-                      type="color"
-                      defaultValue={(() => {
-                        if (!selectedElement.element) return '#ffffff'
-                        const c = getComputedStyle(selectedElement.element).color
-                        return rgbToHex(c)
-                      })()}
-                      className="w-6 h-6 rounded cursor-pointer border-0"
-                      onChange={(e) => {
-                        if (selectedElement.element) selectedElement.element.style.color = e.target.value
-                      }}
-                    />
-                    <label className="text-[10px] text-gray-500 shrink-0">Opacity</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      defaultValue={(() => {
-                        if (!selectedElement.element) return 1
-                        return getComputedStyle(selectedElement.element).opacity
-                      })()}
-                      className="flex-1 h-1"
-                      onChange={(e) => {
-                        if (selectedElement.element) selectedElement.element.style.opacity = e.target.value
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* BUTTON ELEMENTS */}
-              {selectedElement.type === 'button' && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-gray-700">Text</label>
-                  <textarea
-                    key={`btn-text-${selectedElement.id}`}
-                    defaultValue={selectedElement.element?.textContent?.trim() || ''}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800 resize-none"
-                    rows={2}
-                    onChange={(e) => {
-                      if (selectedElement.element) selectedElement.element.textContent = e.target.value
-                    }}
-                  />
-                  <label className="block text-xs font-semibold text-gray-700">Link</label>
-                  <input
-                    key={`btn-href-${selectedElement.id}`}
-                    type="url"
-                    defaultValue={selectedElement.element?.getAttribute('href') || ''}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800"
-                    onChange={(e) => {
-                      if (selectedElement.element) selectedElement.element.setAttribute('href', e.target.value)
-                    }}
-                    placeholder="#contact"
-                  />
-                  <div className="flex items-center gap-2">
-                    <label className="text-[10px] text-gray-500 shrink-0">BG</label>
-                    <input
-                      type="color"
-                      defaultValue={(() => {
-                        if (!selectedElement.element) return '#FF8C21'
-                        const bg = getComputedStyle(selectedElement.element).backgroundColor
-                        if (bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') return '#FF8C21'
-                        return rgbToHex(bg)
-                      })()}
-                      className="w-6 h-6 rounded cursor-pointer border-0"
-                      onChange={(e) => {
-                        if (selectedElement.element) selectedElement.element.style.backgroundColor = e.target.value
-                      }}
-                    />
-                    <label className="text-[10px] text-gray-500 shrink-0">Text</label>
-                    <input
-                      type="color"
-                      defaultValue={(() => {
-                        if (!selectedElement.element) return '#ffffff'
-                        return rgbToHex(getComputedStyle(selectedElement.element).color)
-                      })()}
-                      className="w-6 h-6 rounded cursor-pointer border-0"
-                      onChange={(e) => {
-                        if (selectedElement.element) selectedElement.element.style.color = e.target.value
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-[10px] text-gray-500 shrink-0">Opacity</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      defaultValue={(() => {
-                        if (!selectedElement.element) return 1
-                        return getComputedStyle(selectedElement.element).opacity
-                      })()}
-                      className="flex-1 h-1"
-                      onChange={(e) => {
-                        if (selectedElement.element) selectedElement.element.style.opacity = e.target.value
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* IMAGE / LOGO / GIF ELEMENTS */}
-              {selectedElement.type === 'image' && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-gray-700">Image URL</label>
-                  <input
-                    key={`img-src-${selectedElement.id}`}
-                    type="url"
-                    defaultValue={(() => {
-                      if (!selectedElement.element) return ''
-                      const img = selectedElement.element.querySelector('img')
-                      if (img) return (img as HTMLImageElement).src
-                      const bg = selectedElement.element.style.backgroundImage
-                      if (bg) return bg.match(/url\("?([^"]+)"?\)/)?.[1] || ''
-                      return selectedElement.element.getAttribute('src') || ''
-                    })()}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800"
-                    onChange={(e) => {
-                      if (!selectedElement.element) return
-                      const img = selectedElement.element.querySelector('img')
-                      if (img) {
-                        (img as HTMLImageElement).src = e.target.value
-                      } else if (selectedElement.element.tagName === 'IMG') {
-                        (selectedElement.element as HTMLImageElement).src = e.target.value
-                      } else {
-                        selectedElement.element.style.backgroundImage = `url(${e.target.value})`
-                      }
-                    }}
-                    placeholder="/images/..."
-                  />
-                  <div className="flex items-center gap-2">
-                    <label className="text-[10px] text-gray-500 shrink-0">Opacity</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      defaultValue={(() => {
-                        if (!selectedElement.element) return 1
-                        return getComputedStyle(selectedElement.element).opacity
-                      })()}
-                      className="flex-1 h-1"
-                      onChange={(e) => {
-                        if (selectedElement.element) selectedElement.element.style.opacity = e.target.value
-                      }}
-                    />
-                  </div>
-                  {selectedElement.element && (
-                    <a
-                      href={(() => {
-                        const img = selectedElement.element!.querySelector('img')
-                        if (img) return (img as HTMLImageElement).src
-                        return selectedElement.element!.getAttribute('src') || ''
-                      })()}
-                      download
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-1 px-2 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-700 hover:bg-gray-200 transition"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                      Download
-                    </a>
-                  )}
-                </div>
-              )}
-
-              {/* LINK ELEMENTS */}
-              {selectedElement.type === 'link' && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-gray-700">URL</label>
-                  <input
-                    key={`link-url-${selectedElement.id}`}
-                    type="url"
-                    defaultValue={selectedElement.element?.getAttribute('href') || ''}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800"
-                    onChange={(e) => {
-                      if (selectedElement.element) selectedElement.element.setAttribute('href', e.target.value)
-                    }}
-                    placeholder="https://..."
-                  />
-                  <label className="block text-xs font-semibold text-gray-700">Text</label>
-                  <input
-                    key={`link-text-${selectedElement.id}`}
-                    type="text"
-                    defaultValue={selectedElement.element?.textContent?.trim() || ''}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800"
-                    onChange={(e) => {
-                      if (selectedElement.element) selectedElement.element.textContent = e.target.value
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* BOX / SECTION / CONTAINER ELEMENTS */}
-              {(selectedElement.type === 'box' || selectedElement.type === 'section') && (
-                <div className="space-y-2">
-                  <div className="text-[10px] text-gray-500 p-2 bg-gray-50 rounded-lg">
-                    <div>Size: {Math.round(selectedElement.originalRect?.width || 0)} × {Math.round(selectedElement.originalRect?.height || 0)}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-[10px] text-gray-500 shrink-0">BG</label>
-                    <input
-                      type="color"
-                      defaultValue={(() => {
-                        if (!selectedElement.element) return '#000000'
-                        const bg = getComputedStyle(selectedElement.element).backgroundColor
-                        if (bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') return '#000000'
-                        return rgbToHex(bg)
-                      })()}
-                      className="w-6 h-6 rounded cursor-pointer border-0"
-                      onChange={(e) => {
-                        if (selectedElement.element) selectedElement.element.style.backgroundColor = e.target.value
-                      }}
-                    />
-                    <label className="text-[10px] text-gray-500 shrink-0">Opacity</label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      defaultValue={(() => {
-                        if (!selectedElement.element) return 1
-                        return getComputedStyle(selectedElement.element).opacity
-                      })()}
-                      className="flex-1 h-1"
-                      onChange={(e) => {
-                        if (selectedElement.element) selectedElement.element.style.opacity = e.target.value
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* VIDEO ELEMENTS */}
-              {selectedElement.type === 'video' && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-gray-700">Video URL</label>
-                  <input
-                    key={`video-url-${selectedElement.id}`}
-                    type="url"
-                    defaultValue={(() => {
-                      if (!selectedElement.element) return ''
-                      const iframe = selectedElement.element.querySelector('iframe')
-                      if (iframe) return iframe.src
-                      return selectedElement.element.getAttribute('src') || ''
-                    })()}
-                    className="w-full px-2 py-1.5 border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#FF8C21] focus:border-transparent text-xs text-gray-800"
-                    onChange={(e) => {
-                      if (!selectedElement.element) return
-                      const iframe = selectedElement.element.querySelector('iframe')
-                      if (iframe) iframe.src = e.target.value
-                    }}
-                    placeholder="https://youtube.com/embed/..."
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 pointer-events-auto">
-              <button
-                data-edit-modal
-                onClick={() => setShowSaveModal(true)}
-                className="w-full py-1.5 bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white rounded-lg text-xs font-bold hover:opacity-90 transition"
-              >
-                Save
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* FAB */}
-      {!isEditing && isAuthenticated && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setIsEditing(true)}
-          data-edit-toolbar
-          className="fixed bottom-6 right-6 z-[9999] w-14 h-14 bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white rounded-full shadow-xl flex items-center justify-center"
-          title="Edit Mode"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        </motion.button>
-      )}
-
-      {/* Save Modal */}
-      <AnimatePresence>
-        {showSaveModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            data-edit-modal
-            className="fixed inset-0 z-[10000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => saveStatus === 'idle' && setShowSaveModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              data-edit-modal
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] flex items-center justify-center">
-                {saveStatus === 'saving' ? (
-                  <svg className="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : saveStatus === 'saved' ? (
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                  </svg>
-                )}
-              </div>
-
-              <h3 className="text-xl font-bold text-center mb-2">
-                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : 'Save Changes'}
-              </h3>
-              
-              <p className="text-gray-600 text-center mb-6">
-                {saveStatus === 'saved' ? 'Changes saved to editor.' : 'Save changes to editor. Use Deploy button to publish.'}
-              </p>
-
-              {saveStatus === 'idle' && (
-                <div className="space-y-3">
-                  <button
-                    data-edit-modal
-                    onClick={handleSave}
-                    className="w-full py-3 bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] text-white rounded-xl font-bold"
-                  >
-                    Save
-                  </button>
-                  <button
-                    data-edit-modal
-                    onClick={() => setShowSaveModal(false)}
-                    className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {isEditing && <div className="h-16" />}
     </>
   )
 }

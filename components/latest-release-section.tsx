@@ -133,16 +133,16 @@ export function LatestReleaseSection() {
     <section
       ref={sectionRef}
       id="latest-release"
-      data-edit-id="latest-release-section"
-      data-edit-type="section"
-      data-edit-label="Release Section"
+      data-editor-node-id="latest-release-section"
+      data-editor-node-type="section"
+      data-editor-node-label="Release Section"
       className="relative overflow-hidden bg-black"
     >
       <div 
         ref={bgRef}
-        data-edit-id="latest-release-bg"
-        data-edit-type="image"
-        data-edit-label="Fondo Video YouTube"
+        data-editor-node-id="latest-release-bg"
+        data-editor-node-type="background"
+        data-editor-node-label="Fondo Video YouTube"
         className="absolute inset-0 z-0"
       >
         <Image
@@ -168,9 +168,9 @@ export function LatestReleaseSection() {
         <div className="mx-auto max-w-6xl">
           <motion.div
             ref={cardRef}
-            data-edit-id="latest-release-card"
-            data-edit-type="box"
-            data-edit-label="Release Card"
+            data-editor-node-id="latest-release-card"
+            data-editor-node-type="card"
+            data-editor-node-label="Release Card"
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.25 }}
@@ -179,9 +179,9 @@ export function LatestReleaseSection() {
           >
             <h2 
               ref={titleRef}
-              data-edit-id="latest-release-title"
-              data-edit-type="text"
-              data-edit-label="Título del Lanzamiento"
+              data-editor-node-id="latest-release-title"
+              data-editor-node-type="text"
+              data-editor-node-label="Título del Lanzamiento"
               className="mb-[var(--spacing-sm)] w-full text-center font-serif text-[length:var(--text-h2)] leading-[var(--line-height-tight)] text-foreground"
             >
               {CAMPAIGN_CONTENT.releaseTitle}
@@ -189,9 +189,9 @@ export function LatestReleaseSection() {
 
             <p 
               ref={subtitleRef}
-              data-edit-id="latest-release-subtitle"
-              data-edit-type="text"
-              data-edit-label="Subtítulo del Lanzamiento"
+              data-editor-node-id="latest-release-subtitle"
+              data-editor-node-type="text"
+              data-editor-node-label="Subtítulo del Lanzamiento"
               className="mb-6 w-full text-center text-[length:var(--text-body)] text-muted-foreground"
             >
               {CAMPAIGN_CONTENT.releaseSubtitle}
@@ -203,9 +203,9 @@ export function LatestReleaseSection() {
                 href="https://www.youtube.com/watch?v=xofflmVqYGs"
                 target="_blank"
                 rel="noopener noreferrer"
-                data-edit-id="latest-release-watch-button"
-                data-edit-type="button"
-                data-edit-label="Watch Video Button"
+                data-editor-node-id="latest-release-watch-button"
+                data-editor-node-type="button"
+                data-editor-node-label="Watch Video Button"
                 className={`rounded-xl px-6 py-3 text-center text-base font-semibold shadow-md min-h-[48px] ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
               >
                 {CAMPAIGN_CONTENT.releaseCtaLabel}
@@ -215,9 +215,9 @@ export function LatestReleaseSection() {
                 href={CAMPAIGN_CONTENT.showsCtaHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                data-edit-id="latest-release-shows-button"
-                data-edit-type="button"
-                data-edit-label="See Shows Button"
+                data-editor-node-id="latest-release-shows-button"
+                data-editor-node-type="button"
+                data-editor-node-label="See Shows Button"
                 className="rounded-xl border border-primary/35 px-6 py-3 text-center text-base font-semibold text-primary transition-colors hover:bg-primary/10 min-h-[48px]"
               >
                 {CAMPAIGN_CONTENT.showsCtaLabel}

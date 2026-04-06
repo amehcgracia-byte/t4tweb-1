@@ -181,9 +181,9 @@ export function HeroSection() {
         heroSectionRef.current = el
       }}
       id="top"
-      data-edit-id="hero-section"
-      data-edit-type="section"
-      data-edit-label="Hero Section"
+      data-editor-node-id="hero-section"
+      data-editor-node-type="section"
+      data-editor-node-label="Hero Section"
       className="relative flex min-h-screen w-full items-stretch overflow-hidden bg-black"
     >
       <div className="absolute inset-0 z-0">
@@ -193,6 +193,9 @@ export function HeroSection() {
         >
           <div
             ref={heroBgRef}
+            data-editor-node-id="hero-bg-image"
+            data-editor-node-type="background"
+            data-editor-node-label="Hero Background"
             className="absolute inset-0"
           >
             <Image
@@ -223,9 +226,9 @@ export function HeroSection() {
         <div className="flex flex-col items-center text-center pb-8 pt-16">
           <h1 
             ref={heroTitleRef}
-            data-edit-id="hero-title"
-            data-edit-type="text"
-            data-edit-label="Título Principal"
+            data-editor-node-id="hero-title"
+            data-editor-node-type="text"
+            data-editor-node-label="Título Principal"
             className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6"
           >
             {content.title}{" "}
@@ -237,6 +240,9 @@ export function HeroSection() {
           <div className="flex flex-col items-center">
             <div
               ref={heroLogoRef}
+              data-editor-node-id="hero-logo"
+              data-editor-node-type="image"
+              data-editor-node-label="Hero Logo"
               className="relative"
               style={{ width: 141, height: 141 }}
             >
@@ -251,9 +257,9 @@ export function HeroSection() {
             </div>
             <p 
               ref={heroSubtitleRef}
-              data-edit-id="hero-subtitle"
-              data-edit-type="text"
-              data-edit-label="Subtítulo"
+              data-editor-node-id="hero-subtitle"
+              data-editor-node-type="text"
+              data-editor-node-label="Subtítulo"
               className="mt-3 text-sm font-semibold uppercase tracking-[0.38em] text-[#ffd3a3]"
             >
               {content.subtitle}
@@ -264,6 +270,10 @@ export function HeroSection() {
 
       <div 
         ref={heroScrollRef}
+        data-editor-node-id="hero-scroll-indicator"
+        data-editor-node-type="card"
+        data-editor-node-label="Scroll Indicator"
+        data-editor-grouped="true"
         className="absolute bottom-4 left-1/2 z-30 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1 text-white/80"
       >
         <span className="text-lg uppercase tracking-[0.42em]">SCROLL</span>

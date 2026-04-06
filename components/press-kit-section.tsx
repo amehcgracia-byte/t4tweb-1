@@ -203,9 +203,9 @@ export function PressKitSection() {
     <section 
       ref={sectionRef} 
       className="relative w-full overflow-hidden"
-      data-edit-id="press-kit-section"
-      data-edit-type="section"
-      data-edit-label="Press Kit Section"
+      data-editor-node-id="press-kit-section"
+      data-editor-node-type="section"
+      data-editor-node-label="Press Kit Section"
     >
       <div ref={bgRef} className="absolute inset-0 -z-10">
         <Image
@@ -214,9 +214,9 @@ export function PressKitSection() {
           fill
           className="object-cover"
           sizes="100vw"
-          data-edit-id="press-kit-bg"
-          data-edit-type="image"
-          data-edit-label="Background Image"
+          data-editor-node-id="press-kit-bg"
+          data-editor-node-type="background"
+          data-editor-node-label="Background Image"
         />
       </div>
       <div className="section-photo-scrim" />
@@ -250,9 +250,9 @@ export function PressKitSection() {
           >
             <div 
               className="rounded-2xl border border-border bg-card/35 p-7 text-center shadow-md backdrop-blur-sm md:p-10"
-              data-edit-id="press-kit-main-card"
-              data-edit-type="section"
-              data-edit-label="Main Press Kit Card"
+              data-editor-node-id="press-kit-main-card"
+              data-editor-node-type="card"
+              data-editor-node-label="Main Press Kit Card"
             >
               <div ref={folderIconRef} className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-xl bg-[#FF8C21]/18 md:mb-6 md:h-20 md:w-20">
                 <FolderIcon className="h-9 w-9 text-[#FF8C21] md:h-10 md:w-10" />
@@ -260,18 +260,18 @@ export function PressKitSection() {
               <h3 
                 ref={titleRef}
                 className="mb-2 font-serif text-[length:var(--text-h3)] leading-tight text-foreground md:mb-3"
-                data-edit-id="press-kit-title"
-                data-edit-type="text"
-                data-edit-label="Press Kit Title"
+                data-editor-node-id="press-kit-title"
+                data-editor-node-type="text"
+                data-editor-node-label="Press Kit Title"
               >
                 Complete Press Kit
               </h3>
               <p 
                 ref={descriptionRef}
                 className="mx-auto mb-6 max-w-lg text-[length:var(--text-body)] text-muted-foreground md:mb-8"
-                data-edit-id="press-kit-description"
-                data-edit-type="text"
-                data-edit-label="Press Kit Description"
+                data-editor-node-id="press-kit-description"
+                data-editor-node-type="text"
+                data-editor-node-label="Press Kit Description"
               >
                 Download our full press kit including high quality photos, biography, technical rider, and more.
               </p>
@@ -280,9 +280,9 @@ export function PressKitSection() {
                 href="/PressKit T40 2025.26_compressed.pdf"
                 download="PressKit T40 2025.26_compressed.pdf"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#FF8C21] px-8 py-4 text-base font-semibold text-white shadow-md shadow-[#FF8C21]/22 transition-all hover:bg-[#FF7C00]"
-                data-edit-id="press-kit-download-button"
-                data-edit-type="button"
-                data-edit-label="Download Press Kit Button"
+                data-editor-node-id="press-kit-download-button"
+                data-editor-node-type="button"
+                data-editor-node-label="Download Press Kit Button"
               >
                 <DownloadIcon className="h-6 w-6" />
                 Press Kit
@@ -308,9 +308,10 @@ export function PressKitSection() {
                   rel={resource.download ? undefined : "noopener noreferrer"}
                   download={resource.download ? true : undefined}
                   className="group rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg"
-                  data-edit-id={`press-kit-resource-${index}`}
-                  data-edit-type="link"
-                  data-edit-label={`Resource: ${resource.title}`}
+                  data-editor-node-id={`press-kit-resource-${index}`}
+                  data-editor-node-type="card"
+                  data-editor-node-label={`Resource: ${resource.title}`}
+                  data-editor-grouped="true"
                 >
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-muted-foreground transition-colors group-hover:text-foreground">
                     <Icon />
@@ -396,9 +397,10 @@ function ManagerCard({ managerRef }: { managerRef: React.RefObject<HTMLButtonEle
         transition={{ duration: 0.45, delay: 0.06, type: "spring", stiffness: 320, damping: 22 }}
         onClick={() => setShowModal(true)}
         className="group flex w-full flex-col items-start rounded-2xl border border-border bg-card/35 p-6 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg cursor-pointer text-left"
-        data-edit-id="press-kit-manager"
-        data-edit-type="link"
-        data-edit-label="Manager Contact"
+        data-editor-node-id="press-kit-manager"
+        data-editor-node-type="card"
+        data-editor-node-label="Manager Contact"
+        data-editor-grouped="true"
       >
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-muted-foreground transition-colors group-hover:text-foreground">
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
