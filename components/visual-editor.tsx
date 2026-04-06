@@ -766,12 +766,24 @@ export function VisualEditorOverlay() {
     mode: "move" | "resize" | null
     start: Point
     origin: NodeGeometry | null
-    originScale: number
+    originScale?: number
     handle: "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | null
     nodeId: string | null
     lastGeometry: NodeGeometry | null
-    lastScale: number
+    lastScale?: number
   }>({ mode: null, start: { x: 0, y: 0 }, origin: null, originScale: 1, handle: null, nodeId: null, lastGeometry: null, lastScale: 1 })
+  const createPointerState = (
+    partial: Partial<typeof pointerRef.current>
+  ): typeof pointerRef.current => ({
+    mode: partial.mode ?? null,
+    start: partial.start ?? { x: 0, y: 0 },
+    origin: partial.origin ?? null,
+    originScale: partial.originScale ?? 1,
+    handle: partial.handle ?? null,
+    nodeId: partial.nodeId ?? null,
+    lastGeometry: partial.lastGeometry ?? null,
+    lastScale: partial.lastScale ?? 1,
+  })
 
   useEffect(() => {
     if (!isEditing) return
@@ -790,7 +802,7 @@ export function VisualEditorOverlay() {
         if (!n || !handle) return
         dispatch({ type: "SELECT_NODE", nodeId: resizeNodeId })
         dispatch({ type: "BEGIN_TRANSACTION" })
-        pointerRef.current = {
+        pointerRef.current = createPointerState({
           mode: "resize",
           start: { x: e.clientX, y: e.clientY },
           origin: { ...n.geometry },
@@ -799,7 +811,7 @@ export function VisualEditorOverlay() {
           nodeId: resizeNodeId,
           lastGeometry: { ...n.geometry },
           lastScale: n.style.scale ?? 1,
-        }
+        })
         return
       }
       if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]")) return
@@ -828,7 +840,7 @@ export function VisualEditorOverlay() {
         dispatch({ type: "SELECT_NODE", nodeId: hit.id })
         dispatch({ type: "BEGIN_TRANSACTION" })
         const n = nodes.get(hit.id)
-        pointerRef.current = {
+        pointerRef.current = createPointerState({
           mode: "move",
           start: { x: e.clientX, y: e.clientY },
           origin: n ? { ...n.geometry } : null,
@@ -837,7 +849,7 @@ export function VisualEditorOverlay() {
           nodeId: hit.id,
           lastGeometry: n ? { ...n.geometry } : null,
           lastScale: n?.style.scale ?? 1,
-        }
+        })
       } else {
         dispatch({ type: "DESELECT_NODE" })
       }
@@ -871,7 +883,7 @@ export function VisualEditorOverlay() {
 
         if (handle.length === 2) {
           const scale = Math.max(nextWidth / Math.max(1, state.origin.width), nextHeight / Math.max(1, state.origin.height))
-          const safeScale = Math.max(0.2, scale * state.originScale)
+          const safeScale = Math.max(0.2, scale * (state.originScale ?? 1))
           nextWidth = state.origin.width
           nextHeight = state.origin.height
           if (handle.includes("w")) nextX = state.origin.x + (state.origin.width - nextWidth)
@@ -898,7 +910,7 @@ export function VisualEditorOverlay() {
       if (state.mode === "resize" && state.nodeId && state.lastGeometry) {
         const g = state.lastGeometry
         dispatch({ type: "SET_NODE_GEOMETRY", nodeId: state.nodeId, x: g.x, y: g.y, width: g.width, height: g.height })
-        dispatch({ type: "SET_NODE_SCALE", nodeId: state.nodeId, scale: state.lastScale })
+        dispatch({ type: "SET_NODE_SCALE", nodeId: state.nodeId, scale: state.lastScale ?? 1 })
       }
       pointerRef.current.mode = null
       pointerRef.current.origin = null
