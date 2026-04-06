@@ -1,8 +1,129 @@
 "use client"
 
+import { useRef, useEffect } from "react"
 import Image from "next/image"
+import { useVisualEditor } from "@/components/visual-editor"
 
 export function Footer() {
+  const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
+  const footerRef = useRef<HTMLElement>(null)
+  const logoRef = useRef<HTMLDivElement>(null)
+  const descRef = useRef<HTMLParagraphElement>(null)
+  const ctaRef = useRef<HTMLAnchorElement>(null)
+  const socialGroupRef = useRef<HTMLDivElement>(null)
+  const dividerRef = useRef<HTMLDivElement>(null)
+  const copyrightRef = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    if (!isEditing) return
+
+    // Delay registration to ensure all refs are populated
+    const timer = setTimeout(() => {
+      if (footerRef.current) {
+        registerEditable({
+          id: 'footer-section',
+          type: 'section',
+          label: 'Footer Section',
+          parentId: null,
+          element: footerRef.current,
+          originalRect: footerRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: footerRef.current.offsetWidth, height: footerRef.current.offsetHeight },
+        })
+      }
+
+      if (logoRef.current) {
+        registerEditable({
+          id: 'footer-logo',
+          type: 'image',
+          label: 'Footer Logo',
+          parentId: null,
+          element: logoRef.current,
+          originalRect: logoRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: logoRef.current.offsetWidth, height: logoRef.current.offsetHeight },
+        })
+      }
+
+      if (descRef.current) {
+        registerEditable({
+          id: 'footer-description',
+          type: 'text',
+          label: 'Footer Description',
+          parentId: null,
+          element: descRef.current,
+          originalRect: descRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: descRef.current.offsetWidth, height: descRef.current.offsetHeight },
+        })
+      }
+
+      if (ctaRef.current) {
+        registerEditable({
+          id: 'footer-cta',
+          type: 'button',
+          label: 'Book the Band',
+          parentId: null,
+          element: ctaRef.current,
+          originalRect: ctaRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: ctaRef.current.offsetWidth, height: ctaRef.current.offsetHeight },
+        })
+      }
+
+      if (socialGroupRef.current) {
+        registerEditable({
+          id: 'footer-social-group',
+          type: 'box',
+          label: 'Footer Social Links',
+          parentId: null,
+          element: socialGroupRef.current,
+          originalRect: socialGroupRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: socialGroupRef.current.offsetWidth, height: socialGroupRef.current.offsetHeight },
+        })
+      }
+
+      if (dividerRef.current) {
+        registerEditable({
+          id: 'footer-divider',
+          type: 'box',
+          label: 'Footer Divider',
+          parentId: null,
+          element: dividerRef.current,
+          originalRect: dividerRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: dividerRef.current.offsetWidth, height: dividerRef.current.offsetHeight },
+        })
+      }
+
+      if (copyrightRef.current) {
+        registerEditable({
+          id: 'footer-copyright',
+          type: 'text',
+          label: 'Footer Copyright',
+          parentId: null,
+          element: copyrightRef.current,
+          originalRect: copyrightRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: copyrightRef.current.offsetWidth, height: copyrightRef.current.offsetHeight },
+        })
+      }
+    }, 100)
+
+    return () => {
+      clearTimeout(timer)
+      unregisterEditable('footer-section')
+      unregisterEditable('footer-logo')
+      unregisterEditable('footer-description')
+      unregisterEditable('footer-cta')
+      unregisterEditable('footer-social-group')
+      unregisterEditable('footer-divider')
+      unregisterEditable('footer-copyright')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing])
+
   const currentYear = new Date().getFullYear()
 
   const streamingPlatforms = [
@@ -63,9 +184,10 @@ export function Footer() {
 
   return (
     <footer 
-      data-edit-id="footer"
-      data-edit-type="section"
-      data-edit-label="Pie de página"
+      ref={footerRef}
+      data-editor-node-id="footer-section"
+      data-editor-node-type="section"
+      data-editor-node-label="Footer Section"
       className="bg-black"
     >
       <div className="h-8 bg-gradient-to-b from-black/40 to-black" />
@@ -73,9 +195,10 @@ export function Footer() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 text-center">
         
         <div 
-          data-edit-id="footer-logo"
-          data-edit-type="image"
-          data-edit-label="Logo del pie de página"
+          ref={logoRef}
+          data-editor-node-id="footer-logo"
+          data-editor-node-type="image"
+          data-editor-node-label="Footer Logo"
           className="mb-6"
         >
           <Image
@@ -88,9 +211,10 @@ export function Footer() {
         </div>
 
         <p 
-          data-edit-id="footer-description"
-          data-edit-type="text"
-          data-edit-label="Descripción del pie de página"
+          ref={descRef}
+          data-editor-node-id="footer-description"
+          data-editor-node-type="text"
+          data-editor-node-label="Footer Description"
           className="text-lg text-white/70 mb-6 max-w-2xl mx-auto"
         >
           Berlin-based world music collective blending funk, soul, and reggae.
@@ -98,9 +222,10 @@ export function Footer() {
 
         <div className="mb-8">
           <a
-            data-edit-id="footer-cta"
-            data-edit-type="link"
-            data-edit-label="Botón de contacto"
+            ref={ctaRef}
+            data-editor-node-id="footer-cta"
+            data-editor-node-type="button"
+            data-editor-node-label="Book the Band"
             href="#contact"
             className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-8 py-3 text-base font-bold text-white shadow-lg shadow-[#FF8C21]/30 hover:shadow-xl hover:shadow-[#FF8C21]/40 transition-all"
           >
@@ -108,7 +233,14 @@ export function Footer() {
           </a>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+        <div 
+          ref={socialGroupRef}
+          data-editor-node-id="footer-social-group"
+          data-editor-node-type="card"
+          data-editor-node-label="Footer Social Links"
+          data-editor-grouped="true"
+          className="flex flex-wrap items-center justify-center gap-3 mb-8"
+        >
           {socialLinks.map((link) => (
             <a
               key={link.name}
@@ -123,11 +255,18 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="border-t border-white/10 pt-6">
+        <div 
+          ref={dividerRef}
+          data-editor-node-id="footer-divider"
+          data-editor-node-type="card"
+          data-editor-node-label="Footer Divider"
+          className="border-t border-white/10 pt-6"
+        >
           <p 
-            data-edit-id="footer-copyright"
-            data-edit-type="text"
-            data-edit-label="Texto de derechos de autor"
+            ref={copyrightRef}
+            data-editor-node-id="footer-copyright"
+            data-editor-node-type="text"
+            data-editor-node-label="Footer Copyright"
             className="text-white/40 text-sm text-center"
           >
             &copy; {currentYear} Tales for the Tillerman

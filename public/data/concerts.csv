@@ -1,22 +1,15 @@
 Venue,City,Country,Date,Time,Status,Genre,Capacity,Price
-Auster Club,Berlin,Germany,2026-03-15,21:00,Upcoming,Funk Soul,500,15
-Rockpalast,Cologne,Germany,2026-02-28,20:30,Upcoming,World Music,800,15
-Jazz Cafe,London,UK,2026-02-14,20:00,Upcoming,Funk Soul,250,15
-Paradiso,Amsterdam,Netherlands,2026-01-25,21:30,Upcoming,Reggae,1500,15
-Cassiopeia,Berlin,Germany,2026-01-10,22:00,Upcoming,World Music,400,12
-Privatclub,Berlin,Germany,2025-12-20,21:00,Completed,Funk Soul,300,14
-Lido,Berlin,Germany,2025-11-30,20:30,Completed,World Music,800,15
-Bi Nuu,Berlin,Germany,2025-11-15,21:00,Completed,Reggae,350,12
-Maschinenhaus,Berlin,Germany,2025-10-25,20:00,Completed,Funk Soul,600,15
-SO36,Berlin,Germany,2025-10-10,22:00,Completed,World Music,500,15
-Festsaal Kreuzberg,Berlin,Germany,2025-09-20,20:30,Completed,Funk Soul,800,15
-Kantine am Berghain,Berlin,Germany,2025-09-05,21:00,Completed,Reggae,400,15
-Badehaus,Berlin,Germany,2025-08-15,20:00,Completed,World Music,300,12
-Columbia Theater,Berlin,Germany,2025-07-28,20:30,Completed,Funk Soul,1500,15
-Gretchen,Berlin,Germany,2025-07-10,21:00,Completed,World Music,450,15
-Yaam,Berlin,Germany,2025-06-21,19:00,Completed,Reggae,1000,Free
-Urban Spree,Berlin,Germany,2025-05-17,20:00,Completed,Funk Soul,400,14
-Schokoladen,Berlin,Germany,2025-04-12,21:00,Completed,World Music,150,10
-Holzmarkt,Berlin,Germany,2025-03-15,19:30,Completed,Reggae,600,Free
-Rote Sonne,Munich,Germany,2025-02-28,20:30,Completed,Funk Soul,300,12
-Musik und Frieden,Berlin,Germany,2025-01-25,21:00,Completed,World Music,350,14
+Mauerpark,Berlin,Germany,2026-04-30,22:00,Upcoming,World Music,500,Free
+Zuckerzauber,Berlin,Germany,2026-05-08,20:00,Upcoming,Funk Soul,300,12
+Werk 9,Berlin,Germany,2024-11-30,20:00,Completed,World Music,200,12
+ART Stalker,Berlin,Germany,2024-12-13,20:00,Completed,World Music,150,10
+Horns Erben,Leipzig,Germany,2025-01-19,20:00,Completed,Funk Soul,200,12
+KAOS,Berlin,Germany,2025-03-22,20:00,Completed,World Music,250,12
+Zuckerzauber,Berlin,Germany,2025-05-23,20:00,Completed,Funk Soul,300,15
+Kulturelle Landapie,Wendland,Germany,2025-06-06,16:00,Completed,World Music,1000,Free
+Sommersonnenwende Festival,Grasleben,Germany,2025-06-21,16:00,Completed,Funk Soul,600,15
+Mauerpark,Berlin,Germany,2025-07-13,16:00,Completed,World Music,500,Free
+Privatclub,Berlin,Germany,2025-07-20,20:00,Completed,Funk Soul,300,15
+Uebel & Gefährlich,Hamburg,Germany,2025-07-27,20:00,Completed,World Music,500,15
+Schnabeltierfestival,Münster,Germany,2025-08-22,16:00,Completed,Funk Soul,350,15
+Waltweiser Festival,Münster,Germany,2025-08-23,16:00,Completed,World Music,400,15
