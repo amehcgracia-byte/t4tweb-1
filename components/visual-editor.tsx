@@ -45,7 +45,6 @@ interface EditorNode {
     alt?: string
     videoUrl?: string
   }
-  explicitPosition: boolean
   explicitSize: boolean
 }
 
@@ -251,7 +250,6 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       paddingBottom: cs.paddingBottom,
     },
     content,
-    explicitPosition: false,
     explicitSize: false,
   }
 }
@@ -309,29 +307,14 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const applyNodeToDom = useCallback((node: EditorNode, entry: RuntimeEntry) => {
     const el = entry.element
     const g = node.geometry
-    const hasManagedTransform = el.dataset.editorManagedTransform === "true"
-    const hasManagedSize = el.dataset.editorManagedSize === "true"
-    if (node.explicitPosition) {
-      el.style.transform = `translate(${g.x}px, ${g.y}px)`
-      el.style.transformOrigin = "top left"
-      el.dataset.editorManagedTransform = "true"
-    } else {
-      if (hasManagedTransform) {
-        el.style.removeProperty("transform")
-        el.style.removeProperty("transform-origin")
-        delete el.dataset.editorManagedTransform
-      }
-    }
+    el.style.transform = `translate(${g.x}px, ${g.y}px)`
+    el.style.transformOrigin = "top left"
     if (node.explicitSize) {
       el.style.width = `${Math.max(8, g.width)}px`
       el.style.height = `${Math.max(8, g.height)}px`
-      el.dataset.editorManagedSize = "true"
     } else {
-      if (hasManagedSize) {
-        el.style.removeProperty("width")
-        el.style.removeProperty("height")
-        delete el.dataset.editorManagedSize
-      }
+      el.style.removeProperty("width")
+      el.style.removeProperty("height")
     }
 
     if (node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
@@ -410,7 +393,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           return next
         }
         case "MOVE_NODE":
-          patchNode(command.nodeId, (n) => ({ ...n, explicitPosition: true, geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy } }))
+          patchNode(command.nodeId, (n) => ({ ...n, geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy } }))
           shouldSnapshot = !command.transient && !transactionRef.current.active
           break
         case "RESIZE_NODE":
