@@ -374,6 +374,45 @@ export async function POST(request: Request) {
       if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
     }
 
+    for (const node of payload.nodes) {
+      if (!isNavLayoutId(node.id)) continue
+      const scaleVal = (node.style as { scale?: number })?.scale
+      const hasScale = node.explicitStyle && typeof scaleVal === "number"
+      if (!node.explicitPosition && !node.explicitSize && !hasScale) continue
+
+      navElementStylesInPayload[node.id] = { ...(navElementStylesInPayload[node.id] || {}) }
+      const s = navElementStylesInPayload[node.id] as Record<string, unknown>
+      if (node.explicitPosition) {
+        s.x = roundLayoutPx(node.geometry.x)
+        s.y = roundLayoutPx(node.geometry.y)
+      }
+      if (node.explicitSize) {
+        s.width = roundLayoutPx(node.geometry.width)
+        s.height = roundLayoutPx(node.geometry.height)
+      }
+      if (hasScale) s.scale = Math.round(scaleVal * 1000) / 1000
+      log("nav layout captured", { id: node.id, x: s.x, y: s.y, w: s.width, h: s.height, scale: s.scale })
+      if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
+    }
+
+    let mergedNavigationElementStyles: Record<string, unknown> | null = null
+    if (Object.keys(navElementStylesInPayload).length > 0 && existingNavigation?._id) {
+      const priorRaw = existingNavigation.elementStyles
+      const prior =
+        priorRaw && typeof priorRaw === "object" && !Array.isArray(priorRaw) ? { ...priorRaw } : {}
+      mergedNavigationElementStyles = { ...prior }
+      for (const [targetId, incoming] of Object.entries(navElementStylesInPayload)) {
+        if (typeof incoming === "object" && incoming !== null) {
+          const prevTarget =
+            mergedNavigationElementStyles[targetId] && typeof mergedNavigationElementStyles[targetId] === "object"
+              ? (mergedNavigationElementStyles[targetId] as Record<string, unknown>)
+              : {}
+          mergedNavigationElementStyles[targetId] = { ...prevTarget, ...(incoming as Record<string, unknown>) }
+        }
+      }
+      log("navigation element styles merged", { targets: Object.keys(mergedNavigationElementStyles) })
+    }
+
     // Process Hero element style overrides (position, size, typography)
     if (Object.keys(payload.heroElementStyles || {}).length > 0 || Object.keys(elementStylesInPayload).length > 0) {
       const elementStyles = payload.heroElementStyles || {}
@@ -513,6 +552,20 @@ export async function POST(request: Request) {
       steps.push({ step: "saving", ok: true, message: "No persistible Hero content changes detected; no patch applied." })
     }
 
+    let navigationDocumentId: string | null = null
+    if (mergedNavigationElementStyles && Object.keys(mergedNavigationElementStyles).length > 0 && existingNavigation?._id) {
+      const navPatchResponse = await writeClient
+        .patch(existingNavigation._id)
+        .set({
+          elementStyles: mergedNavigationElementStyles,
+          updatedAt: new Date().toISOString(),
+        })
+        .commit()
+      navigationDocumentId = navPatchResponse._id
+      log("navigation patch committed", { docId: navigationDocumentId })
+      steps.push({ step: "saving", ok: true, message: `Navigation layout saved: ${existingNavigation._id}` })
+    }
+
     const publishedDocumentId = existingHero._id
     log("revalidate path", { path: REVALIDATED_PATH })
     revalidatePath(REVALIDATED_PATH)
@@ -522,12 +575,16 @@ export async function POST(request: Request) {
       status: "ok",
       ok: true,
       step: "done",
-      message: "Deploy complete: Hero section updated in Sanity and public path revalidated.",
+      message:
+        navigationDocumentId != null
+          ? "Deploy complete: Hero and Navigation updated in Sanity; public path revalidated."
+          : "Deploy complete: Hero section updated in Sanity and public path revalidated.",
       steps,
       routeVersion: ROUTE_VERSION,
       sanityDocumentId: publishedDocumentId,
       publishedDocumentId,
       publishedDocumentType: SANITY_DOC_TYPE,
+      navigationDocumentId: navigationDocumentId ?? undefined,
       targetSection: TARGET_SECTION,
       heroTitleMode,
       revalidatedPath: REVALIDATED_PATH,

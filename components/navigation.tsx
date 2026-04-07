@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
+import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import type { NavigationData } from "@/lib/sanity/navigation-loader"
 
-export function Navigation() {
+export function Navigation({ data }: { data: NavigationData }) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -19,13 +21,7 @@ export function Navigation() {
   const mobileLinkRefs = useRef<(HTMLAnchorElement | null)[]>([])
   const mobileBookButtonRef = useRef<HTMLAnchorElement>(null)
 
-  const navLinks = [
-    { href: "#about", label: "About" },
-    { href: "#press-kit", label: "Press" },
-    { href: "#band", label: "Band" },
-    { href: "#live", label: "Live" },
-    { href: "#contact", label: "Contact" },
-  ]
+  const navLinks = data.links
 
   // Register editable elements when editing
   useEffect(() => {
@@ -176,7 +172,10 @@ export function Navigation() {
           ? "bg-black/80 backdrop-blur-2xl border-b border-white/10 shadow-xl shadow-black/25"
           : "bg-transparent"
       }`}
-        style={{ boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none" }}
+        style={{
+          boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none",
+          ...getElementLayoutStyle(data.elementStyles, "navigation"),
+        }}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center md:h-[5.5rem]">

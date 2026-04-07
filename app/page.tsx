@@ -11,18 +11,19 @@ import { SceneSection } from "@/components/scene-section"
 import { LatestReleaseSection } from "@/components/latest-release-section"
 import { IntroBannerSection } from "@/components/intro-banner-section"
 import { loadHeroData } from "@/lib/sanity/hero-loader"
+import { loadNavigationData } from "@/lib/sanity/navigation-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
 
 /** Always refetch hero from Sanity (editor deploy + revalidate); avoids stale static shell in dev). */
 export const dynamic = "force-dynamic"
 
 export default async function Home() {
-  const heroData = await loadHeroData()
+  const [heroData, navigationData] = await Promise.all([loadHeroData(), loadNavigationData()])
 
   return (
     <main className="relative bg-black">
       <RibbonsBlock />
-      <Navigation />
+      <Navigation data={navigationData} />
 
       <HeroSectionWrapper data={heroData} />
 
