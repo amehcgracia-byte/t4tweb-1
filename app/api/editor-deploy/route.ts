@@ -327,18 +327,19 @@ export async function POST(request: Request) {
     const payload = (await request.json()) as DeployRequestPayload
     const isProductionRuntime = process.env.NODE_ENV === "production" || !!process.env.VERCEL
     const baseBranch = process.env.GITHUB_BASE_BRANCH || "main"
+    const hasBaseBranch = Boolean(process.env.GITHUB_BASE_BRANCH)
     const githubConfigured = Boolean(process.env.GITHUB_TOKEN && process.env.GITHUB_REPO)
     const steps: DeployStepResult[] = [{
       step: "checking",
       ok: true,
       message: payload?.diagnosticMode
-        ? "Payload received. Diagnostic deploy mode active (pre-check does not block)."
-        : "Payload received.",
+        ? "Endpoint reached: /api/editor-deploy. Payload received. Diagnostic deploy mode active (pre-check does not block)."
+        : "Endpoint reached: /api/editor-deploy. Payload received.",
     }]
     steps.push({
       step: "checking",
       ok: true,
-      message: `Env diagnostics (server-side): GITHUB_TOKEN detected: ${process.env.GITHUB_TOKEN ? "yes" : "no"}, GITHUB_REPO detected: ${process.env.GITHUB_REPO ? "yes" : "no"}, GITHUB_BASE_BRANCH: ${baseBranch}.`,
+      message: `Env diagnostics (server-side): GITHUB_TOKEN detected: ${process.env.GITHUB_TOKEN ? "yes" : "no"}, GITHUB_REPO detected: ${process.env.GITHUB_REPO ? "yes" : "no"}, GITHUB_BASE_BRANCH detected: ${hasBaseBranch ? "yes" : "no"} (value used: ${baseBranch}).`,
     })
 
     if (!payload || !Array.isArray(payload.nodes) || !Array.isArray(payload.findings) || !payload.level) {
