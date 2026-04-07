@@ -1,30 +1,6 @@
 import { defineField, defineType } from 'sanity'
 import { StarIcon } from '@sanity/icons'
-
-/** Shared optional fields for visual-editor geometry / typography (matches editor-deploy + hero-section). */
-const heroStyleOverrideFields = [
-  defineField({ name: 'x', title: 'X offset (px)', type: 'number' }),
-  defineField({ name: 'y', title: 'Y offset (px)', type: 'number' }),
-  defineField({ name: 'width', title: 'Width (px)', type: 'number' }),
-  defineField({ name: 'height', title: 'Height (px)', type: 'number' }),
-  defineField({ name: 'scale', title: 'Scale', type: 'number' }),
-  defineField({ name: 'fontSize', title: 'Font size (px)', type: 'number' }),
-  defineField({ name: 'fontWeight', title: 'Font weight', type: 'number' }),
-  defineField({ name: 'letterSpacing', title: 'Letter spacing (px)', type: 'number' }),
-  defineField({ name: 'lineHeight', title: 'Line height', type: 'number' }),
-  defineField({ name: 'color', title: 'Color (hex)', type: 'string' }),
-  defineField({ name: 'maxWidth', title: 'Max width (px)', type: 'number' }),
-]
-
-function styleTarget(title: string, name: string) {
-  return defineField({
-    name,
-    title,
-    type: 'object',
-    fields: [...heroStyleOverrideFields],
-    options: { collapsible: true, collapsed: true },
-  })
-}
+import { elementStyleTargetField } from './elementStyleOverrides'
 
 export default defineType({
   name: 'heroSection',
@@ -106,15 +82,15 @@ export default defineType({
       description: 'Position, size, and type saved from /editor deploy. Keys match on-page data-editable ids.',
       options: { collapsible: true, collapsed: true },
       fields: [
-        styleTarget('Hero section (root)', 'hero-section'),
-        styleTarget('Hero background image', 'hero-bg-image'),
-        styleTarget('Hero title (block)', 'hero-title'),
-        styleTarget('Hero title — main line', 'hero-title-main'),
-        styleTarget('Hero title — accent line', 'hero-title-accent'),
-        styleTarget('Hero subtitle', 'hero-subtitle'),
-        styleTarget('Hero logo', 'hero-logo'),
-        styleTarget('Hero buttons row', 'hero-buttons'),
-        styleTarget('Scroll indicator', 'hero-scroll-indicator'),
+        elementStyleTargetField('Hero section (root)', 'hero-section'),
+        elementStyleTargetField('Hero background image', 'hero-bg-image'),
+        elementStyleTargetField('Hero title (block)', 'hero-title'),
+        elementStyleTargetField('Hero title — main line', 'hero-title-main'),
+        elementStyleTargetField('Hero title — accent line', 'hero-title-accent'),
+        elementStyleTargetField('Hero subtitle', 'hero-subtitle'),
+        elementStyleTargetField('Hero logo', 'hero-logo'),
+        elementStyleTargetField('Hero buttons row', 'hero-buttons'),
+        elementStyleTargetField('Scroll indicator', 'hero-scroll-indicator'),
       ],
     }),
     defineField({

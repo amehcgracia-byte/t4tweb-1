@@ -7,49 +7,11 @@ import { useVisualEditor } from "@/components/visual-editor"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 import {
   buildHeroScrollIndicatorLayoutStyle,
-  buildHeroStandardLayoutStyle,
+  getElementLayoutStyle,
   roundLayoutPx,
 } from "@/lib/hero-layout-styles"
 
-/** Maps CMS elementStyles to inline CSS — must stay in sync with `applyNodeToDom` in visual-editor. */
-function getElementStyle(elementStyles: Record<string, unknown> | undefined, targetId: string): React.CSSProperties {
-  if (!elementStyles || !elementStyles[targetId]) return {}
-
-  const styles = elementStyles[targetId] as Record<string, unknown>
-  const hasX = typeof styles.x === "number"
-  const hasY = typeof styles.y === "number"
-  const tx = hasX ? roundLayoutPx(styles.x as number) : 0
-  const ty = hasY ? roundLayoutPx(styles.y as number) : 0
-  const scaleVal = typeof styles.scale === "number" ? styles.scale : 1
-  const needTranslate = hasX || hasY
-  const needScale = typeof styles.scale === "number" && scaleVal !== 1
-
-  const layout =
-    needTranslate || needScale
-      ? buildHeroStandardLayoutStyle({
-          x: tx,
-          y: ty,
-          scale: needScale ? scaleVal : undefined,
-          width: typeof styles.width === "number" ? roundLayoutPx(styles.width as number) : undefined,
-          height: typeof styles.height === "number" ? roundLayoutPx(styles.height as number) : undefined,
-        })
-      : {}
-
-  const result: React.CSSProperties = { ...layout }
-
-  if (!needTranslate && !needScale) {
-    if (typeof styles.width === "number") result.width = `${roundLayoutPx(styles.width as number)}px`
-    if (typeof styles.height === "number") result.height = `${roundLayoutPx(styles.height as number)}px`
-  }
-  if (typeof styles.fontSize === "number") result.fontSize = `${styles.fontSize}px`
-  if (typeof styles.fontWeight === "number") result.fontWeight = styles.fontWeight
-  if (typeof styles.letterSpacing === "number") result.letterSpacing = `${styles.letterSpacing}px`
-  if (typeof styles.lineHeight === "number") result.lineHeight = styles.lineHeight
-  if (typeof styles.color === "string") result.color = styles.color
-  if (typeof styles.maxWidth === "number") result.maxWidth = `${styles.maxWidth}px`
-
-  return result
-}
+const getElementStyle = getElementLayoutStyle
 
 function scrollIndicatorHasLayout(elementStyles: Record<string, unknown> | undefined): boolean {
   const s = elementStyles?.["hero-scroll-indicator"]
