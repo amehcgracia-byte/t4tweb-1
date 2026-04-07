@@ -189,6 +189,7 @@ export function HeroSection() {
   }, [])
 
   const content = data || FALLBACK
+  const heroTitleMode: "legacy" | "segmented" = Array.isArray(content.titleSegments) && content.titleSegments.length > 0 ? "segmented" : "legacy"
 
   return (
     <section
@@ -246,9 +247,10 @@ export function HeroSection() {
             data-editor-node-id="hero-title"
             data-editor-node-type="text"
             data-editor-node-label="Título Principal"
+            data-editor-title-mode={heroTitleMode}
             className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6"
           >
-            {Array.isArray(content.titleSegments) && content.titleSegments.length > 0
+            {heroTitleMode === "segmented"
               ? content.titleSegments.map((segment, index) => (
                 <span
                   key={`hero-segment-${index}`}

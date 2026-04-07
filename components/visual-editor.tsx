@@ -252,7 +252,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const content: EditorNode["content"] = {}
   if (entry.type === "text" || entry.type === "button" || entry.type === "card") {
     content.text = el.textContent?.trim() || ""
-    if (entry.id === "hero-title") {
+    if (entry.id === "hero-title" && el.dataset.editorTitleMode === "segmented") {
       const baseStyle = getComputedStyle(el)
       const baseSegment: TextSegment = {
         text: (el.textContent || "").trim(),
@@ -290,11 +290,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
         }
       })
       const normalizedSegments = segments.filter((segment) => segment.text.length > 0)
-      if (normalizedSegments.length > 1) {
-        content.textSegments = normalizedSegments
-      } else if (baseSegment.text.length > 0) {
-        content.textSegments = [baseSegment]
-      }
+      if (normalizedSegments.length > 0) content.textSegments = normalizedSegments
     }
   }
   if (entry.type === "button") {
@@ -1365,6 +1361,7 @@ export function VisualEditorOverlay() {
                 <div className="space-y-2">
                   {selectedNode.content.textSegments.map((segment, index) => (
                     <div key={`hero-segment-editor-${index}`} className="rounded border border-slate-200 p-2">
+                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Segment {index + 1}</div>
                       <input
                         className="mb-2 w-full rounded border p-1 text-xs"
                         value={segment.text}

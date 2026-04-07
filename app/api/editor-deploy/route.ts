@@ -79,6 +79,7 @@ export async function GET() {
     publishedDocumentId: "resolved-at-deploy",
     publishedDocumentType: SANITY_DOC_TYPE,
     targetSection: TARGET_SECTION,
+    heroTitleMode: "unknown",
     revalidatedPath: REVALIDATED_PATH,
     diagnostics: envDiagnostics,
     envDiagnostics,
@@ -111,10 +112,10 @@ export async function POST(request: Request) {
     })
 
     if (!payload || !Array.isArray(payload.nodes) || !Array.isArray(payload.findings) || !payload.level) {
-      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, revalidatedPath: REVALIDATED_PATH, persistedNodes: [], skippedNodes: [], failedNodes: ["payload"], diagnostics, envDiagnostics }, { status: 400 })
+      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, heroTitleMode: "unknown", revalidatedPath: REVALIDATED_PATH, persistedNodes: [], skippedNodes: [], failedNodes: ["payload"], diagnostics, envDiagnostics }, { status: 400 })
     }
     if (payload.nodes.length === 0) {
-      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload: nodes array is empty.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, revalidatedPath: REVALIDATED_PATH, persistedNodes: [], skippedNodes: [], failedNodes: ["payload.nodes"], diagnostics, envDiagnostics }, { status: 400 })
+      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload: nodes array is empty.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, heroTitleMode: "unknown", revalidatedPath: REVALIDATED_PATH, persistedNodes: [], skippedNodes: [], failedNodes: ["payload.nodes"], diagnostics, envDiagnostics }, { status: 400 })
     }
 
     if (!projectId) {
@@ -131,6 +132,7 @@ export async function POST(request: Request) {
           publishedDocumentId: "resolved-at-deploy",
           publishedDocumentType: SANITY_DOC_TYPE,
           targetSection: TARGET_SECTION,
+          heroTitleMode: "unknown",
           revalidatedPath: REVALIDATED_PATH,
           persistedNodes: [],
           skippedNodes: [],
@@ -156,6 +158,7 @@ export async function POST(request: Request) {
           publishedDocumentId: "resolved-at-deploy",
           publishedDocumentType: SANITY_DOC_TYPE,
           targetSection: TARGET_SECTION,
+          heroTitleMode: "unknown",
           revalidatedPath: REVALIDATED_PATH,
           persistedNodes: [],
           skippedNodes: [],
@@ -180,6 +183,9 @@ export async function POST(request: Request) {
       `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments }`,
       { type: SANITY_DOC_TYPE }
     )
+    const heroTitleMode: "legacy" | "segmented" = Array.isArray(existingHero?.titleSegments) && existingHero.titleSegments.length > 0
+      ? "segmented"
+      : "legacy"
 
     if (!existingHero?._id) {
       steps.push({ step: "saving", ok: false, message: "Hero section document not found; refusing to create implicit duplicate." })
@@ -196,6 +202,7 @@ export async function POST(request: Request) {
           publishedDocumentId: "resolved-at-deploy",
           publishedDocumentType: SANITY_DOC_TYPE,
           targetSection: TARGET_SECTION,
+          heroTitleMode,
           revalidatedPath: REVALIDATED_PATH,
           persistedNodes: [],
           skippedNodes: [],
@@ -222,17 +229,23 @@ export async function POST(request: Request) {
     const heroScrollNode = payload.nodes.find((node) => node.id === "hero-scroll-indicator")
 
     if (heroTitleNode?.explicitContent) {
-      const candidateSegments = Array.isArray(heroTitleNode.content?.textSegments)
-        ? (heroTitleNode.content.textSegments as HeroTitleSegment[])
-        : []
-      const validSegments = candidateSegments.filter((segment) => typeof segment?.text === "string" && segment.text.length > 0)
-      if (validSegments.length > 0) {
-        heroPatch.titleSegments = validSegments
-        persistedFields.push("titleSegments")
-        persistedNodes.push("hero-title")
+      if (heroTitleMode === "segmented") {
+        const candidateSegments = Array.isArray(heroTitleNode.content?.textSegments)
+          ? (heroTitleNode.content.textSegments as HeroTitleSegment[])
+          : []
+        const validSegments = candidateSegments.filter((segment) => typeof segment?.text === "string" && segment.text.length > 0)
+        if (validSegments.length > 0) {
+          heroPatch.titleSegments = validSegments
+          persistedFields.push("titleSegments")
+          persistedNodes.push("hero-title")
+        } else {
+          failedNodes.push("hero-title-segments-empty")
+          skippedFields.push("titleSegments")
+          skippedNodes.push("hero-title")
+        }
       } else {
         skippedFields.push("title")
-        skippedNodes.push("hero-title-rich-inline-accent")
+        skippedNodes.push("hero-title-legacy-no-segment-mapping")
       }
     } else if (heroTitleNode?.explicitPosition || heroTitleNode?.explicitSize || heroTitleNode?.explicitStyle) {
       skippedFields.push("titlePositionOrStyle")
@@ -310,6 +323,7 @@ export async function POST(request: Request) {
       publishedDocumentId,
       publishedDocumentType: SANITY_DOC_TYPE,
       targetSection: TARGET_SECTION,
+      heroTitleMode,
       revalidatedPath: REVALIDATED_PATH,
       persistedNodes,
       skippedNodes,
@@ -332,6 +346,7 @@ export async function POST(request: Request) {
         publishedDocumentId: "resolved-at-deploy",
         publishedDocumentType: SANITY_DOC_TYPE,
         targetSection: TARGET_SECTION,
+        heroTitleMode: "unknown",
         revalidatedPath: REVALIDATED_PATH,
         persistedNodes: [],
         skippedNodes: [],
