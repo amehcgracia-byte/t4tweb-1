@@ -40,6 +40,8 @@ interface DeployEnvDiagnostics {
 const ROUTE_VERSION = "sanity-debug-v3-brutal"
 const SANITY_DOC_ID = "editorDeployPayload"
 const SANITY_DRAFT_ID = `drafts.${SANITY_DOC_ID}`
+const SANITY_DOC_TYPE = "editorDeployPayload"
+const REVALIDATED_PATH = "/"
 
 function getEnvDiagnostics(): DeployEnvDiagnostics {
   const sanityProjectId = process.env.SANITY_PROJECT_ID
@@ -60,6 +62,9 @@ export async function GET() {
   const envDiagnostics = getEnvDiagnostics()
   return NextResponse.json({
     routeVersion: ROUTE_VERSION,
+    publishedDocumentId: SANITY_DOC_ID,
+    publishedDocumentType: SANITY_DOC_TYPE,
+    revalidatedPath: REVALIDATED_PATH,
     diagnostics: envDiagnostics,
     envDiagnostics,
   })
@@ -91,10 +96,10 @@ export async function POST(request: Request) {
     })
 
     if (!payload || !Array.isArray(payload.nodes) || !Array.isArray(payload.findings) || !payload.level) {
-      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload.", diagnostics, envDiagnostics }, { status: 400 })
+      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload.", publishedDocumentId: SANITY_DOC_ID, publishedDocumentType: SANITY_DOC_TYPE, revalidatedPath: REVALIDATED_PATH, diagnostics, envDiagnostics }, { status: 400 })
     }
     if (payload.nodes.length === 0) {
-      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload: nodes array is empty.", diagnostics, envDiagnostics }, { status: 400 })
+      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload: nodes array is empty.", publishedDocumentId: SANITY_DOC_ID, publishedDocumentType: SANITY_DOC_TYPE, revalidatedPath: REVALIDATED_PATH, diagnostics, envDiagnostics }, { status: 400 })
     }
 
     if (!projectId) {
@@ -108,6 +113,9 @@ export async function POST(request: Request) {
           message: "Deploy failed: missing project id. Set SANITY_PROJECT_ID (preferred) or NEXT_PUBLIC_SANITY_PROJECT_ID.",
           steps,
           routeVersion: ROUTE_VERSION,
+          publishedDocumentId: SANITY_DOC_ID,
+          publishedDocumentType: SANITY_DOC_TYPE,
+          revalidatedPath: REVALIDATED_PATH,
           diagnostics,
           envDiagnostics,
         },
@@ -126,6 +134,9 @@ export async function POST(request: Request) {
           message: "Deploy failed: missing write token. Set SANITY_API_WRITE_TOKEN or fallback SANITY_API_TOKEN.",
           steps,
           routeVersion: ROUTE_VERSION,
+          publishedDocumentId: SANITY_DOC_ID,
+          publishedDocumentType: SANITY_DOC_TYPE,
+          revalidatedPath: REVALIDATED_PATH,
           diagnostics,
           envDiagnostics,
         },
@@ -144,7 +155,7 @@ export async function POST(request: Request) {
 
     const persistable = {
       _id: SANITY_DRAFT_ID,
-      _type: "editorDeployPayload",
+      _type: SANITY_DOC_TYPE,
       updatedAt: new Date().toISOString(),
       level: payload.level,
       findings: payload.findings,
@@ -167,6 +178,9 @@ export async function POST(request: Request) {
           message: "Deploy failed: could not publish because draft document was not found.",
           steps,
           routeVersion: ROUTE_VERSION,
+          publishedDocumentId: SANITY_DOC_ID,
+          publishedDocumentType: SANITY_DOC_TYPE,
+          revalidatedPath: REVALIDATED_PATH,
           diagnostics,
           envDiagnostics,
         },
@@ -178,7 +192,7 @@ export async function POST(request: Request) {
     await writeClient.transaction().createOrReplace({ ...docForPublish, _id: SANITY_DOC_ID }).delete(SANITY_DRAFT_ID).commit()
     steps.push({ step: "publishing", ok: true, message: "Sanity draft published successfully." })
 
-    revalidatePath("/")
+    revalidatePath(REVALIDATED_PATH)
     steps.push({ step: "revalidating", ok: true, message: "Public site revalidated." })
 
     return NextResponse.json({
@@ -191,6 +205,9 @@ export async function POST(request: Request) {
       steps,
       routeVersion: ROUTE_VERSION,
       sanityDocumentId: SANITY_DOC_ID,
+      publishedDocumentId: SANITY_DOC_ID,
+      publishedDocumentType: SANITY_DOC_TYPE,
+      revalidatedPath: REVALIDATED_PATH,
       diagnostics,
       envDiagnostics,
     })
@@ -204,6 +221,9 @@ export async function POST(request: Request) {
         step: "saving",
         message: error instanceof Error ? error.message : "Editor deploy route failed.",
         routeVersion: ROUTE_VERSION,
+        publishedDocumentId: SANITY_DOC_ID,
+        publishedDocumentType: SANITY_DOC_TYPE,
+        revalidatedPath: REVALIDATED_PATH,
         diagnostics,
         envDiagnostics,
       },
