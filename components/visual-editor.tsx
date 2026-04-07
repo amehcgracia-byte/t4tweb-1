@@ -1013,13 +1013,34 @@ export function VisualEditorOverlay() {
         localSaved?: boolean
         remoteReady?: boolean
         message?: string
+        routeVersion?: string
         prUrl?: string
         sanityDocumentId?: string
+        diagnostics?: {
+          nextPublicSanityProjectIdDetected: "yes" | "no"
+          sanityProjectIdDetected: "yes" | "no"
+          sanityDatasetDetected: "yes" | "no"
+          sanityApiWriteTokenDetected: "yes" | "no"
+          sanityApiTokenDetected: "yes" | "no"
+          projectIdSource: "SANITY_PROJECT_ID" | "NEXT_PUBLIC_SANITY_PROJECT_ID" | "none"
+          tokenSource: "SANITY_API_WRITE_TOKEN" | "SANITY_API_TOKEN" | "none"
+        }
         steps?: Array<{ step: string; ok: boolean; message: string }>
       }
+      const diagnosticsBlock = data.diagnostics
+        ? `\n\nDiagnostics:\n- NEXT_PUBLIC_SANITY_PROJECT_ID detected: ${data.diagnostics.nextPublicSanityProjectIdDetected}\n- SANITY_PROJECT_ID detected: ${data.diagnostics.sanityProjectIdDetected}\n- SANITY_DATASET detected: ${data.diagnostics.sanityDatasetDetected}\n- SANITY_API_WRITE_TOKEN detected: ${data.diagnostics.sanityApiWriteTokenDetected}\n- SANITY_API_TOKEN detected: ${data.diagnostics.sanityApiTokenDetected}\n- projectId source: ${data.diagnostics.projectIdSource}\n- token source: ${data.diagnostics.tokenSource}`
+        : "\n\nDiagnostics: missing in response."
+      const routeVersionBlock = `\nRoute version: ${data.routeVersion || "missing"}`
+
+      console.info("[editor-deploy] raw response", {
+        endpoint: "/api/editor-deploy",
+        statusCode: response.status,
+        ok: response.ok,
+        body: data,
+      })
       if (!response.ok) {
         setDeployStatus("failed")
-        window.alert(`Red: deploy blocked.\n\n${data.message || "Editor deploy flow failed."}`)
+        window.alert(`Red: deploy blocked.${routeVersionBlock}\n\n${data.message || "Editor deploy flow failed."}${diagnosticsBlock}`)
         return
       }
 
@@ -1047,12 +1068,12 @@ export function VisualEditorOverlay() {
         const revalidateMessage = revalidateStep?.ok ? "Public site revalidated." : "Revalidation pending/manual."
         const docMessage = data.sanityDocumentId ? `Sanity document: ${data.sanityDocumentId}` : "Sanity document published."
         window.alert(
-          `${statusTitle}\n\n${saveMessage}\n${publishMessage}\n${revalidateMessage}\n${docMessage}${warningBlock}${stepTrace}`
+          `${statusTitle}${routeVersionBlock}\n\n${saveMessage}\n${publishMessage}\n${revalidateMessage}\n${docMessage}${diagnosticsBlock}${warningBlock}${stepTrace}`
         )
       } else {
         setDeployStatus("failed")
         const localState = data.localSaved ? "Saved locally, but no PR was created." : "Changes were not saved."
-        window.alert(`${statusTitle}\n\n${data.message || "Deploy remote flow did not complete."}\n\n${localState}${warningBlock}${stepTrace}`)
+        window.alert(`${statusTitle}${routeVersionBlock}\n\n${data.message || "Deploy remote flow did not complete."}\n\n${localState}${diagnosticsBlock}${warningBlock}${stepTrace}`)
       }
     } catch (error) {
       setDeployStatus("failed")
