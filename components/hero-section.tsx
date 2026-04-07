@@ -1,15 +1,30 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useMemo, useState } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { client } from "@/lib/sanity/client"
 import { heroQuery } from "@/lib/sanity/queries"
 import { useVisualEditor } from "@/components/visual-editor"
 
+interface HeroTitleSegment {
+  text: string
+  color?: string
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  opacity?: number
+  fontSize?: string
+  fontFamily?: string
+}
+
 const FALLBACK = {
   title: "A vibrant blend of",
   titleHighlight: "funk, soul and world music",
+  titleSegments: [
+    { text: "A vibrant blend of", color: "#ffffff", bold: true, italic: false, underline: false, opacity: 1 },
+    { text: "funk, soul and world music", color: "#FF8C21", bold: true, italic: false, underline: false, opacity: 1 },
+  ] as HeroTitleSegment[],
   subtitle: "BERLIN-BASED LIVE COLLECTIVE",
   logoUrl: "/images/t4tPics/logo-white.png",
   bgUrl: "/images/t4tPics/hero-bg.jpg",
@@ -178,6 +193,7 @@ export function HeroSection() {
         setData({
           title: data.title || FALLBACK.title,
           titleHighlight: data.titleHighlight || FALLBACK.titleHighlight,
+          titleSegments: Array.isArray(data.titleSegments) && data.titleSegments.length > 0 ? data.titleSegments : FALLBACK.titleSegments,
           subtitle: data.subtitle || FALLBACK.subtitle,
           logoUrl: data.logoUrl || FALLBACK.logoUrl,
           bgUrl: data.bgUrl || FALLBACK.bgUrl,
