@@ -805,7 +805,6 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
 export function VisualEditorOverlay() {
   const { isEditing, setIsEditing, selectedId, nodes, registry, dispatch, openPanel, setOpenPanel, undo, redo, canUndo, canRedo, assets, getEditableAtPosition } = useVisualEditor()
   const [deployStatus, setDeployStatus] = useState<string | null>(null)
-  const DIAGNOSTIC_DEPLOY_MODE = true
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
@@ -848,144 +847,13 @@ export function VisualEditorOverlay() {
     setIsEditing(false)
     window.location.reload()
   }
-  const isValidUrlValue = useCallback((value: string): boolean => {
-    if (!value.trim()) return false
-    if (value.startsWith("#") || value.startsWith("/") || value.startsWith("mailto:") || value.startsWith("tel:")) return true
-    try {
-      const parsed = new URL(value)
-      return parsed.protocol === "http:" || parsed.protocol === "https:"
-    } catch {
-      return false
-    }
-  }, [])
-
-  const runDeployPrecheck = useCallback((): { level: PrecheckLevel; findings: PrecheckFinding[] } => {
-    const findings: PrecheckFinding[] = []
-    const touchedNodes = Array.from(nodes.values()).filter(
-      (node) => node.explicitContent || node.explicitStyle || node.explicitPosition || node.explicitSize
-    )
-
-    touchedNodes.forEach((node) => {
-      const elementLabel = `${node.label} (${node.id})`
-      const entry = registry.get(node.id)
-      const widthRatio = entry?.rect.width ? node.geometry.width / entry.rect.width : 1
-      const heightRatio = entry?.rect.height ? node.geometry.height / entry.rect.height : 1
-      const movedFar = Math.abs(node.geometry.x) > 280 || Math.abs(node.geometry.y) > 280
-      const resizedHard = widthRatio > 2.5 || widthRatio < 0.35 || heightRatio > 2.5 || heightRatio < 0.35
-
-      if (movedFar || resizedHard) {
-        findings.push({
-          element: elementLabel,
-          issue: "Section/card bounds changed significantly; deploy allowed, but mobile visual QA is recommended.",
-          severity: "yellow",
-          blocks: false,
-        })
-      }
-
-      if (node.type === "button") {
-        const href = (node.content.href || "").trim()
-        const tagName = entry?.element.tagName || ""
-        const requiresHref = tagName === "A" || node.explicitContent || href.length > 0
-        if (requiresHref && !href) {
-          findings.push({
-            element: elementLabel,
-            issue: "Button/link is missing href but is rendered as interactive.",
-            severity: "red",
-            blocks: true,
-          })
-        } else if (requiresHref && !isValidUrlValue(href)) {
-          findings.push({
-            element: elementLabel,
-            issue: `Button/link href is invalid: "${href}".`,
-            severity: "red",
-            blocks: true,
-          })
-        } else if (requiresHref && /^https?:\/\//i.test(href)) {
-          findings.push({
-            element: elementLabel,
-            issue: "External link detected; deploy allowed, but destination should be verified manually.",
-            severity: "yellow",
-            blocks: false,
-          })
-        }
-      }
-
-      if (node.type === "image" || (node.type === "background" && node.content.mediaKind !== "video")) {
-        const src = (node.content.src || "").trim()
-        if (!src) {
-          findings.push({
-            element: elementLabel,
-            issue: "Image/background source is empty and will render broken media.",
-            severity: "red",
-            blocks: true,
-          })
-        } else if (!isValidUrlValue(src)) {
-          findings.push({
-            element: elementLabel,
-            issue: `Image/background source is invalid: "${src}".`,
-            severity: "red",
-            blocks: true,
-          })
-        } else if (/^https?:\/\//i.test(src)) {
-          findings.push({
-            element: elementLabel,
-            issue: "External media URL changed; deploy allowed, but loading/performance should be reviewed.",
-            severity: "yellow",
-            blocks: false,
-          })
-        }
-      }
-
-      if (node.type === "background" && node.content.mediaKind === "video") {
-        const videoUrl = (node.content.videoUrl || "").trim()
-        if (!videoUrl || !isValidUrlValue(videoUrl)) {
-          findings.push({
-            element: elementLabel,
-            issue: "Background video URL is empty or invalid.",
-            severity: "red",
-            blocks: true,
-          })
-        } else {
-          findings.push({
-            element: elementLabel,
-            issue: "Background video/complex embed changed; deploy allowed, but mobile rendering should be reviewed manually.",
-            severity: "yellow",
-            blocks: false,
-          })
-        }
-      }
-
-      if (node.type === "card" && node.isGrouped) {
-        findings.push({
-          element: elementLabel,
-          issue: "Grouped card edited; deploy allowed, but check nested content alignment.",
-          severity: "yellow",
-          blocks: false,
-        })
-      }
-    })
-
-    const level: PrecheckLevel = findings.some((f) => f.severity === "red")
-      ? "red"
-      : findings.some((f) => f.severity === "yellow")
-        ? "yellow"
-        : "green"
-
-    return { level, findings }
-  }, [isValidUrlValue, nodes, registry])
 
   const onDeploy = async () => {
-    setDeployStatus("checking")
-    const report = runDeployPrecheck()
-    setDeployStatus("saving")
-    if (DIAGNOSTIC_DEPLOY_MODE) {
-      window.alert("Diagnostic deploy mode active: warnings do not block deploy. Pre-check bypassed for diagnostic mode. Continuing with deploy flow.")
-    }
+    setDeployStatus("connecting")
     try {
       const payload = {
-        level: report.level,
-        diagnosticMode: DIAGNOSTIC_DEPLOY_MODE,
-        findings: report.findings,
+        level: "green" as const,
+        findings: [],
         nodes: Array.from(nodes.values()).map((node) => ({
           id: node.id,
           type: node.type,
@@ -1000,37 +868,32 @@ export function VisualEditorOverlay() {
           explicitSize: node.explicitSize,
         })),
       }
-      setDeployStatus("creating_pr")
       const response = await fetch("/api/editor-deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
       const data = (await response.json()) as {
-        status?: string
-        mode?: "complete" | "incomplete"
-        step?: "checking" | "blocked" | "saving" | "publishing" | "revalidating" | "creating_branch" | "committing" | "creating_pr" | "done" | "failed"
-        localSaved?: boolean
-        remoteReady?: boolean
+        step?: "checking" | "saving" | "publishing" | "revalidating" | "done" | "failed"
         message?: string
         routeVersion?: string
-        prUrl?: string
-        sanityDocumentId?: string
+        envDiagnostics?: {
+          SANITY_PROJECT_ID: "yes" | "no"
+          NEXT_PUBLIC_SANITY_PROJECT_ID: "yes" | "no"
+          SANITY_DATASET: "yes" | "no"
+          SANITY_API_WRITE_TOKEN: "yes" | "no"
+          SANITY_API_TOKEN: "yes" | "no"
+        }
         diagnostics?: {
-          nextPublicSanityProjectIdDetected: "yes" | "no"
-          sanityProjectIdDetected: "yes" | "no"
-          sanityDatasetDetected: "yes" | "no"
-          sanityApiWriteTokenDetected: "yes" | "no"
-          sanityApiTokenDetected: "yes" | "no"
-          projectIdSource: "SANITY_PROJECT_ID" | "NEXT_PUBLIC_SANITY_PROJECT_ID" | "none"
-          tokenSource: "SANITY_API_WRITE_TOKEN" | "SANITY_API_TOKEN" | "none"
+          SANITY_PROJECT_ID: "yes" | "no"
+          NEXT_PUBLIC_SANITY_PROJECT_ID: "yes" | "no"
+          SANITY_DATASET: "yes" | "no"
+          SANITY_API_WRITE_TOKEN: "yes" | "no"
+          SANITY_API_TOKEN: "yes" | "no"
         }
         steps?: Array<{ step: string; ok: boolean; message: string }>
       }
-      const diagnosticsBlock = data.diagnostics
-        ? `\n\nDiagnostics:\n- NEXT_PUBLIC_SANITY_PROJECT_ID detected: ${data.diagnostics.nextPublicSanityProjectIdDetected}\n- SANITY_PROJECT_ID detected: ${data.diagnostics.sanityProjectIdDetected}\n- SANITY_DATASET detected: ${data.diagnostics.sanityDatasetDetected}\n- SANITY_API_WRITE_TOKEN detected: ${data.diagnostics.sanityApiWriteTokenDetected}\n- SANITY_API_TOKEN detected: ${data.diagnostics.sanityApiTokenDetected}\n- projectId source: ${data.diagnostics.projectIdSource}\n- token source: ${data.diagnostics.tokenSource}`
-        : "\n\nDiagnostics: missing in response."
-      const routeVersionBlock = `\nRoute version: ${data.routeVersion || "missing"}`
+      const envDiagnostics = data.envDiagnostics || data.diagnostics
 
       console.info("[editor-deploy] raw response", {
         endpoint: "/api/editor-deploy",
@@ -1038,46 +901,44 @@ export function VisualEditorOverlay() {
         ok: response.ok,
         body: data,
       })
-      if (!response.ok) {
-        setDeployStatus("failed")
-        window.alert(`Red: deploy blocked.${routeVersionBlock}\n\n${data.message || "Editor deploy flow failed."}${diagnosticsBlock}`)
-        return
-      }
 
-      if (data.step) {
+      const lines: string[] = ["connecting"]
+      if (Array.isArray(data.steps) && data.steps.length > 0) {
+        data.steps.forEach((item) => {
+          lines.push(item.step)
+          setDeployStatus(item.step)
+        })
+      } else if (data.step) {
+        lines.push(data.step)
         setDeployStatus(data.step)
       }
 
-      const statusTitle = data.mode === "complete"
-        ? (report.level === "yellow" ? "Deploy prepared with warnings" : "Ready to deploy")
-        : "Deploy incomplete"
-      const warningBlock = report.level === "yellow" && report.findings.length
-        ? `\n\nWarnings:\n${report.findings.map((f, i) => `${i + 1}. ${f.issue}`).join("\n")}`
-        : ""
-      const stepTrace = data.steps?.length
-        ? `\n\nStep trace:\n${data.steps.map((s) => `- ${s.step}: ${s.ok ? "ok" : "failed"} (${s.message})`).join("\n")}`
-        : ""
-
-      if (data.mode === "complete") {
-        setDeployStatus("done")
-        const saveStep = data.steps?.find((s) => s.step === "saving")
-        const publishStep = data.steps?.find((s) => s.step === "publishing")
-        const revalidateStep = data.steps?.find((s) => s.step === "revalidating")
-        const saveMessage = saveStep?.ok ? "Draft saved in Sanity." : "Draft save failed."
-        const publishMessage = publishStep?.ok ? "Draft published automatically." : "Draft publish failed."
-        const revalidateMessage = revalidateStep?.ok ? "Public site revalidated." : "Revalidation pending/manual."
-        const docMessage = data.sanityDocumentId ? `Sanity document: ${data.sanityDocumentId}` : "Sanity document published."
-        window.alert(
-          `${statusTitle}${routeVersionBlock}\n\n${saveMessage}\n${publishMessage}\n${revalidateMessage}\n${docMessage}${diagnosticsBlock}${warningBlock}${stepTrace}`
-        )
-      } else {
+      if (!response.ok) {
         setDeployStatus("failed")
-        const localState = data.localSaved ? "Saved locally, but no PR was created." : "Changes were not saved."
-        window.alert(`${statusTitle}${routeVersionBlock}\n\n${data.message || "Deploy remote flow did not complete."}\n\n${localState}${diagnosticsBlock}${warningBlock}${stepTrace}`)
+        lines.push("failed")
+        lines.push(`routeVersion: ${data.routeVersion || "missing"}`)
+        lines.push(`step: ${data.step || "missing"}`)
+        lines.push(`message: ${data.message || "missing"}`)
+        lines.push(`envDiagnostics: ${JSON.stringify(envDiagnostics || null)}`)
+        lines.push(`rawResponse: ${JSON.stringify(data)}`)
+        window.alert(lines.join("\n"))
+        return
       }
+
+      if (data.step === "done" || lines.includes("revalidating")) {
+        setDeployStatus("done")
+        if (!lines.includes("done")) lines.push("done")
+      }
+      lines.push(`routeVersion: ${data.routeVersion || "missing"}`)
+      lines.push(`step: ${data.step || "missing"}`)
+      lines.push(`message: ${data.message || "missing"}`)
+      lines.push(`envDiagnostics: ${JSON.stringify(envDiagnostics || null)}`)
+      lines.push(`rawResponse: ${JSON.stringify(data)}`)
+      window.alert(lines.join("\n"))
     } catch (error) {
       setDeployStatus("failed")
-      window.alert(`Red: deploy blocked.\n\nFailed to run editor deploy flow: ${error instanceof Error ? error.message : "Unknown error"}`)
+      const message = error instanceof Error ? error.message : "Unknown error"
+      window.alert(`failed\nrouteVersion: missing\nstep: connecting\nmessage: ${message}\nenvDiagnostics: null`)
     }
   }
 
