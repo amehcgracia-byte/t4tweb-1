@@ -9,13 +9,16 @@ export interface NavigationData {
   elementStyles: Record<string, Record<string, unknown>>
 }
 
-const DEFAULT_LINKS: NavigationData["links"] = [
+/** Default nav links (editor-deploy merges text/href into Sanity `links` from this shape). */
+export const DEFAULT_NAV_LINKS: NavigationData["links"] = [
   { href: "#about", label: "About" },
   { href: "#press-kit", label: "Press" },
   { href: "#band", label: "Band" },
   { href: "#live", label: "Live" },
   { href: "#contact", label: "Contact" },
 ]
+
+const DEFAULT_LINKS = DEFAULT_NAV_LINKS
 
 const FALLBACK: NavigationData = {
   brandName: "Tales for the Tillerman",

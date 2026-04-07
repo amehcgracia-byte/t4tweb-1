@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache"
 import { NextResponse } from "next/server"
 import { createClient } from "next-sanity"
 import { roundLayoutPx } from "@/lib/hero-layout-styles"
+import { DEFAULT_NAV_LINKS } from "@/lib/sanity/navigation-loader"
 
 interface DeployNodePayload {
   id: string
@@ -61,6 +62,60 @@ const REVALIDATED_PATH = "/"
 
 function isNavLayoutId(id: string): boolean {
   return id === "navigation" || id === "navigation-inner" || id.startsWith("nav-")
+}
+
+/** Persist brand name, CTA, and link rows from editor nodes (explicitContent). */
+function buildNavigationContentPatch(
+  nodes: DeployNodePayload[],
+  existing: {
+    brandName?: string
+    links?: Array<{ label: string; href: string }>
+    ctaLabel?: string
+    ctaHref?: string
+  }
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {}
+  const baseLinks = Array.isArray(existing.links) && existing.links.length > 0
+    ? existing.links.map((l) => ({ label: l.label || "", href: l.href || "" }))
+    : DEFAULT_NAV_LINKS.map((l) => ({ ...l }))
+  let linksDirty = false
+
+  for (const node of nodes) {
+    if (!node.explicitContent) continue
+
+    if (node.id === "nav-brand-name") {
+      const t = typeof node.content?.text === "string" ? node.content.text.trim() : ""
+      if (t) patch.brandName = t
+      continue
+    }
+
+    const linkMatch = /^nav-link-(\d+)$/.exec(node.id)
+    const mobileMatch = /^nav-mobile-link-(\d+)$/.exec(node.id)
+    const mi = linkMatch ? Number(linkMatch[1]) : mobileMatch ? Number(mobileMatch[1]) : -1
+    if (mi >= 0 && mi < baseLinks.length) {
+      const text = typeof node.content?.text === "string" ? node.content.text.trim() : ""
+      const href = typeof node.content?.href === "string" ? node.content.href.trim() : ""
+      if (text) {
+        baseLinks[mi] = { ...baseLinks[mi], label: text }
+        linksDirty = true
+      }
+      if (href) {
+        baseLinks[mi] = { ...baseLinks[mi], href }
+        linksDirty = true
+      }
+      continue
+    }
+
+    if (node.id === "nav-book-button" || node.id === "nav-mobile-book-button") {
+      const text = typeof node.content?.text === "string" ? node.content.text.trim() : ""
+      const href = typeof node.content?.href === "string" ? node.content.href.trim() : ""
+      if (text) patch.ctaLabel = text
+      if (href) patch.ctaHref = href
+    }
+  }
+
+  if (linksDirty) patch.links = baseLinks
+  return patch
 }
 
 function getEnvDiagnostics(): DeployEnvDiagnostics {
@@ -253,10 +308,16 @@ export async function POST(request: Request) {
         titleSegments?: HeroTitleSegment[]
         elementStyles?: Record<string, Record<string, unknown>>
       } | null>(`*[_type == $type][0]{ _id, title, titleHighlight, titleSegments, elementStyles }`, { type: SANITY_DOC_TYPE }),
-      writeClient.fetch<{ _id: string; elementStyles?: Record<string, Record<string, unknown>> } | null>(
-        `*[_type == $navType][0]{ _id, elementStyles }`,
-        { navType: SANITY_DOC_NAV }
-      ),
+      writeClient.fetch<{
+        _id: string
+        brandName?: string
+        links?: Array<{ label: string; href: string }>
+        ctaLabel?: string
+        ctaHref?: string
+        elementStyles?: Record<string, Record<string, unknown>>
+      } | null>(`*[_type == $navType][0]{ _id, brandName, links[]{ label, href }, ctaLabel, ctaHref, elementStyles }`, {
+        navType: SANITY_DOC_NAV,
+      }),
     ])
     log("document fetch", { hero: !!existingHero?._id, navigation: !!existingNavigation?._id })
     const heroTitleMode: "legacy" | "segmented" = hasSegments || (Array.isArray(existingHero?.titleSegments) && existingHero.titleSegments.length > 0)
@@ -413,6 +474,55 @@ export async function POST(request: Request) {
       log("navigation element styles merged", { targets: Object.keys(mergedNavigationElementStyles) })
     }
 
+    const navContentPatch = existingNavigation?._id
+      ? buildNavigationContentPatch(payload.nodes, {
+          brandName: existingNavigation.brandName,
+          links: existingNavigation.links,
+          ctaLabel: existingNavigation.ctaLabel,
+          ctaHref: existingNavigation.ctaHref,
+        })
+      : {}
+
+    const hasNavLayout =
+      mergedNavigationElementStyles !== null && Object.keys(mergedNavigationElementStyles).length > 0
+    const hasNavContent = Object.keys(navContentPatch).length > 0
+
+    let navigationDocumentId: string | null = null
+    if (existingNavigation?._id && (hasNavLayout || hasNavContent)) {
+      const setPayload: Record<string, unknown> = {
+        updatedAt: new Date().toISOString(),
+      }
+      if (hasNavLayout) setPayload.elementStyles = mergedNavigationElementStyles
+      Object.assign(setPayload, navContentPatch)
+      const navPatchResponse = await writeClient.patch(existingNavigation._id).set(setPayload).commit()
+      navigationDocumentId = navPatchResponse._id
+      log("navigation patch committed", { docId: navigationDocumentId, hasNavLayout, hasNavContent })
+      const navParts: string[] = []
+      if (hasNavLayout) navParts.push("layout")
+      if (hasNavContent) navParts.push("content")
+      steps.push({
+        step: "saving",
+        ok: true,
+        message: `Navigation ${navParts.join(" + ")} saved: ${existingNavigation._id}`,
+      })
+      if (hasNavContent) {
+        for (const node of payload.nodes) {
+          if (!node.explicitContent) continue
+          if (
+            node.id === "nav-brand-name" ||
+            node.id === "nav-book-button" ||
+            node.id === "nav-mobile-book-button" ||
+            /^nav-(link|mobile-link)-\d+$/.test(node.id)
+          ) {
+            if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
+          }
+        }
+        for (const k of Object.keys(navContentPatch)) {
+          if (!persistedFields.includes(k)) persistedFields.push(k)
+        }
+      }
+    }
+
     // Process Hero element style overrides (position, size, typography)
     if (Object.keys(payload.heroElementStyles || {}).length > 0 || Object.keys(elementStylesInPayload).length > 0) {
       const elementStyles = payload.heroElementStyles || {}
@@ -550,20 +660,6 @@ export async function POST(request: Request) {
     } else {
       log("no patch needed", { reason: "no persistible changes" })
       steps.push({ step: "saving", ok: true, message: "No persistible Hero content changes detected; no patch applied." })
-    }
-
-    let navigationDocumentId: string | null = null
-    if (mergedNavigationElementStyles && Object.keys(mergedNavigationElementStyles).length > 0 && existingNavigation?._id) {
-      const navPatchResponse = await writeClient
-        .patch(existingNavigation._id)
-        .set({
-          elementStyles: mergedNavigationElementStyles,
-          updatedAt: new Date().toISOString(),
-        })
-        .commit()
-      navigationDocumentId = navPatchResponse._id
-      log("navigation patch committed", { docId: navigationDocumentId })
-      steps.push({ step: "saving", ok: true, message: `Navigation layout saved: ${existingNavigation._id}` })
     }
 
     const publishedDocumentId = existingHero._id
