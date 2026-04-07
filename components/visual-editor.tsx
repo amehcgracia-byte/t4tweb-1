@@ -1011,22 +1011,46 @@ export function VisualEditorOverlay() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-      const data = (await response.json()) as { status?: string; message?: string; prUrl?: string }
+      const data = (await response.json()) as {
+        status?: string
+        mode?: "complete" | "incomplete"
+        step?: "checking" | "blocked" | "saving" | "creating_branch" | "committing" | "creating_pr" | "done" | "failed"
+        localSaved?: boolean
+        remoteReady?: boolean
+        message?: string
+        prUrl?: string
+        steps?: Array<{ step: string; ok: boolean; message: string }>
+      }
       if (!response.ok) {
-        setDeployStatus("blocked")
+        setDeployStatus("failed")
         window.alert(`Red: deploy blocked.\n\n${data.message || "Editor deploy flow failed."}`)
         return
       }
 
-      setDeployStatus("done")
-      const statusTitle = report.level === "yellow" ? "Deploy prepared with warnings" : "Ready to deploy"
+      if (data.step) {
+        setDeployStatus(data.step)
+      }
+
+      const statusTitle = data.mode === "complete"
+        ? (report.level === "yellow" ? "Deploy prepared with warnings" : "Ready to deploy")
+        : "Deploy incomplete"
       const warningBlock = report.level === "yellow" && report.findings.length
         ? `\n\nWarnings:\n${report.findings.map((f, i) => `${i + 1}. ${f.issue}`).join("\n")}`
         : ""
-      const prBlock = data.prUrl ? `\n\nPR created:\n${data.prUrl}` : "\n\nState saved locally (no PR URL returned)."
-      window.alert(`${statusTitle}\n\n${data.message || "Editor state persisted."}${warningBlock}${prBlock}`)
+      const stepTrace = data.steps?.length
+        ? `\n\nStep trace:\n${data.steps.map((s) => `- ${s.step}: ${s.ok ? "ok" : "failed"} (${s.message})`).join("\n")}`
+        : ""
+
+      if (data.mode === "complete" && data.prUrl) {
+        setDeployStatus("done")
+        window.alert(`${statusTitle}\n\n${data.message || "Branch created, committed, and PR opened."}${warningBlock}\n\nPR created:\n${data.prUrl}${stepTrace}`)
+      } else {
+        setDeployStatus("failed")
+        const localState = data.localSaved ? "Saved locally, but no PR was created." : "Changes were not saved."
+        window.alert(`${statusTitle}\n\n${data.message || "Deploy remote flow did not complete."}\n\n${localState}${warningBlock}${stepTrace}`)
+      }
     } catch (error) {
-      setDeployStatus("blocked")
+      setDeployStatus("failed")
       window.alert(`Red: deploy blocked.\n\nFailed to run editor deploy flow: ${error instanceof Error ? error.message : "Unknown error"}`)
     }
   }
