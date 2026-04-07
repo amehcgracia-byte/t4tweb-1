@@ -1,5 +1,3 @@
-import { mkdir, writeFile } from "node:fs/promises"
-import path from "node:path"
 import { NextResponse } from "next/server"
 
 interface DeployNodePayload {
@@ -315,36 +313,35 @@ export async function POST(request: Request) {
     }
     const serialized = JSON.stringify(persistable, null, 2)
 
-    let localSaved = false
-    if (isProductionRuntime) {
+    const localSaved = false
+    if (!githubConfigured) {
       steps.push({
         step: "saving",
-        ok: true,
-        message: "Cannot write to local filesystem in production runtime. Using GitHub as persistence target instead.",
+        ok: false,
+        message: isProductionRuntime
+          ? "Production GitHub path entered; local write is disabled."
+          : "GitHub persistence is required. Local filesystem persistence is disabled in deploy flow.",
       })
-      if (!githubConfigured) {
-        return NextResponse.json(
-          {
-            status: "failed",
-            mode: "incomplete",
-            step: "saving",
-            localSaved: false,
-            remoteReady: false,
-            message:
-              "Deploy failed: runtime local filesystem is read-only and GitHub persistence is not configured.",
-            steps,
-          },
-          { status: 500 }
-        )
-      }
-    } else {
-      const outputDir = path.join(process.cwd(), "public", "data")
-      await mkdir(outputDir, { recursive: true })
-      const outputPath = path.join(outputDir, "editor-deploy-state.json")
-      await writeFile(outputPath, serialized, "utf8")
-      localSaved = true
-      steps.push({ step: "saving", ok: true, message: "State persisted locally to public/data/editor-deploy-state.json." })
+      return NextResponse.json(
+        {
+          status: "failed",
+          mode: "incomplete",
+          step: "saving",
+          localSaved: false,
+          remoteReady: false,
+          message: isProductionRuntime
+            ? "Deploy failed: GitHub persistence is required in production. Local filesystem is read-only."
+            : "Deploy failed: GitHub persistence is not configured.",
+          steps,
+        },
+        { status: 500 }
+      )
     }
+    steps.push({
+      step: "saving",
+      ok: true,
+      message: "Production GitHub path entered. Local write path is disabled.",
+    })
 
     const githubResult = await runGithubFlow(serialized)
     const mergedSteps = steps.concat(githubResult.steps)
