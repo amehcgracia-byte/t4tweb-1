@@ -804,6 +804,7 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
 
 export function VisualEditorOverlay() {
   const { isEditing, setIsEditing, selectedId, nodes, registry, dispatch, openPanel, setOpenPanel, undo, redo, canUndo, canRedo, assets, getEditableAtPosition } = useVisualEditor()
+  const [deployStatus, setDeployStatus] = useState<string | null>(null)
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
@@ -970,22 +971,64 @@ export function VisualEditorOverlay() {
     return { level, findings }
   }, [isValidUrlValue, nodes, registry])
 
-  const onDeploy = () => {
+  const onDeploy = async () => {
+    setDeployStatus("checking")
     const report = runDeployPrecheck()
     if (report.level === "green") {
-      window.alert(
-        "Ready to deploy\n\nNo problems found.\nYour editor changes look safe to deploy.\n\nBefore final deploy, run:\n- pnpm typecheck\n- pnpm lint\n- pnpm build"
-      )
+      setDeployStatus("saving")
+    } else if (report.level === "yellow") {
+      setDeployStatus("saving")
+    } else {
+      setDeployStatus("blocked")
+      const findingsText = report.findings
+        .map((f, i) => `${i + 1}. ${f.severity.toUpperCase()} | ${f.blocks ? "blocks" : "does not block"} | ${f.element} — ${f.issue}`)
+        .join("\n")
+      const checksHint = "Before final deploy, run: pnpm typecheck, pnpm lint, pnpm build."
+      window.alert(`Red: deploy blocked.\n\n${findingsText}\n\n${checksHint}`)
       return
     }
+    try {
+      const payload = {
+        level: report.level,
+        findings: report.findings,
+        nodes: Array.from(nodes.values()).map((node) => ({
+          id: node.id,
+          type: node.type,
+          label: node.label,
+          isGrouped: node.isGrouped,
+          geometry: node.geometry,
+          style: node.style,
+          content: node.content,
+          explicitContent: node.explicitContent,
+          explicitStyle: node.explicitStyle,
+          explicitPosition: node.explicitPosition,
+          explicitSize: node.explicitSize,
+        })),
+      }
+      setDeployStatus("creating_pr")
+      const response = await fetch("/api/editor-deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const data = (await response.json()) as { status?: string; message?: string; prUrl?: string }
+      if (!response.ok) {
+        setDeployStatus("blocked")
+        window.alert(`Red: deploy blocked.\n\n${data.message || "Editor deploy flow failed."}`)
+        return
+      }
 
-    const header = report.level === "yellow" ? "Yellow: deploy allowed with warnings." : "Red: deploy blocked."
-    const findingsText = report.findings
-      .map((f, i) => `${i + 1}. ${f.severity.toUpperCase()} | ${f.blocks ? "blocks" : "does not block"} | ${f.element} — ${f.issue}`)
-      .join("\n")
-    const checksHint = "Before final deploy, run: pnpm typecheck, pnpm lint, pnpm build."
-
-    window.alert(`${header}\n\n${findingsText}\n\n${checksHint}`)
+      setDeployStatus("done")
+      const statusTitle = report.level === "yellow" ? "Deploy prepared with warnings" : "Ready to deploy"
+      const warningBlock = report.level === "yellow" && report.findings.length
+        ? `\n\nWarnings:\n${report.findings.map((f, i) => `${i + 1}. ${f.issue}`).join("\n")}`
+        : ""
+      const prBlock = data.prUrl ? `\n\nPR created:\n${data.prUrl}` : "\n\nState saved locally (no PR URL returned)."
+      window.alert(`${statusTitle}\n\n${data.message || "Editor state persisted."}${warningBlock}${prBlock}`)
+    } catch (error) {
+      setDeployStatus("blocked")
+      window.alert(`Red: deploy blocked.\n\nFailed to run editor deploy flow: ${error instanceof Error ? error.message : "Unknown error"}`)
+    }
   }
 
   const pointerRef = useRef<{
@@ -1239,6 +1282,11 @@ export function VisualEditorOverlay() {
         <button aria-label="Exit" title="Exit" onClick={exitEditor} className="rounded p-1.5 hover:bg-white/10">
           ⎋
         </button>
+        {deployStatus && (
+          <span className="ml-1 rounded bg-black/25 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+            {deployStatus}
+          </span>
+        )}
       </div>
 
       {selectedEntry && <SelectionOverlay entry={selectedEntry} />}
