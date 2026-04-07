@@ -51,7 +51,13 @@ export async function loadHeroData(): Promise<HeroData> {
       projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'qtpb6qpz',
       dataset: process.env.SANITY_DATASET || 'production',
       apiVersion: '2024-01-01',
-      useCdn: true,
+      // Dev: API origin so deploys show immediately. Prod: CDN unless SANITY_USE_CDN=false.
+      useCdn:
+        process.env.SANITY_USE_CDN === 'true'
+          ? true
+          : process.env.SANITY_USE_CDN === 'false'
+            ? false
+            : process.env.NODE_ENV === 'production',
       perspective: 'published',
     })
 

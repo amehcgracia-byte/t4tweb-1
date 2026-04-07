@@ -394,6 +394,12 @@ export function HeroSection({ data }: { data: HeroData }) {
             <div key={i} className="text-white/60 ml-2">  [{i}]: {t}</div>
           ))}
           <div>gradient fields: {debug.hasGradientFields ? "yes" : "no"}</div>
+          <div className="mt-1 border-t border-white/10 pt-1">
+            elementStyles keys:{" "}
+            {data.elementStyles && Object.keys(data.elementStyles).length > 0
+              ? Object.keys(data.elementStyles).join(", ")
+              : "(none)"}
+          </div>
         </div>
       )}
     </section>

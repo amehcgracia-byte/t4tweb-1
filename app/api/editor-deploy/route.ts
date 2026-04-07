@@ -436,14 +436,19 @@ export async function POST(request: Request) {
       const titleOk = !heroPatch.title || verified?.title === heroPatch.title
       const highlightOk = !heroPatch.titleHighlight || verified?.titleHighlight === heroPatch.titleHighlight
       
-      // Normalize and compare titleSegments (only render-relevant fields)
-      const normalizedPayloadSegments = heroPatch.titleSegments 
+      // Normalize and compare titleSegments only when this deploy patches segments.
+      // Layout-only deploys (elementStyles / logo geometry) omit titleSegments; comparing
+      // [] to existing CMS segments incorrectly failed verification and blocked revalidate.
+      const normalizedPayloadSegments = heroPatch.titleSegments
         ? normalizeTitleSegments(heroPatch.titleSegments as unknown[])
         : []
-      const normalizedFetchedSegments = verified?.titleSegments 
+      const normalizedFetchedSegments = verified?.titleSegments
         ? normalizeTitleSegments(verified.titleSegments)
         : []
-      const segmentsOk = JSON.stringify(normalizedPayloadSegments) === JSON.stringify(normalizedFetchedSegments)
+      const segmentsTouched = Object.prototype.hasOwnProperty.call(heroPatch, "titleSegments")
+      const segmentsOk = segmentsTouched
+        ? JSON.stringify(normalizedPayloadSegments) === JSON.stringify(normalizedFetchedSegments)
+        : true
       
       log("segments comparison", {
         payloadSegmentsCount: Array.isArray(heroPatch.titleSegments) ? heroPatch.titleSegments.length : 0,

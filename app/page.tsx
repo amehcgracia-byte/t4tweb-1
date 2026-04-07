@@ -13,6 +13,9 @@ import { IntroBannerSection } from "@/components/intro-banner-section"
 import { loadHeroData } from "@/lib/sanity/hero-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
 
+/** Always refetch hero from Sanity (editor deploy + revalidate); avoids stale static shell in dev). */
+export const dynamic = "force-dynamic"
+
 export default async function Home() {
   const heroData = await loadHeroData()
 
