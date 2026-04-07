@@ -947,7 +947,19 @@ export function VisualEditorOverlay() {
   const onCopyDeployDetails = async () => {
     if (!deployDetails) return
     try {
-      await navigator.clipboard.writeText(deployDetails)
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        await navigator.clipboard.writeText(deployDetails)
+      } else {
+        const textarea = document.createElement("textarea")
+        textarea.value = deployDetails
+        textarea.style.position = "fixed"
+        textarea.style.opacity = "0"
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+        document.execCommand("copy")
+        document.body.removeChild(textarea)
+      }
       setCopyState("copied")
     } catch {
       setCopyState("failed")
@@ -1002,25 +1014,7 @@ export function VisualEditorOverlay() {
         })
         return
       }
-      if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]")) return
-      const handleEl = target.closest<HTMLElement>("[data-editor-resize-handle]")
-      if (handleEl && selectedId) {
-        e.preventDefault()
-        e.stopPropagation()
-        const handle = (handleEl.dataset.editorResizeHandle || null) as "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw" | null
-        const n = nodes.get(selectedId)
-        if (!n || !handle) return
-        dispatch({ type: "BEGIN_TRANSACTION" })
-        pointerRef.current = {
-          mode: "resize",
-          start: { x: e.clientX, y: e.clientY },
-          origin: { ...n.geometry },
-          handle,
-          nodeId: selectedId,
-          lastGeometry: { ...n.geometry },
-        }
-        return
-      }
+      if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]") || target.closest("[data-editor-deploy-modal]")) return
       const hit = getEditableAtPosition(e.clientX, e.clientY)
       if (hit) {
         e.preventDefault()
@@ -1110,7 +1104,7 @@ export function VisualEditorOverlay() {
 
     const shouldBlockPublicAction = (target: EventTarget | null): boolean => {
       if (!(target instanceof HTMLElement)) return false
-      if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]")) return false
+      if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]") || target.closest("[data-editor-deploy-modal]")) return false
       if (target.closest("[data-editor-node-id]")) return true
       if (target.closest("a,button,[role='button'],form")) return true
       return false
@@ -1213,25 +1207,25 @@ export function VisualEditorOverlay() {
       </div>
 
       {deployDetails && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[80vh] w-full max-w-2xl rounded-lg bg-white p-4 text-slate-900 shadow-2xl">
+        <div data-editor-deploy-modal className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/65 p-4">
+          <div className="max-h-[80vh] w-full max-w-2xl rounded-lg border border-white/20 bg-[#111827] p-4 text-slate-100 shadow-2xl">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Deploy result</h3>
+              <h3 className="text-sm font-semibold text-white">Deploy result</h3>
               <button
                 type="button"
                 onClick={() => { setDeployDetails(null); setCopyState("idle") }}
-                className="rounded border px-2 py-1 text-xs"
+                className="rounded border border-white/30 px-2 py-1 text-xs text-white hover:bg-white/10"
               >
                 Close
               </button>
             </div>
-            <pre className="max-h-[55vh] overflow-auto whitespace-pre-wrap rounded border bg-slate-50 p-3 text-xs select-text">{deployDetails}</pre>
+            <pre className="max-h-[55vh] overflow-auto whitespace-pre-wrap rounded border border-white/15 bg-black/35 p-3 text-xs text-slate-100 select-text">{deployDetails}</pre>
             <div className="mt-3 flex items-center gap-2">
-              <button type="button" onClick={onCopyDeployDetails} className="rounded border px-3 py-1.5 text-xs font-medium">
+              <button type="button" onClick={onCopyDeployDetails} className="rounded border border-white/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/10">
                 Copy details
               </button>
-              {copyState === "copied" && <span className="text-xs">Copied</span>}
-              {copyState === "failed" && <span className="text-xs">Copy failed</span>}
+              {copyState === "copied" && <span className="text-xs text-emerald-300">Copied</span>}
+              {copyState === "failed" && <span className="text-xs text-red-300">Copy failed</span>}
             </div>
           </div>
         </div>
