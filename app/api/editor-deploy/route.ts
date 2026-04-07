@@ -16,17 +16,6 @@ interface DeployNodePayload {
   explicitSize: boolean
 }
 
-interface HeroTitleSegment {
-  text: string
-  color: string
-  bold: boolean
-  italic: boolean
-  underline: boolean
-  opacity: number
-  fontSize?: string
-  fontFamily?: string
-}
-
 interface DeployRequestPayload {
   level: "green" | "yellow" | "red"
   diagnosticMode?: boolean
@@ -66,10 +55,6 @@ function getEnvDiagnostics(): DeployEnvDiagnostics {
     SANITY_API_WRITE_TOKEN: sanityApiWriteToken ? "yes" : "no",
     SANITY_API_TOKEN: sanityApiToken ? "yes" : "no",
   }
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
 export async function GET() {
@@ -112,10 +97,10 @@ export async function POST(request: Request) {
     })
 
     if (!payload || !Array.isArray(payload.nodes) || !Array.isArray(payload.findings) || !payload.level) {
-      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, heroTitleMode: "unknown", revalidatedPath: REVALIDATED_PATH, persistedNodes: [], skippedNodes: [], failedNodes: ["payload"], diagnostics, envDiagnostics }, { status: 400 })
+      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, heroTitleMode: "unknown", revalidatedPath: REVALIDATED_PATH, persistedNodes: [], skippedNodes: [], failedNodes: ["payload"], persistedFields: [], skippedFields: [], failedFields: ["payload"], diagnostics, envDiagnostics }, { status: 400 })
     }
     if (payload.nodes.length === 0) {
-      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload: nodes array is empty.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, heroTitleMode: "unknown", revalidatedPath: REVALIDATED_PATH, persistedNodes: [], skippedNodes: [], failedNodes: ["payload.nodes"], diagnostics, envDiagnostics }, { status: 400 })
+      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload: nodes array is empty.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, heroTitleMode: "unknown", revalidatedPath: REVALIDATED_PATH, persistedNodes: [], skippedNodes: [], failedNodes: ["payload.nodes"], persistedFields: [], skippedFields: [], failedFields: ["payload.nodes"], diagnostics, envDiagnostics }, { status: 400 })
     }
 
     if (!projectId) {
@@ -137,6 +122,9 @@ export async function POST(request: Request) {
           persistedNodes: [],
           skippedNodes: [],
           failedNodes: ["sanity-project-id"],
+          persistedFields: [],
+          skippedFields: [],
+          failedFields: ["sanity-project-id"],
           diagnostics,
           envDiagnostics,
         },
@@ -163,6 +151,9 @@ export async function POST(request: Request) {
           persistedNodes: [],
           skippedNodes: [],
           failedNodes: ["sanity-token"],
+          persistedFields: [],
+          skippedFields: [],
+          failedFields: ["sanity-token"],
           diagnostics,
           envDiagnostics,
         },
@@ -179,13 +170,11 @@ export async function POST(request: Request) {
       perspective: "drafts",
     })
 
-    const existingHero = await writeClient.fetch<{ _id: string; title?: string; titleHighlight?: string; titleSegments?: HeroTitleSegment[] } | null>(
-      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments }`,
+    const existingHero = await writeClient.fetch<{ _id: string; title?: string; titleHighlight?: string } | null>(
+      `*[_type == $type][0]{ _id, title, titleHighlight }`,
       { type: SANITY_DOC_TYPE }
     )
-    const heroTitleMode: "legacy" | "segmented" = Array.isArray(existingHero?.titleSegments) && existingHero.titleSegments.length > 0
-      ? "segmented"
-      : "legacy"
+    const heroTitleMode: "split-fields" = "split-fields"
 
     if (!existingHero?._id) {
       steps.push({ step: "saving", ok: false, message: "Hero section document not found; refusing to create implicit duplicate." })
@@ -209,6 +198,7 @@ export async function POST(request: Request) {
           failedNodes: ["hero-section-document"],
           persistedFields: [],
           skippedFields: ["hero-logo", "hero-scroll-indicator", "hero-geometry"],
+          failedFields: ["hero-section-document"],
           diagnostics,
           envDiagnostics,
         },
@@ -223,33 +213,42 @@ export async function POST(request: Request) {
     const failedNodes: string[] = []
     const heroPatch: Record<string, unknown> = {}
 
-    const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text")
+    const heroTitleMainNode = payload.nodes.find((node) => node.id === "hero-title-main" && node.type === "text")
+    const heroTitleAccentNode = payload.nodes.find((node) => node.id === "hero-title-accent" && node.type === "text")
     const heroSubtitleNode = payload.nodes.find((node) => node.id === "hero-subtitle" && node.type === "text")
     const heroLogoNode = payload.nodes.find((node) => node.id === "hero-logo")
     const heroScrollNode = payload.nodes.find((node) => node.id === "hero-scroll-indicator")
 
-    if (heroTitleNode?.explicitContent) {
-      if (heroTitleMode === "segmented") {
-        const candidateSegments = Array.isArray(heroTitleNode.content?.textSegments)
-          ? (heroTitleNode.content.textSegments as HeroTitleSegment[])
-          : []
-        const validSegments = candidateSegments.filter((segment) => typeof segment?.text === "string" && segment.text.length > 0)
-        if (validSegments.length > 0) {
-          heroPatch.titleSegments = validSegments
-          persistedFields.push("titleSegments")
-          persistedNodes.push("hero-title")
-        } else {
-          failedNodes.push("hero-title-segments-empty")
-          skippedFields.push("titleSegments")
-          skippedNodes.push("hero-title")
-        }
+    const failedFields: string[] = []
+
+    if (heroTitleMainNode?.explicitContent) {
+      const heroTitleMainText = typeof heroTitleMainNode.content?.text === "string" ? heroTitleMainNode.content.text.trim() : ""
+      if (heroTitleMainText) {
+        heroPatch.title = heroTitleMainText
+        persistedFields.push("title")
+        persistedNodes.push("hero-title-main")
       } else {
-        skippedFields.push("title")
-        skippedNodes.push("hero-title-legacy-no-segment-mapping")
+        failedFields.push("title")
+        failedNodes.push("hero-title-main-empty")
       }
-    } else if (heroTitleNode?.explicitPosition || heroTitleNode?.explicitSize || heroTitleNode?.explicitStyle) {
+    } else if (heroTitleMainNode?.explicitPosition || heroTitleMainNode?.explicitSize || heroTitleMainNode?.explicitStyle) {
       skippedFields.push("titlePositionOrStyle")
-      skippedNodes.push("hero-title-position-or-style")
+      skippedNodes.push("hero-title-main-position-or-style")
+    }
+
+    if (heroTitleAccentNode?.explicitContent) {
+      const heroTitleAccentText = typeof heroTitleAccentNode.content?.text === "string" ? heroTitleAccentNode.content.text.trim() : ""
+      if (heroTitleAccentText) {
+        heroPatch.titleHighlight = heroTitleAccentText
+        persistedFields.push("titleHighlight")
+        persistedNodes.push("hero-title-accent")
+      } else {
+        failedFields.push("titleHighlight")
+        failedNodes.push("hero-title-accent-empty")
+      }
+    } else if (heroTitleAccentNode?.explicitPosition || heroTitleAccentNode?.explicitSize || heroTitleAccentNode?.explicitStyle) {
+      skippedFields.push("titleHighlightPositionOrStyle")
+      skippedNodes.push("hero-title-accent-position-or-style")
     }
 
     if (heroSubtitleNode?.explicitContent) {
@@ -260,6 +259,7 @@ export async function POST(request: Request) {
         persistedNodes.push("hero-subtitle")
       } else {
         skippedFields.push("subtitle")
+        failedFields.push("subtitle")
         failedNodes.push("hero-subtitle-empty")
       }
     } else if (heroSubtitleNode?.explicitPosition || heroSubtitleNode?.explicitSize || heroSubtitleNode?.explicitStyle) {
@@ -280,21 +280,6 @@ export async function POST(request: Request) {
     if (positionOnlyEdits) {
       skippedFields.push("hero-layout")
       skippedNodes.push("hero-layout")
-    }
-
-    const existingTitle = (existingHero.title || "").trim()
-    const existingHighlight = (existingHero.titleHighlight || "").trim()
-    const incomingSegments = Array.isArray(heroTitleNode?.content?.textSegments) && (heroTitleNode?.content?.textSegments as HeroTitleSegment[]).length > 0
-    if (!incomingSegments && existingTitle && existingHighlight) {
-      const duplicateSuffixPattern = new RegExp(`\\s*${escapeRegExp(existingHighlight)}\\s*$`)
-      if (duplicateSuffixPattern.test(existingTitle)) {
-        const normalizedTitle = existingTitle.replace(duplicateSuffixPattern, "").trim()
-        if (normalizedTitle && normalizedTitle !== existingTitle) {
-          heroPatch.title = normalizedTitle
-          persistedFields.push("title")
-          persistedNodes.push("hero-title-dedup-sanitize")
-        }
-      }
     }
 
     if (Object.keys(heroPatch).length > 0) {
@@ -330,6 +315,7 @@ export async function POST(request: Request) {
       failedNodes,
       persistedFields,
       skippedFields,
+      failedFields,
       diagnostics,
       envDiagnostics,
     })
@@ -351,6 +337,9 @@ export async function POST(request: Request) {
         persistedNodes: [],
         skippedNodes: [],
         failedNodes: ["exception"],
+        persistedFields: [],
+        skippedFields: [],
+        failedFields: ["exception"],
         diagnostics,
         envDiagnostics,
       },

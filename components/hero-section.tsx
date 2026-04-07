@@ -38,7 +38,8 @@ export function HeroSection() {
   const heroSectionRef = useRef<HTMLElement>(null)
   const heroBgRef = useRef<HTMLDivElement>(null)
   const heroLogoRef = useRef<HTMLDivElement>(null)
-  const heroTitleRef = useRef<HTMLHeadingElement>(null)
+  const heroTitleMainRef = useRef<HTMLSpanElement>(null)
+  const heroTitleAccentRef = useRef<HTMLSpanElement>(null)
   const heroSubtitleRef = useRef<HTMLParagraphElement>(null)
   const heroButtonsRef = useRef<HTMLDivElement>(null)
   const heroScrollRef = useRef<HTMLDivElement>(null)
@@ -92,17 +93,31 @@ export function HeroSection() {
         })
       }
 
-      if (heroTitleRef.current) {
-        const existing = getElementById('hero-title')
+      if (heroTitleMainRef.current) {
+        const existing = getElementById('hero-title-main')
         registerEditable({
-          id: 'hero-title',
+          id: 'hero-title-main',
           type: 'text',
-          label: 'Hero Title',
+          label: 'Hero Title Main',
           parentId: null,
-          element: heroTitleRef.current,
-          originalRect: heroTitleRef.current.getBoundingClientRect(),
+          element: heroTitleMainRef.current,
+          originalRect: heroTitleMainRef.current.getBoundingClientRect(),
           transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: heroTitleRef.current.offsetWidth, height: heroTitleRef.current.offsetHeight },
+          dimensions: existing?.dimensions || { width: heroTitleMainRef.current.offsetWidth, height: heroTitleMainRef.current.offsetHeight },
+        })
+      }
+
+      if (heroTitleAccentRef.current) {
+        const existing = getElementById('hero-title-accent')
+        registerEditable({
+          id: 'hero-title-accent',
+          type: 'text',
+          label: 'Hero Title Accent',
+          parentId: null,
+          element: heroTitleAccentRef.current,
+          originalRect: heroTitleAccentRef.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: heroTitleAccentRef.current.offsetWidth, height: heroTitleAccentRef.current.offsetHeight },
         })
       }
 
@@ -155,7 +170,8 @@ export function HeroSection() {
       unregisterEditable('hero-section')
       unregisterEditable('hero-bg-image')
       unregisterEditable('hero-logo')
-      unregisterEditable('hero-title')
+      unregisterEditable('hero-title-main')
+      unregisterEditable('hero-title-accent')
       unregisterEditable('hero-subtitle')
       unregisterEditable('hero-buttons')
       unregisterEditable('hero-scroll-indicator')
@@ -189,34 +205,8 @@ export function HeroSection() {
   }, [])
 
   const content = data || FALLBACK
-  const heroTitleMode: "legacy" | "segmented" = Array.isArray(content.titleSegments) && content.titleSegments.length > 0 ? "segmented" : "legacy"
-  const normalizedTitleSegments = useMemo(() => {
-    if (heroTitleMode !== "segmented") return []
-    const source = (content.titleSegments || []).map((segment) => ({ ...segment, text: (segment.text || "").trim() })).filter((segment) => segment.text.length > 0)
-    if (source.length === 0) return []
-
-    const deduped: HeroTitleSegment[] = []
-    source.forEach((segment) => {
-      const previous = deduped[deduped.length - 1]
-      if (previous && previous.text.toLowerCase() === segment.text.toLowerCase()) return
-      deduped.push(segment)
-    })
-
-    if (deduped.length >= 2) {
-      const first = deduped[0]
-      const second = deduped[1]
-      const firstLower = first.text.toLowerCase()
-      const secondLower = second.text.toLowerCase()
-      if (firstLower.endsWith(secondLower) && first.text.length > second.text.length) {
-        const trimmedFirst = first.text.slice(0, first.text.length - second.text.length).trim()
-        if (trimmedFirst.length > 0) {
-          deduped[0] = { ...first, text: trimmedFirst }
-        }
-      }
-    }
-
-    return deduped
-  }, [content.titleSegments, heroTitleMode])
+  const mainTitleText = content.title || FALLBACK.title
+  const accentTitleText = content.titleHighlight || FALLBACK.titleHighlight
 
   return (
     <section
@@ -270,40 +260,26 @@ export function HeroSection() {
       <div className="relative z-10 flex min-h-screen w-full flex-col justify-end px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center text-center pb-8 pt-16">
           <h1 
-            ref={heroTitleRef}
-            data-editor-node-id="hero-title"
-            data-editor-node-type="text"
-            data-editor-node-label="Título Principal"
-            data-editor-title-mode={heroTitleMode}
-            data-editor-title-segments={heroTitleMode === "segmented" ? JSON.stringify(normalizedTitleSegments) : ""}
             className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6"
           >
-            {heroTitleMode === "segmented"
-              ? normalizedTitleSegments.map((segment, index) => (
-                <span
-                  key={`hero-segment-${index}`}
-                  style={{
-                    color: segment.color || "#ffffff",
-                    fontWeight: segment.bold ? "700" : "400",
-                    fontStyle: segment.italic ? "italic" : "normal",
-                    textDecoration: segment.underline ? "underline" : "none",
-                    opacity: segment.opacity ?? 1,
-                    fontSize: segment.fontSize,
-                    fontFamily: segment.fontFamily,
-                    marginRight: "0.25em",
-                  }}
-                >
-                  {segment.text}
-                </span>
-              ))
-              : (
-                <>
-                  {content.title}{" "}
-                  <span className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent">
-                    {content.titleHighlight}
-                  </span>
-                </>
-              )}
+            <span
+              ref={heroTitleMainRef}
+              data-editor-node-id="hero-title-main"
+              data-editor-node-type="text"
+              data-editor-node-label="Hero Title Main"
+              className="mr-[0.25em]"
+            >
+              {mainTitleText}
+            </span>
+            <span
+              ref={heroTitleAccentRef}
+              data-editor-node-id="hero-title-accent"
+              data-editor-node-type="text"
+              data-editor-node-label="Hero Title Accent"
+              className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent"
+            >
+              {accentTitleText}
+            </span>
           </h1>
 
           <div className="flex flex-col items-center">
