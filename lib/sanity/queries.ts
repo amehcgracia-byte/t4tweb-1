@@ -91,5 +91,6 @@ export const navigationQuery = groq`*[_type == "navigation"][0]{
   "brandLogoUrl": brandLogo.asset->url,
   links[]{ label, href },
   ctaLabel,
-  ctaHref
+  ctaHref,
+  elementStyles
 }`

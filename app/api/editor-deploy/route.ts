@@ -571,14 +571,18 @@ export async function POST(request: Request) {
     revalidatePath(REVALIDATED_PATH)
     steps.push({ step: "revalidating", ok: true, message: "Public site revalidated." })
 
+    const heroPatched = Object.keys(heroPatch).length > 0
+    const navPatched = navigationDocumentId != null
+    let deployMessage = "Deploy complete: public path revalidated."
+    if (heroPatched && navPatched) deployMessage = "Deploy complete: Hero and Navigation updated in Sanity; public path revalidated."
+    else if (heroPatched) deployMessage = "Deploy complete: Hero section updated in Sanity; public path revalidated."
+    else if (navPatched) deployMessage = "Deploy complete: Navigation updated in Sanity; public path revalidated."
+
     const successResponse = {
       status: "ok",
       ok: true,
       step: "done",
-      message:
-        navigationDocumentId != null
-          ? "Deploy complete: Hero and Navigation updated in Sanity; public path revalidated."
-          : "Deploy complete: Hero section updated in Sanity and public path revalidated.",
+      message: deployMessage,
       steps,
       routeVersion: ROUTE_VERSION,
       sanityDocumentId: publishedDocumentId,
