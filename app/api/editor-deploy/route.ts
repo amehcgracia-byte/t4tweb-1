@@ -38,9 +38,8 @@ interface DeployEnvDiagnostics {
 }
 
 const ROUTE_VERSION = "sanity-debug-v3-brutal"
-const SANITY_DOC_ID = "editorDeployPayload"
-const SANITY_DRAFT_ID = `drafts.${SANITY_DOC_ID}`
-const SANITY_DOC_TYPE = "editorDeployPayload"
+const TARGET_SECTION = "hero"
+const SANITY_DOC_TYPE = "heroSection"
 const REVALIDATED_PATH = "/"
 
 function getEnvDiagnostics(): DeployEnvDiagnostics {
@@ -62,8 +61,9 @@ export async function GET() {
   const envDiagnostics = getEnvDiagnostics()
   return NextResponse.json({
     routeVersion: ROUTE_VERSION,
-    publishedDocumentId: SANITY_DOC_ID,
+    publishedDocumentId: "resolved-at-deploy",
     publishedDocumentType: SANITY_DOC_TYPE,
+    targetSection: TARGET_SECTION,
     revalidatedPath: REVALIDATED_PATH,
     diagnostics: envDiagnostics,
     envDiagnostics,
@@ -96,10 +96,10 @@ export async function POST(request: Request) {
     })
 
     if (!payload || !Array.isArray(payload.nodes) || !Array.isArray(payload.findings) || !payload.level) {
-      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload.", publishedDocumentId: SANITY_DOC_ID, publishedDocumentType: SANITY_DOC_TYPE, revalidatedPath: REVALIDATED_PATH, diagnostics, envDiagnostics }, { status: 400 })
+      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, revalidatedPath: REVALIDATED_PATH, diagnostics, envDiagnostics }, { status: 400 })
     }
     if (payload.nodes.length === 0) {
-      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload: nodes array is empty.", publishedDocumentId: SANITY_DOC_ID, publishedDocumentType: SANITY_DOC_TYPE, revalidatedPath: REVALIDATED_PATH, diagnostics, envDiagnostics }, { status: 400 })
+      return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload: nodes array is empty.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, revalidatedPath: REVALIDATED_PATH, diagnostics, envDiagnostics }, { status: 400 })
     }
 
     if (!projectId) {
@@ -113,8 +113,9 @@ export async function POST(request: Request) {
           message: "Deploy failed: missing project id. Set SANITY_PROJECT_ID (preferred) or NEXT_PUBLIC_SANITY_PROJECT_ID.",
           steps,
           routeVersion: ROUTE_VERSION,
-          publishedDocumentId: SANITY_DOC_ID,
+          publishedDocumentId: "resolved-at-deploy",
           publishedDocumentType: SANITY_DOC_TYPE,
+          targetSection: TARGET_SECTION,
           revalidatedPath: REVALIDATED_PATH,
           diagnostics,
           envDiagnostics,
@@ -134,8 +135,9 @@ export async function POST(request: Request) {
           message: "Deploy failed: missing write token. Set SANITY_API_WRITE_TOKEN or fallback SANITY_API_TOKEN.",
           steps,
           routeVersion: ROUTE_VERSION,
-          publishedDocumentId: SANITY_DOC_ID,
+          publishedDocumentId: "resolved-at-deploy",
           publishedDocumentType: SANITY_DOC_TYPE,
+          targetSection: TARGET_SECTION,
           revalidatedPath: REVALIDATED_PATH,
           diagnostics,
           envDiagnostics,
@@ -153,33 +155,29 @@ export async function POST(request: Request) {
       perspective: "drafts",
     })
 
-    const persistable = {
-      _id: SANITY_DRAFT_ID,
-      _type: SANITY_DOC_TYPE,
-      updatedAt: new Date().toISOString(),
-      level: payload.level,
-      findings: payload.findings,
-      nodes: payload.nodes,
-    }
+    const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text")
+    const heroSubtitleNode = payload.nodes.find((node) => node.id === "hero-subtitle" && node.type === "text")
+    const heroPatch: Record<string, string> = {}
+    const heroTitleText = typeof heroTitleNode?.content?.text === "string" ? heroTitleNode.content.text.trim() : ""
+    const heroSubtitleText = typeof heroSubtitleNode?.content?.text === "string" ? heroSubtitleNode.content.text.trim() : ""
+    if (heroTitleText) heroPatch.title = heroTitleText
+    if (heroSubtitleText) heroPatch.subtitle = heroSubtitleText
 
-    await writeClient.createOrReplace(persistable)
-    steps.push({ step: "saving", ok: true, message: "Editor payload draft saved to Sanity." })
-
-    const draft = await writeClient.getDocument(SANITY_DRAFT_ID)
-    if (!draft) {
-      steps.push({ step: "publishing", ok: false, message: "Sanity draft not found after save." })
+    if (Object.keys(heroPatch).length === 0) {
+      steps.push({ step: "saving", ok: false, message: "No editable Hero fields were found in payload." })
       return NextResponse.json(
         {
           status: "failed",
           mode: "incomplete",
-          step: "publishing",
+          step: "saving",
           localSaved: false,
           remoteReady: false,
-          message: "Deploy failed: could not publish because draft document was not found.",
+          message: "Deploy failed: no Hero node updates (hero-title / hero-subtitle) found in payload.",
           steps,
           routeVersion: ROUTE_VERSION,
-          publishedDocumentId: SANITY_DOC_ID,
+          publishedDocumentId: "resolved-at-deploy",
           publishedDocumentType: SANITY_DOC_TYPE,
+          targetSection: TARGET_SECTION,
           revalidatedPath: REVALIDATED_PATH,
           diagnostics,
           envDiagnostics,
@@ -188,9 +186,30 @@ export async function POST(request: Request) {
       )
     }
 
-    const { _id: _draftId, _rev, ...docForPublish } = draft
-    await writeClient.transaction().createOrReplace({ ...docForPublish, _id: SANITY_DOC_ID }).delete(SANITY_DRAFT_ID).commit()
-    steps.push({ step: "publishing", ok: true, message: "Sanity draft published successfully." })
+    const existingHero = await writeClient.fetch<{ _id: string } | null>(
+      `*[_type == $type][0]{ _id }`,
+      { type: SANITY_DOC_TYPE }
+    )
+
+    let publishedDocumentId = existingHero?._id || ""
+    if (existingHero?._id) {
+      await writeClient.patch(existingHero._id).set({ ...heroPatch, updatedAt: new Date().toISOString() }).commit()
+      steps.push({ step: "saving", ok: true, message: `Hero section updated: ${existingHero._id}` })
+    } else {
+      const created = await writeClient.create({
+        _type: SANITY_DOC_TYPE,
+        ...heroPatch,
+        updatedAt: new Date().toISOString(),
+      })
+      publishedDocumentId = created._id
+      steps.push({ step: "saving", ok: true, message: `Hero section created: ${created._id}` })
+    }
+
+    if (!publishedDocumentId) {
+      publishedDocumentId = "unknown"
+    }
+
+    steps.push({ step: "publishing", ok: true, message: `Published Hero document: ${publishedDocumentId}` })
 
     revalidatePath(REVALIDATED_PATH)
     steps.push({ step: "revalidating", ok: true, message: "Public site revalidated." })
@@ -201,12 +220,13 @@ export async function POST(request: Request) {
       step: "done",
       localSaved: false,
       remoteReady: true,
-      message: "Deploy complete: draft saved and published in Sanity.",
+      message: "Deploy complete: Hero section updated in Sanity and public path revalidated.",
       steps,
       routeVersion: ROUTE_VERSION,
-      sanityDocumentId: SANITY_DOC_ID,
-      publishedDocumentId: SANITY_DOC_ID,
+      sanityDocumentId: publishedDocumentId,
+      publishedDocumentId,
       publishedDocumentType: SANITY_DOC_TYPE,
+      targetSection: TARGET_SECTION,
       revalidatedPath: REVALIDATED_PATH,
       diagnostics,
       envDiagnostics,
@@ -221,8 +241,9 @@ export async function POST(request: Request) {
         step: "saving",
         message: error instanceof Error ? error.message : "Editor deploy route failed.",
         routeVersion: ROUTE_VERSION,
-        publishedDocumentId: SANITY_DOC_ID,
+        publishedDocumentId: "resolved-at-deploy",
         publishedDocumentType: SANITY_DOC_TYPE,
+        targetSection: TARGET_SECTION,
         revalidatedPath: REVALIDATED_PATH,
         diagnostics,
         envDiagnostics,
