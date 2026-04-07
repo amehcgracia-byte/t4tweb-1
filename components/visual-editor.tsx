@@ -148,6 +148,8 @@ function isEditingInput(target: EventTarget | null): boolean {
 }
 
 function normalizeType(raw: string): NodeType {
+  if (raw === "link") return "button"
+  if (raw === "box") return "card"
   if (raw === "section" || raw === "background" || raw === "card" || raw === "text" || raw === "button" || raw === "image") {
     return raw
   }
@@ -1337,6 +1339,16 @@ export function VisualEditorOverlay() {
 
             {selectedNode.type === "background" && selectedNode.content.mediaKind === "video" && (
               <>
+                <label className="text-[10px]">Opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  className="w-full"
+                  value={selectedNode.style.opacity ?? 1}
+                  onChange={(e) => dispatch({ type: "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
+                />
                 <label className="text-xs font-semibold">Video Link</label>
                 <input
                   className="w-full rounded border p-1 text-xs"
