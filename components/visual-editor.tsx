@@ -4,6 +4,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
+import {
+  applyScrollIndicatorLayoutToElement,
+  clearScrollIndicatorLayoutFromElement,
+  roundLayoutPx,
+} from "@/lib/hero-layout-styles"
 
 type NodeType = "section" | "background" | "card" | "text" | "button" | "image"
 
@@ -414,10 +419,29 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const hasManagedTransform = el.dataset.editorManagedTransform === "true"
     const hasManagedSize = el.dataset.editorManagedSize === "true"
     const nodeScale = Math.max(0.1, node.style.scale ?? 1)
-    if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
+    const gx = roundLayoutPx(g.x)
+    const gy = roundLayoutPx(g.y)
+
+    /** Scroll: same transform model as public page (`left: 50%` + `translate(calc(-50% + x), y)`). */
+    if (node.id === "hero-scroll-indicator") {
+      if (node.explicitPosition || node.explicitSize || (node.explicitStyle && nodeScale !== 1)) {
+        applyScrollIndicatorLayoutToElement(el, { x: gx, y: gy, width: g.width, height: g.height }, nodeScale)
+        el.dataset.editorManagedTransform = "true"
+      } else {
+        if (hasManagedTransform) {
+          clearScrollIndicatorLayoutFromElement(el)
+          delete el.dataset.editorManagedTransform
+        }
+        if (hasManagedSize) {
+          el.style.removeProperty("width")
+          el.style.removeProperty("height")
+          delete el.dataset.editorManagedSize
+        }
+      }
+    } else if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
       el.style.transform = nodeScale !== 1
-        ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})`
-        : `translate(${g.x}px, ${g.y}px)`
+        ? `translate(${gx}px, ${gy}px) scale(${nodeScale})`
+        : `translate(${gx}px, ${gy}px)`
       el.style.transformOrigin = "top left"
       el.dataset.editorManagedTransform = "true"
     } else {
@@ -427,16 +451,15 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         delete el.dataset.editorManagedTransform
       }
     }
+
     if (node.explicitSize) {
-      el.style.width = `${Math.max(8, g.width)}px`
-      el.style.height = `${Math.max(8, g.height)}px`
+      el.style.width = `${Math.max(8, roundLayoutPx(g.width))}px`
+      el.style.height = `${Math.max(8, roundLayoutPx(g.height))}px`
       el.dataset.editorManagedSize = "true"
-    } else {
-      if (hasManagedSize) {
-        el.style.removeProperty("width")
-        el.style.removeProperty("height")
-        delete el.dataset.editorManagedSize
-      }
+    } else if (hasManagedSize) {
+      el.style.removeProperty("width")
+      el.style.removeProperty("height")
+      delete el.dataset.editorManagedSize
     }
 
     if (node.explicitStyle && node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)

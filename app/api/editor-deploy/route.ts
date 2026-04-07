@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache"
 import { NextResponse } from "next/server"
 import { createClient } from "next-sanity"
+import { roundLayoutPx } from "@/lib/hero-layout-styles"
 
 interface DeployNodePayload {
   id: string
@@ -352,14 +353,14 @@ export async function POST(request: Request) {
       elementStylesInPayload[node.id] = { ...(elementStylesInPayload[node.id] || {}) }
       const s = elementStylesInPayload[node.id] as Record<string, unknown>
       if (node.explicitPosition) {
-        s.x = node.geometry.x
-        s.y = node.geometry.y
+        s.x = roundLayoutPx(node.geometry.x)
+        s.y = roundLayoutPx(node.geometry.y)
       }
       if (node.explicitSize) {
-        s.width = node.geometry.width
-        s.height = node.geometry.height
+        s.width = roundLayoutPx(node.geometry.width)
+        s.height = roundLayoutPx(node.geometry.height)
       }
-      if (hasScale) s.scale = scaleVal
+      if (hasScale) s.scale = Math.round(scaleVal * 1000) / 1000
       log("hero layout captured", { id: node.id, x: s.x, y: s.y, w: s.width, h: s.height, scale: s.scale })
       if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
     }

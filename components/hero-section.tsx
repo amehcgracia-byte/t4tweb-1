@@ -5,38 +5,42 @@ import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import type { HeroData } from "@/lib/sanity/hero-loader"
+import {
+  buildHeroScrollIndicatorLayoutStyle,
+  buildHeroStandardLayoutStyle,
+  roundLayoutPx,
+} from "@/lib/hero-layout-styles"
 
-
-/**
- * Maps CMS / deploy elementStyles to inline CSS.
- * Must match visual-editor `applyNodeToDom`: position uses `transform: translate()` with
- * `transformOrigin: top left` — not `left`/`top`, or the public page shifts by a different
- * amount than in the editor (especially vs default transform-origin center).
- */
+/** Maps CMS elementStyles to inline CSS — must stay in sync with `applyNodeToDom` in visual-editor. */
 function getElementStyle(elementStyles: Record<string, unknown> | undefined, targetId: string): React.CSSProperties {
   if (!elementStyles || !elementStyles[targetId]) return {}
 
   const styles = elementStyles[targetId] as Record<string, unknown>
-  const result: React.CSSProperties = {}
-
   const hasX = typeof styles.x === "number"
   const hasY = typeof styles.y === "number"
-  const tx = hasX ? (styles.x as number) : 0
-  const ty = hasY ? (styles.y as number) : 0
+  const tx = hasX ? roundLayoutPx(styles.x as number) : 0
+  const ty = hasY ? roundLayoutPx(styles.y as number) : 0
   const scaleVal = typeof styles.scale === "number" ? styles.scale : 1
   const needTranslate = hasX || hasY
   const needScale = typeof styles.scale === "number" && scaleVal !== 1
 
-  if (needTranslate || needScale) {
-    const parts: string[] = []
-    parts.push(`translate(${tx}px, ${ty}px)`)
-    if (needScale) parts.push(`scale(${scaleVal})`)
-    result.transform = parts.join(" ")
-    result.transformOrigin = "top left"
-  }
+  const layout =
+    needTranslate || needScale
+      ? buildHeroStandardLayoutStyle({
+          x: tx,
+          y: ty,
+          scale: needScale ? scaleVal : undefined,
+          width: typeof styles.width === "number" ? roundLayoutPx(styles.width as number) : undefined,
+          height: typeof styles.height === "number" ? roundLayoutPx(styles.height as number) : undefined,
+        })
+      : {}
 
-  if (typeof styles.width === "number") result.width = `${styles.width}px`
-  if (typeof styles.height === "number") result.height = `${styles.height}px`
+  const result: React.CSSProperties = { ...layout }
+
+  if (!needTranslate && !needScale) {
+    if (typeof styles.width === "number") result.width = `${roundLayoutPx(styles.width as number)}px`
+    if (typeof styles.height === "number") result.height = `${roundLayoutPx(styles.height as number)}px`
+  }
   if (typeof styles.fontSize === "number") result.fontSize = `${styles.fontSize}px`
   if (typeof styles.fontWeight === "number") result.fontWeight = styles.fontWeight
   if (typeof styles.letterSpacing === "number") result.letterSpacing = `${styles.letterSpacing}px`
@@ -47,7 +51,6 @@ function getElementStyle(elementStyles: Record<string, unknown> | undefined, tar
   return result
 }
 
-/** Scroll indicator is centered with `left-1/2 -translate-x-1/2`; saved x/y are offsets from that — match editor without breaking center. */
 function scrollIndicatorHasLayout(elementStyles: Record<string, unknown> | undefined): boolean {
   const s = elementStyles?.["hero-scroll-indicator"]
   if (!s || typeof s !== "object") return false
@@ -64,21 +67,17 @@ function scrollIndicatorHasLayout(elementStyles: Record<string, unknown> | undef
 function getScrollIndicatorStyle(elementStyles: Record<string, unknown> | undefined): React.CSSProperties {
   if (!elementStyles?.["hero-scroll-indicator"]) return {}
   const styles = elementStyles["hero-scroll-indicator"] as Record<string, unknown>
-  const tx = typeof styles.x === "number" ? styles.x : 0
-  const ty = typeof styles.y === "number" ? styles.y : 0
+  const tx = typeof styles.x === "number" ? roundLayoutPx(styles.x as number) : 0
+  const ty = typeof styles.y === "number" ? roundLayoutPx(styles.y as number) : 0
   const scaleVal = typeof styles.scale === "number" ? styles.scale : 1
   const needScale = typeof styles.scale === "number" && scaleVal !== 1
-  const parts: string[] = [`translate(calc(-50% + ${tx}px), ${ty}px)`]
-  if (needScale) parts.push(`scale(${scaleVal})`)
-  const result: React.CSSProperties = {
-    left: "50%",
-    bottom: "1rem",
-    transform: parts.join(" "),
-    transformOrigin: "center bottom",
-  }
-  if (typeof styles.width === "number") result.width = styles.width
-  if (typeof styles.height === "number") result.height = styles.height
-  return result
+  return buildHeroScrollIndicatorLayoutStyle({
+    x: tx,
+    y: ty,
+    scale: needScale ? scaleVal : undefined,
+    width: typeof styles.width === "number" ? roundLayoutPx(styles.width as number) : undefined,
+    height: typeof styles.height === "number" ? roundLayoutPx(styles.height as number) : undefined,
+  })
 }
 
 interface HeroDebug {
