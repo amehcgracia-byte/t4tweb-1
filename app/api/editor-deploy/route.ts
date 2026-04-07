@@ -110,6 +110,35 @@ async function runGithubFlow(content: string): Promise<{
   }
 
   try {
+    await githubRequest(
+      `https://api.github.com/repos/${owner}/${repoName}`,
+      { method: "GET" },
+      token
+    )
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Unknown repository validation error"
+    if (msg.includes("404")) {
+      return {
+        prUrl: null,
+        steps: [{ step: "creating_branch", ok: false, message: `Deploy failed: repository ${owner}/${repoName} not found.` }],
+        error: `Deploy failed: repository ${owner}/${repoName} not found.`,
+      }
+    }
+    if (msg.includes("401")) {
+      return {
+        prUrl: null,
+        steps: [{ step: "creating_branch", ok: false, message: "Deploy failed: GITHUB_TOKEN is invalid or expired." }],
+        error: "Deploy failed: GITHUB_TOKEN is invalid or expired.",
+      }
+    }
+    return {
+      prUrl: null,
+      steps: [{ step: "creating_branch", ok: false, message: `Failed to validate repository access: ${msg}` }],
+      error: `Failed to validate repository access: ${msg}`,
+    }
+  }
+
+  try {
     const pulls = await githubRequest<Array<{ number: number; html_url: string }>>(
       `https://api.github.com/repos/${owner}/${repoName}/pulls?state=open&head=${owner}:${EDITOR_BRANCH}&base=${baseBranch}`,
       { method: "GET" },
@@ -227,11 +256,17 @@ async function runGithubFlow(content: string): Promise<{
     )
     steps.push({ step: "committing", ok: true, message: "Editor payload committed." })
   } catch (error) {
-    steps.push({ step: "committing", ok: false, message: error instanceof Error ? error.message : "Unknown commit error." })
+    const msg = error instanceof Error ? error.message : "Unknown commit error."
+    const normalized = msg.includes("403")
+      ? "Deploy failed: GitHub token does not have contents:write permission."
+      : msg.includes("404")
+        ? `Deploy failed: repository ${owner}/${repoName} not found.`
+        : msg
+    steps.push({ step: "committing", ok: false, message: normalized })
     return {
       prUrl: null,
       steps,
-      error: `Failed at committing: ${error instanceof Error ? error.message : "Unknown error"}`,
+      error: normalized.startsWith("Deploy failed:") ? normalized : `Failed at committing: ${normalized}`,
     }
   }
 
@@ -272,11 +307,17 @@ async function runGithubFlow(content: string): Promise<{
     steps.push({ step: "creating_pr", ok: true, message: `PR created: ${prUrl}` })
     return { prUrl, steps }
   } catch (error) {
-    steps.push({ step: "creating_pr", ok: false, message: error instanceof Error ? error.message : "Unknown PR error." })
+    const msg = error instanceof Error ? error.message : "Unknown PR error."
+    const normalized = msg.includes("403")
+      ? "Deploy failed: GitHub token does not have pull_requests:write permission."
+      : msg.includes("404")
+        ? `Deploy failed: repository ${owner}/${repoName} not found.`
+        : msg
+    steps.push({ step: "creating_pr", ok: false, message: normalized })
     return {
       prUrl: null,
       steps,
-      error: `Failed at create_pr: ${error instanceof Error ? error.message : "Unknown error"}`,
+      error: normalized.startsWith("Deploy failed:") ? normalized : `Failed at create_pr: ${normalized}`,
     }
   }
 }
@@ -315,6 +356,10 @@ export async function POST(request: Request) {
 
     const localSaved = false
     if (!githubConfigured) {
+      const missingVars = [
+        !process.env.GITHUB_TOKEN ? "GITHUB_TOKEN" : null,
+        !process.env.GITHUB_REPO ? "GITHUB_REPO" : null,
+      ].filter(Boolean).join(", ")
       steps.push({
         step: "saving",
         ok: false,
@@ -330,8 +375,8 @@ export async function POST(request: Request) {
           localSaved: false,
           remoteReady: false,
           message: isProductionRuntime
-            ? "Deploy failed: GitHub persistence is required in production. Local filesystem is read-only."
-            : "Deploy failed: GitHub persistence is not configured.",
+            ? `Deploy failed: ${missingVars} missing. GitHub persistence is required in production. Local filesystem is read-only.`
+            : `Deploy failed: ${missingVars} missing.`,
           steps,
         },
         { status: 500 }
