@@ -29,14 +29,12 @@ interface DeployStepResult {
   message: string
 }
 
-interface DeployEnvDiagnostics {
+interface EnvDiagnostics {
   nextPublicSanityProjectIdDetected: "yes" | "no"
   sanityProjectIdDetected: "yes" | "no"
   sanityDatasetDetected: "yes" | "no"
   sanityApiWriteTokenDetected: "yes" | "no"
   sanityApiTokenDetected: "yes" | "no"
-  projectIdSource: "SANITY_PROJECT_ID" | "NEXT_PUBLIC_SANITY_PROJECT_ID" | "none"
-  tokenSource: "SANITY_API_WRITE_TOKEN" | "SANITY_API_TOKEN" | "none"
 }
 
 const SANITY_DOC_ID = "editorDeployPayload"
@@ -45,21 +43,17 @@ const SANITY_DRAFT_ID = `drafts.${SANITY_DOC_ID}`
 export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as DeployRequestPayload
-    const sanityProjectId = process.env.SANITY_PROJECT_ID
-    const nextPublicSanityProjectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
-    const projectId = sanityProjectId || nextPublicSanityProjectId
+    const projectId = process.env.SANITY_PROJECT_ID || process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
     const dataset = process.env.SANITY_DATASET || "production"
-    const sanityApiWriteToken = process.env.SANITY_API_WRITE_TOKEN
-    const sanityApiToken = process.env.SANITY_API_TOKEN
-    const sanityToken = sanityApiWriteToken || sanityApiToken
-    const diagnostics: DeployEnvDiagnostics = {
-      nextPublicSanityProjectIdDetected: nextPublicSanityProjectId ? "yes" : "no",
-      sanityProjectIdDetected: sanityProjectId ? "yes" : "no",
+    const sanityWriteToken = process.env.SANITY_API_WRITE_TOKEN
+    const sanityFallbackToken = process.env.SANITY_API_TOKEN
+    const sanityToken = sanityWriteToken || sanityFallbackToken
+    const envDiagnostics: EnvDiagnostics = {
+      nextPublicSanityProjectIdDetected: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ? "yes" : "no",
+      sanityProjectIdDetected: process.env.SANITY_PROJECT_ID ? "yes" : "no",
       sanityDatasetDetected: process.env.SANITY_DATASET ? "yes" : "no",
-      sanityApiWriteTokenDetected: sanityApiWriteToken ? "yes" : "no",
-      sanityApiTokenDetected: sanityApiToken ? "yes" : "no",
-      projectIdSource: sanityProjectId ? "SANITY_PROJECT_ID" : nextPublicSanityProjectId ? "NEXT_PUBLIC_SANITY_PROJECT_ID" : "none",
-      tokenSource: sanityApiWriteToken ? "SANITY_API_WRITE_TOKEN" : sanityApiToken ? "SANITY_API_TOKEN" : "none",
+      sanityApiWriteTokenDetected: sanityWriteToken ? "yes" : "no",
+      sanityApiTokenDetected: sanityFallbackToken ? "yes" : "no",
     }
 
     const steps: DeployStepResult[] = [{
@@ -73,14 +67,28 @@ export async function POST(request: Request) {
     steps.push({
       step: "checking",
       ok: true,
-      message: `Env diagnostics (server-side): NEXT_PUBLIC_SANITY_PROJECT_ID detected: ${diagnostics.nextPublicSanityProjectIdDetected}; SANITY_PROJECT_ID detected: ${diagnostics.sanityProjectIdDetected}; SANITY_DATASET detected: ${diagnostics.sanityDatasetDetected}; SANITY_API_WRITE_TOKEN detected: ${diagnostics.sanityApiWriteTokenDetected}; SANITY_API_TOKEN detected: ${diagnostics.sanityApiTokenDetected}; projectId source: ${diagnostics.projectIdSource}; token source: ${diagnostics.tokenSource}; dataset value used: ${dataset}.`,
+      message: `Env diagnostics (server-side): NEXT_PUBLIC_SANITY_PROJECT_ID detected: ${envDiagnostics.nextPublicSanityProjectIdDetected}; SANITY_PROJECT_ID detected: ${envDiagnostics.sanityProjectIdDetected}; SANITY_DATASET detected: ${envDiagnostics.sanityDatasetDetected}; SANITY_API_WRITE_TOKEN detected: ${envDiagnostics.sanityApiWriteTokenDetected}; SANITY_API_TOKEN detected: ${envDiagnostics.sanityApiTokenDetected}.`,
     })
 
     if (!payload || !Array.isArray(payload.nodes) || !Array.isArray(payload.findings) || !payload.level) {
-      return NextResponse.json({ message: "Invalid deploy payload.", diagnostics }, { status: 400 })
+      return NextResponse.json({
+        status: "failed",
+        mode: "incomplete",
+        step: "checking",
+        message: "Deploy failed: invalid deploy payload.",
+        envDiagnostics,
+        steps,
+      }, { status: 400 })
     }
     if (payload.nodes.length === 0) {
-      return NextResponse.json({ message: "Invalid deploy payload: nodes array is empty.", diagnostics }, { status: 400 })
+      return NextResponse.json({
+        status: "failed",
+        mode: "incomplete",
+        step: "checking",
+        message: "Deploy failed: invalid deploy payload, nodes array is empty.",
+        envDiagnostics,
+        steps,
+      }, { status: 400 })
     }
 
     if (!projectId) {
@@ -91,9 +99,9 @@ export async function POST(request: Request) {
           step: "checking",
           localSaved: false,
           remoteReady: false,
-          message: "Deploy failed: missing project id. Set SANITY_PROJECT_ID (preferred) or NEXT_PUBLIC_SANITY_PROJECT_ID.",
+          message: "Deploy failed: project id missing. Set SANITY_PROJECT_ID (preferred) or NEXT_PUBLIC_SANITY_PROJECT_ID.",
+          envDiagnostics,
           steps,
-          diagnostics,
         },
         { status: 500 }
       )
@@ -107,9 +115,9 @@ export async function POST(request: Request) {
           step: "checking",
           localSaved: false,
           remoteReady: false,
-          message: "Deploy failed: missing write token. Set SANITY_API_WRITE_TOKEN or fallback SANITY_API_TOKEN.",
+          message: "Deploy failed: write token missing. Set SANITY_API_WRITE_TOKEN or SANITY_API_TOKEN fallback.",
+          envDiagnostics,
           steps,
-          diagnostics,
         },
         { status: 500 }
       )
@@ -148,7 +156,6 @@ export async function POST(request: Request) {
           remoteReady: false,
           message: "Deploy failed: could not publish because draft document was not found.",
           steps,
-          diagnostics,
         },
         { status: 500 }
       )
@@ -168,27 +175,26 @@ export async function POST(request: Request) {
       localSaved: false,
       remoteReady: true,
       message: "Deploy complete: draft saved and published in Sanity.",
+      envDiagnostics,
       steps,
       sanityDocumentId: SANITY_DOC_ID,
-      diagnostics,
     })
   } catch (error) {
-    const diagnostics: DeployEnvDiagnostics = {
-      nextPublicSanityProjectIdDetected: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ? "yes" : "no",
-      sanityProjectIdDetected: process.env.SANITY_PROJECT_ID ? "yes" : "no",
-      sanityDatasetDetected: process.env.SANITY_DATASET ? "yes" : "no",
-      sanityApiWriteTokenDetected: process.env.SANITY_API_WRITE_TOKEN ? "yes" : "no",
-      sanityApiTokenDetected: process.env.SANITY_API_TOKEN ? "yes" : "no",
-      projectIdSource: process.env.SANITY_PROJECT_ID ? "SANITY_PROJECT_ID" : process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ? "NEXT_PUBLIC_SANITY_PROJECT_ID" : "none",
-      tokenSource: process.env.SANITY_API_WRITE_TOKEN ? "SANITY_API_WRITE_TOKEN" : process.env.SANITY_API_TOKEN ? "SANITY_API_TOKEN" : "none",
-    }
+    const sanityWriteToken = process.env.SANITY_API_WRITE_TOKEN
+    const sanityFallbackToken = process.env.SANITY_API_TOKEN
     return NextResponse.json(
       {
         status: "failed",
         mode: "incomplete",
         step: "saving",
         message: error instanceof Error ? error.message : "Editor deploy route failed.",
-        diagnostics,
+        envDiagnostics: {
+          nextPublicSanityProjectIdDetected: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ? "yes" : "no",
+          sanityProjectIdDetected: process.env.SANITY_PROJECT_ID ? "yes" : "no",
+          sanityDatasetDetected: process.env.SANITY_DATASET ? "yes" : "no",
+          sanityApiWriteTokenDetected: sanityWriteToken ? "yes" : "no",
+          sanityApiTokenDetected: sanityFallbackToken ? "yes" : "no",
+        } satisfies EnvDiagnostics,
       },
       { status: 500 }
     )
