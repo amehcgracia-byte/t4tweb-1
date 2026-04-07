@@ -972,17 +972,18 @@ export function VisualEditorOverlay() {
 
   const onDeploy = () => {
     const report = runDeployPrecheck()
-    const header =
-      report.level === "green"
-        ? "Green: deploy allowed."
-        : report.level === "yellow"
-          ? "Yellow: deploy allowed with warnings."
-          : "Red: deploy blocked."
-    const findingsText = report.findings.length
-      ? report.findings.map((f, i) => `${i + 1}. ${f.severity.toUpperCase()} | ${f.blocks ? "blocks" : "does not block"} | ${f.element} — ${f.issue}`).join("\n")
-      : "No findings. Simple editor changes are safe to deploy."
-    const checksHint =
-      "Technical gate still required before real deploy: pnpm typecheck, pnpm lint, pnpm build."
+    if (report.level === "green") {
+      window.alert(
+        "Ready to deploy\n\nNo problems found.\nYour editor changes look safe to deploy.\n\nBefore final deploy, run:\n- pnpm typecheck\n- pnpm lint\n- pnpm build"
+      )
+      return
+    }
+
+    const header = report.level === "yellow" ? "Yellow: deploy allowed with warnings." : "Red: deploy blocked."
+    const findingsText = report.findings
+      .map((f, i) => `${i + 1}. ${f.severity.toUpperCase()} | ${f.blocks ? "blocks" : "does not block"} | ${f.element} — ${f.issue}`)
+      .join("\n")
+    const checksHint = "Before final deploy, run: pnpm typecheck, pnpm lint, pnpm build."
 
     window.alert(`${header}\n\n${findingsText}\n\n${checksHint}`)
   }
