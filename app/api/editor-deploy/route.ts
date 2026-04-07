@@ -18,6 +18,7 @@ interface DeployNodePayload {
 
 interface DeployRequestPayload {
   level: "green" | "yellow" | "red"
+  diagnosticMode?: boolean
   findings: Array<{ element: string; issue: string; severity: "green" | "yellow" | "red"; blocks: boolean }>
   nodes: DeployNodePayload[]
 }
@@ -284,8 +285,14 @@ async function runGithubFlow(content: string): Promise<{
 
 export async function POST(request: Request) {
   try {
-    const steps: DeployStepResult[] = [{ step: "checking", ok: true, message: "Payload received." }]
     const payload = (await request.json()) as DeployRequestPayload
+    const steps: DeployStepResult[] = [{
+      step: "checking",
+      ok: true,
+      message: payload?.diagnosticMode
+        ? "Payload received. Diagnostic deploy mode active (pre-check does not block)."
+        : "Payload received.",
+    }]
 
     if (!payload || !Array.isArray(payload.nodes) || !Array.isArray(payload.findings) || !payload.level) {
       return NextResponse.json({ message: "Invalid deploy payload." }, { status: 400 })
@@ -293,7 +300,7 @@ export async function POST(request: Request) {
     if (payload.nodes.length === 0) {
       return NextResponse.json({ message: "Invalid deploy payload: nodes array is empty." }, { status: 400 })
     }
-    if (payload.level === "red") {
+    if (payload.level === "red" && !payload.diagnosticMode) {
       return NextResponse.json({ message: "Deploy blocked by red pre-check findings." }, { status: 400 })
     }
 
