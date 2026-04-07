@@ -11,6 +11,17 @@ type Point = { x: number; y: number }
 
 type Size = { width: number; height: number }
 
+interface TextSegment {
+  text: string
+  color: string
+  bold: boolean
+  italic: boolean
+  underline: boolean
+  opacity: number
+  fontSize?: string
+  fontFamily?: string
+}
+
 interface NodeGeometry {
   x: number
   y: number
@@ -45,6 +56,7 @@ interface EditorNode {
   }
   content: {
     text?: string
+    textSegments?: TextSegment[]
     href?: string
     src?: string
     alt?: string
@@ -240,6 +252,50 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const content: EditorNode["content"] = {}
   if (entry.type === "text" || entry.type === "button" || entry.type === "card") {
     content.text = el.textContent?.trim() || ""
+    if (entry.id === "hero-title") {
+      const baseStyle = getComputedStyle(el)
+      const baseSegment: TextSegment = {
+        text: (el.textContent || "").trim(),
+        color: rgbToHex(baseStyle.color),
+        bold: Number(baseStyle.fontWeight || "400") >= 600,
+        italic: baseStyle.fontStyle === "italic",
+        underline: (baseStyle.textDecorationLine || "").includes("underline"),
+        opacity: Number(baseStyle.opacity || "1"),
+        fontSize: baseStyle.fontSize,
+        fontFamily: baseStyle.fontFamily,
+      }
+      const segments: TextSegment[] = []
+      el.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const text = child.textContent?.trim()
+          if (!text) return
+          segments.push({ ...baseSegment, text })
+          return
+        }
+        if (child.nodeType === Node.ELEMENT_NODE) {
+          const childEl = child as HTMLElement
+          const childText = childEl.textContent?.trim()
+          if (!childText) return
+          const childStyle = getComputedStyle(childEl)
+          segments.push({
+            text: childText,
+            color: rgbToHex(childStyle.color),
+            bold: Number(childStyle.fontWeight || "400") >= 600,
+            italic: childStyle.fontStyle === "italic",
+            underline: (childStyle.textDecorationLine || "").includes("underline"),
+            opacity: Number(childStyle.opacity || "1"),
+            fontSize: childStyle.fontSize,
+            fontFamily: childStyle.fontFamily,
+          })
+        }
+      })
+      const normalizedSegments = segments.filter((segment) => segment.text.length > 0)
+      if (normalizedSegments.length > 1) {
+        content.textSegments = normalizedSegments
+      } else if (baseSegment.text.length > 0) {
+        content.textSegments = [baseSegment]
+      }
+    }
   }
   if (entry.type === "button") {
     content.href = el.getAttribute("href") || ""
@@ -373,7 +429,26 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
 
     if (node.explicitStyle && node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
     if (node.type === "text" || node.type === "button") {
-      if (node.explicitContent && node.content.text !== undefined) el.textContent = node.content.text
+      if (node.explicitContent) {
+        if (node.id === "hero-title" && Array.isArray(node.content.textSegments) && node.content.textSegments.length > 0) {
+          el.innerHTML = ""
+          node.content.textSegments.forEach((segment) => {
+            const span = document.createElement("span")
+            span.textContent = segment.text
+            span.style.color = segment.color
+            span.style.fontWeight = segment.bold ? "700" : "400"
+            span.style.fontStyle = segment.italic ? "italic" : "normal"
+            span.style.textDecoration = segment.underline ? "underline" : "none"
+            span.style.opacity = String(segment.opacity)
+            if (segment.fontSize) span.style.fontSize = segment.fontSize
+            if (segment.fontFamily) span.style.fontFamily = segment.fontFamily
+            span.style.marginRight = "0.25em"
+            el.appendChild(span)
+          })
+        } else if (node.content.text !== undefined) {
+          el.textContent = node.content.text
+        }
+      }
       if (node.explicitStyle) {
         if (node.style.color) el.style.color = node.style.color
         if (node.style.fontSize) el.style.fontSize = node.style.fontSize
@@ -508,7 +583,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             let isContentEdit = !!n.explicitContent
             let isStyleEdit = !!n.explicitStyle
             Object.entries(command.patch).forEach(([k, v]) => {
-              if (["text", "href", "src", "alt", "videoUrl"].includes(k)) {
+              if (["text", "textSegments", "href", "src", "alt", "videoUrl"].includes(k)) {
                 isContentEdit = true;
                 (content as Record<string, unknown>)[k] = v
               }
@@ -1284,7 +1359,141 @@ export function VisualEditorOverlay() {
               </div>
             )}
 
-            {(selectedNode.type === "text" || selectedNode.type === "button") && (
+            {selectedNode.type === "text" && selectedNode.id === "hero-title" && Array.isArray(selectedNode.content.textSegments) && (
+              <>
+                <label className="text-xs font-semibold">Hero Title Segments</label>
+                <div className="space-y-2">
+                  {selectedNode.content.textSegments.map((segment, index) => (
+                    <div key={`hero-segment-editor-${index}`} className="rounded border border-slate-200 p-2">
+                      <input
+                        className="mb-2 w-full rounded border p-1 text-xs"
+                        value={segment.text}
+                        onChange={(e) => {
+                          const next = [...(selectedNode.content.textSegments || [])]
+                          next[index] = { ...next[index], text: e.target.value }
+                          dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
+                        }}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="color"
+                          className="h-8 w-full rounded border p-1"
+                          value={segment.color || "#ffffff"}
+                          onChange={(e) => {
+                            const next = [...(selectedNode.content.textSegments || [])]
+                            next[index] = { ...next[index], color: e.target.value }
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                          }}
+                        />
+                        <div>
+                          <label className="text-[10px]">Opacity ({(segment.opacity ?? 1).toFixed(2)})</label>
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            className="w-full"
+                            value={segment.opacity ?? 1}
+                            onChange={(e) => {
+                              const next = [...(selectedNode.content.textSegments || [])]
+                              next[index] = { ...next[index], opacity: Number(e.target.value) }
+                              dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className={`rounded border px-2 py-1 text-xs ${segment.bold ? "bg-slate-900 text-white" : ""}`}
+                          onClick={() => {
+                            const next = [...(selectedNode.content.textSegments || [])]
+                            next[index] = { ...next[index], bold: !segment.bold }
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                          }}
+                        >
+                          B
+                        </button>
+                        <button
+                          type="button"
+                          className={`rounded border px-2 py-1 text-xs ${segment.italic ? "bg-slate-900 text-white" : ""}`}
+                          onClick={() => {
+                            const next = [...(selectedNode.content.textSegments || [])]
+                            next[index] = { ...next[index], italic: !segment.italic }
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                          }}
+                        >
+                          I
+                        </button>
+                        <button
+                          type="button"
+                          className={`rounded border px-2 py-1 text-xs ${segment.underline ? "bg-slate-900 text-white" : ""}`}
+                          onClick={() => {
+                            const next = [...(selectedNode.content.textSegments || [])]
+                            next[index] = { ...next[index], underline: !segment.underline }
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                          }}
+                        >
+                          U
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded border px-2 py-1 text-xs"
+                          onClick={() => {
+                            const next = (selectedNode.content.textSegments || []).filter((_, i) => i !== index)
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
+                          }}
+                        >
+                          Delete phrase
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded border px-2 py-1 text-xs"
+                          disabled={index === 0}
+                          onClick={() => {
+                            if (index === 0) return
+                            const next = [...(selectedNode.content.textSegments || [])]
+                            const temp = next[index - 1]
+                            next[index - 1] = next[index]
+                            next[index] = temp
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                          }}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded border px-2 py-1 text-xs"
+                          disabled={index === (selectedNode.content.textSegments || []).length - 1}
+                          onClick={() => {
+                            const next = [...(selectedNode.content.textSegments || [])]
+                            if (index >= next.length - 1) return
+                            const temp = next[index + 1]
+                            next[index + 1] = next[index]
+                            next[index] = temp
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                          }}
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="rounded border px-2 py-1 text-xs"
+                    onClick={() => {
+                      const next = [...(selectedNode.content.textSegments || []), { text: "New phrase", color: "#ffffff", bold: true, italic: false, underline: false, opacity: 1 }]
+                      dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
+                    }}
+                  >
+                    Add phrase
+                  </button>
+                </div>
+              </>
+            )}
+
+            {(selectedNode.type === "text" || selectedNode.type === "button") && !(selectedNode.type === "text" && selectedNode.id === "hero-title" && Array.isArray(selectedNode.content.textSegments)) && (
               <>
                 <label className="text-xs font-semibold">Content</label>
                 <textarea

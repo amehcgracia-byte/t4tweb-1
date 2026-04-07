@@ -16,6 +16,17 @@ interface DeployNodePayload {
   explicitSize: boolean
 }
 
+interface HeroTitleSegment {
+  text: string
+  color: string
+  bold: boolean
+  italic: boolean
+  underline: boolean
+  opacity: number
+  fontSize?: string
+  fontFamily?: string
+}
+
 interface DeployRequestPayload {
   level: "green" | "yellow" | "red"
   diagnosticMode?: boolean
@@ -165,8 +176,8 @@ export async function POST(request: Request) {
       perspective: "drafts",
     })
 
-    const existingHero = await writeClient.fetch<{ _id: string; title?: string; titleHighlight?: string } | null>(
-      `*[_type == $type][0]{ _id, title, titleHighlight }`,
+    const existingHero = await writeClient.fetch<{ _id: string; title?: string; titleHighlight?: string; titleSegments?: HeroTitleSegment[] } | null>(
+      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments }`,
       { type: SANITY_DOC_TYPE }
     )
 
@@ -203,7 +214,7 @@ export async function POST(request: Request) {
     const persistedNodes: string[] = []
     const skippedNodes: string[] = []
     const failedNodes: string[] = []
-    const heroPatch: Record<string, string> = {}
+    const heroPatch: Record<string, unknown> = {}
 
     const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text")
     const heroSubtitleNode = payload.nodes.find((node) => node.id === "hero-subtitle" && node.type === "text")
@@ -211,10 +222,18 @@ export async function POST(request: Request) {
     const heroScrollNode = payload.nodes.find((node) => node.id === "hero-scroll-indicator")
 
     if (heroTitleNode?.explicitContent) {
-      // Hero title currently renders as title + inline styled titleHighlight.
-      // Persisting a flat string from one editable node is not semantically safe yet.
-      skippedFields.push("title")
-      skippedNodes.push("hero-title-rich-inline-accent")
+      const candidateSegments = Array.isArray(heroTitleNode.content?.textSegments)
+        ? (heroTitleNode.content.textSegments as HeroTitleSegment[])
+        : []
+      const validSegments = candidateSegments.filter((segment) => typeof segment?.text === "string" && segment.text.length > 0)
+      if (validSegments.length > 0) {
+        heroPatch.titleSegments = validSegments
+        persistedFields.push("titleSegments")
+        persistedNodes.push("hero-title")
+      } else {
+        skippedFields.push("title")
+        skippedNodes.push("hero-title-rich-inline-accent")
+      }
     } else if (heroTitleNode?.explicitPosition || heroTitleNode?.explicitSize || heroTitleNode?.explicitStyle) {
       skippedFields.push("titlePositionOrStyle")
       skippedNodes.push("hero-title-position-or-style")
@@ -252,7 +271,8 @@ export async function POST(request: Request) {
 
     const existingTitle = (existingHero.title || "").trim()
     const existingHighlight = (existingHero.titleHighlight || "").trim()
-    if (existingTitle && existingHighlight) {
+    const incomingSegments = Array.isArray(heroTitleNode?.content?.textSegments) && (heroTitleNode?.content?.textSegments as HeroTitleSegment[]).length > 0
+    if (!incomingSegments && existingTitle && existingHighlight) {
       const duplicateSuffixPattern = new RegExp(`\\s*${escapeRegExp(existingHighlight)}\\s*$`)
       if (duplicateSuffixPattern.test(existingTitle)) {
         const normalizedTitle = existingTitle.replace(duplicateSuffixPattern, "").trim()

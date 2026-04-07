@@ -7,9 +7,24 @@ import { client } from "@/lib/sanity/client"
 import { heroQuery } from "@/lib/sanity/queries"
 import { useVisualEditor } from "@/components/visual-editor"
 
+interface HeroTitleSegment {
+  text: string
+  color?: string
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  opacity?: number
+  fontSize?: string
+  fontFamily?: string
+}
+
 const FALLBACK = {
   title: "A vibrant blend of",
   titleHighlight: "funk, soul and world music",
+  titleSegments: [
+    { text: "A vibrant blend of", color: "#ffffff", bold: true, italic: false, underline: false, opacity: 1 },
+    { text: "funk, soul and world music", color: "#FF8C21", bold: true, italic: false, underline: false, opacity: 1 },
+  ] as HeroTitleSegment[],
   subtitle: "BERLIN-BASED LIVE COLLECTIVE",
   logoUrl: "/images/t4tPics/logo-white.png",
   bgUrl: "/images/t4tPics/hero-bg.jpg",
@@ -162,6 +177,7 @@ export function HeroSection() {
         setData({
           title: data.title || FALLBACK.title,
           titleHighlight: data.titleHighlight || FALLBACK.titleHighlight,
+          titleSegments: Array.isArray(data.titleSegments) && data.titleSegments.length > 0 ? data.titleSegments : FALLBACK.titleSegments,
           subtitle: data.subtitle || FALLBACK.subtitle,
           logoUrl: data.logoUrl || FALLBACK.logoUrl,
           bgUrl: data.bgUrl || FALLBACK.bgUrl,
@@ -232,10 +248,32 @@ export function HeroSection() {
             data-editor-node-label="Título Principal"
             className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6"
           >
-            {content.title}{" "}
-            <span className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent">
-              {content.titleHighlight}
-            </span>
+            {Array.isArray(content.titleSegments) && content.titleSegments.length > 0
+              ? content.titleSegments.map((segment, index) => (
+                <span
+                  key={`hero-segment-${index}`}
+                  style={{
+                    color: segment.color || "#ffffff",
+                    fontWeight: segment.bold ? "700" : "400",
+                    fontStyle: segment.italic ? "italic" : "normal",
+                    textDecoration: segment.underline ? "underline" : "none",
+                    opacity: segment.opacity ?? 1,
+                    fontSize: segment.fontSize,
+                    fontFamily: segment.fontFamily,
+                    marginRight: "0.25em",
+                  }}
+                >
+                  {segment.text}
+                </span>
+              ))
+              : (
+                <>
+                  {content.title}{" "}
+                  <span className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent">
+                    {content.titleHighlight}
+                  </span>
+                </>
+              )}
           </h1>
 
           <div className="flex flex-col items-center">
