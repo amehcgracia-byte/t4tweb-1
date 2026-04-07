@@ -51,6 +51,7 @@ export function PressKitSection() {
       href: "https://linktr.ee/tales4tillerman",
     },
   ], [])
+  const visibleResources = resources.slice(0, 2)
 
   const resourceVariants = {
     hidden: { opacity: 0, y: 12 },
@@ -172,12 +173,13 @@ export function PressKitSection() {
     }
 
     // Register lower cards for selection (drag is handled separately)
+    resourceRefs.current = resourceRefs.current.slice(0, visibleResources.length)
     resourceRefs.current.forEach((ref, index) => {
       if (ref) {
         registerEditable({
           id: `press-kit-resource-${index}`,
           type: 'link',
-          label: `Resource: ${resources[index]?.title || index}`,
+          label: `Resource: ${visibleResources[index]?.title || index}`,
           parentId: 'press-kit-section',
           element: ref,
           originalRect: ref.getBoundingClientRect(),
@@ -208,10 +210,10 @@ export function PressKitSection() {
       unregisterEditable('press-kit-title')
       unregisterEditable('press-kit-description')
       unregisterEditable('press-kit-download-button')
-      resources.forEach((_, i) => unregisterEditable(`press-kit-resource-${i}`))
+      visibleResources.forEach((_, i) => unregisterEditable(`press-kit-resource-${i}`))
       unregisterEditable('press-kit-manager')
     }
-  }, [isEditing, registerEditable, unregisterEditable, resources])
+  }, [isEditing, registerEditable, unregisterEditable, visibleResources])
 
   return (
     <section 
@@ -306,7 +308,7 @@ export function PressKitSection() {
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {resources.map((resource, index) => {
+            {visibleResources.map((resource, index) => {
               const Icon = resource.icon
               return (
                 <motion.a
