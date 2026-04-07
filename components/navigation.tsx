@@ -184,6 +184,7 @@ export function Navigation({ data }: { data: NavigationData }) {
             data-editor-node-type="card"
             data-editor-node-label="Navigation Inner Container"
             className="flex h-16 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 md:h-[4.5rem] md:px-4"
+            style={getElementLayoutStyle(data.elementStyles, "navigation-inner")}
           >
             <a
               ref={logoLinkRef}
@@ -196,10 +197,14 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-type="image"
                 data-editor-node-label="Logo Image"
                 className="relative h-full w-auto rounded-full shadow-lg shadow-black/30 overflow-hidden"
-                style={{ width: 56, height: 56 }}
+                style={{
+                  width: 56,
+                  height: 56,
+                  ...getElementLayoutStyle(data.elementStyles, "nav-logo"),
+                }}
               >
                 <Image
-                  src="/images/logo-qr.png"
+                  src={data.brandLogoUrl || "/images/logo-qr.png"}
                   alt="Tales for the Tillerman"
                   fill
                   className="object-cover"
@@ -211,8 +216,9 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-id="nav-brand-name"
                 data-editor-node-type="text"
                 data-editor-node-label="Brand Name"
+                style={getElementLayoutStyle(data.elementStyles, "nav-brand-name")}
               >
-                Tales for the Tillerman
+                {data.brandName}
               </span>
             </a>
 
@@ -226,16 +232,21 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id={`nav-link-${index}`}
                   data-editor-node-type="button"
                   data-editor-node-label={`Nav Link: ${link.label}`}
+                  style={getElementLayoutStyle(data.elementStyles, `nav-link-${index}`)}
                 >
                   {link.label}
                 </a>
               ))}
               <a 
                 ref={bookButtonRef}
-                href="#contact" 
+                href={data.ctaHref || "#contact"}
+                data-editor-node-id="nav-book-button"
+                data-editor-node-type="button"
+                data-editor-node-label="Book Button"
                 className={`${primaryCtaClass} ml-2 shrink-0 lg:ml-3`}
+                style={getElementLayoutStyle(data.elementStyles, "nav-book-button")}
               >
-                Book
+                {data.ctaLabel || "Book"}
               </a>
             </div>
 
@@ -273,6 +284,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id={`nav-mobile-link-${index}`}
                   data-editor-node-type="button"
                   data-editor-node-label={`Mobile Nav: ${link.label}`}
+                  style={getElementLayoutStyle(data.elementStyles, `nav-mobile-link-${index}`)}
                 >
                   {link.label}
                 </a>
@@ -280,14 +292,15 @@ export function Navigation({ data }: { data: NavigationData }) {
               <div className="px-2 pt-4 pb-2">
                 <a
                   ref={mobileBookButtonRef}
-                  href="#contact"
+                  href={data.ctaHref || "#contact"}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`${primaryCtaClass} flex min-h-[48px] w-full items-center justify-center py-3.5 text-center`}
                   data-editor-node-id="nav-mobile-book-button"
                   data-editor-node-type="button"
                   data-editor-node-label="Mobile Book Button"
+                  style={getElementLayoutStyle(data.elementStyles, "nav-mobile-book-button")}
                 >
-                  Book the band
+                  {data.ctaLabel || "Book the band"}
                 </a>
               </div>
             </div>
