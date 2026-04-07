@@ -7,26 +7,43 @@ import { useVisualEditor } from "@/components/visual-editor"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 
 
-// Helper: convert elementStyles to React style object
+/**
+ * Maps CMS / deploy elementStyles to inline CSS.
+ * Must match visual-editor `applyNodeToDom`: position uses `transform: translate()` with
+ * `transformOrigin: top left` — not `left`/`top`, or the public page shifts by a different
+ * amount than in the editor (especially vs default transform-origin center).
+ */
 function getElementStyle(elementStyles: Record<string, unknown> | undefined, targetId: string): React.CSSProperties {
   if (!elementStyles || !elementStyles[targetId]) return {}
-  
+
   const styles = elementStyles[targetId] as Record<string, unknown>
   const result: React.CSSProperties = {}
-  
-  // Map editable props to CSS properties
-  if (typeof styles.x === 'number') result.left = `${styles.x}px`
-  if (typeof styles.y === 'number') result.top = `${styles.y}px`
-  if (typeof styles.width === 'number') result.width = `${styles.width}px`
-  if (typeof styles.height === 'number') result.height = `${styles.height}px`
-  if (typeof styles.fontSize === 'number') result.fontSize = `${styles.fontSize}px`
-  if (typeof styles.fontWeight === 'number') result.fontWeight = styles.fontWeight
-  if (typeof styles.letterSpacing === 'number') result.letterSpacing = `${styles.letterSpacing}px`
-  if (typeof styles.lineHeight === 'number') result.lineHeight = styles.lineHeight
-  if (typeof styles.color === 'string') result.color = styles.color
-  if (typeof styles.scale === 'number') result.transform = `scale(${styles.scale})`
-  if (typeof styles.maxWidth === 'number') result.maxWidth = `${styles.maxWidth}px`
-  
+
+  const hasX = typeof styles.x === "number"
+  const hasY = typeof styles.y === "number"
+  const tx = hasX ? (styles.x as number) : 0
+  const ty = hasY ? (styles.y as number) : 0
+  const scaleVal = typeof styles.scale === "number" ? styles.scale : 1
+  const needTranslate = hasX || hasY
+  const needScale = typeof styles.scale === "number" && scaleVal !== 1
+
+  if (needTranslate || needScale) {
+    const parts: string[] = []
+    parts.push(`translate(${tx}px, ${ty}px)`)
+    if (needScale) parts.push(`scale(${scaleVal})`)
+    result.transform = parts.join(" ")
+    result.transformOrigin = "top left"
+  }
+
+  if (typeof styles.width === "number") result.width = `${styles.width}px`
+  if (typeof styles.height === "number") result.height = `${styles.height}px`
+  if (typeof styles.fontSize === "number") result.fontSize = `${styles.fontSize}px`
+  if (typeof styles.fontWeight === "number") result.fontWeight = styles.fontWeight
+  if (typeof styles.letterSpacing === "number") result.letterSpacing = `${styles.letterSpacing}px`
+  if (typeof styles.lineHeight === "number") result.lineHeight = styles.lineHeight
+  if (typeof styles.color === "string") result.color = styles.color
+  if (typeof styles.maxWidth === "number") result.maxWidth = `${styles.maxWidth}px`
+
   return result
 }
 

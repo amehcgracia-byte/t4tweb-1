@@ -242,8 +242,14 @@ export async function POST(request: Request) {
       perspective: "drafts",
     })
 
-    const existingHero = await writeClient.fetch<{ _id: string; title?: string; titleHighlight?: string; titleSegments?: HeroTitleSegment[] } | null>(
-      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments }`,
+    const existingHero = await writeClient.fetch<{
+      _id: string
+      title?: string
+      titleHighlight?: string
+      titleSegments?: HeroTitleSegment[]
+      elementStyles?: Record<string, Record<string, unknown>>
+    } | null>(
+      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments, elementStyles }`,
       { type: SANITY_DOC_TYPE }
     )
     log("document fetch", { found: !!existingHero?._id, docId: existingHero?._id })
@@ -335,12 +341,20 @@ export async function POST(request: Request) {
       skippedNodes.push("hero-subtitle-position-or-style")
     }
 
-    if (heroLogoNode && (heroLogoNode.explicitPosition || heroLogoNode.explicitSize)) {
-      // Capture hero-logo position and size
+    const logoHasScale =
+      heroLogoNode &&
+      heroLogoNode.explicitStyle &&
+      typeof (heroLogoNode.style as { scale?: number })?.scale === "number"
+
+    if (
+      heroLogoNode &&
+      (heroLogoNode.explicitPosition || heroLogoNode.explicitSize || logoHasScale)
+    ) {
+      // Capture hero-logo position, size, and scale (editor uses transform translate + scale)
       if (!elementStylesInPayload) elementStylesInPayload = {}
       elementStylesInPayload["hero-logo"] = elementStylesInPayload["hero-logo"] || {}
       const logoStyles = elementStylesInPayload["hero-logo"] as Record<string, unknown>
-      
+
       if (heroLogoNode.explicitPosition) {
         logoStyles.x = heroLogoNode.geometry.x
         logoStyles.y = heroLogoNode.geometry.y
@@ -351,7 +365,11 @@ export async function POST(request: Request) {
         logoStyles.height = heroLogoNode.geometry.height
         log("hero-logo size captured", { width: logoStyles.width, height: logoStyles.height })
       }
-      
+      if (logoHasScale) {
+        logoStyles.scale = (heroLogoNode.style as { scale: number }).scale
+        log("hero-logo scale captured", { scale: logoStyles.scale })
+      }
+
       persistedFields.push("hero-logo-position-size")
       persistedNodes.push("hero-logo")
     } else if (heroLogoNode && heroLogoNode.explicitContent) {
@@ -388,8 +406,23 @@ export async function POST(request: Request) {
       }
       
       if (Object.keys(heroElementStyles).length > 0) {
-        heroPatch.elementStyles = heroElementStyles
-        log("element styles patch", { styleCount: Object.keys(heroElementStyles).length })
+        const priorRaw = existingHero?.elementStyles
+        const prior =
+          priorRaw && typeof priorRaw === "object" && !Array.isArray(priorRaw)
+            ? { ...priorRaw }
+            : {}
+        const merged: Record<string, unknown> = { ...prior }
+        for (const [targetId, incoming] of Object.entries(heroElementStyles)) {
+          if (typeof incoming === "object" && incoming !== null) {
+            const prevTarget =
+              merged[targetId] && typeof merged[targetId] === "object"
+                ? (merged[targetId] as Record<string, unknown>)
+                : {}
+            merged[targetId] = { ...prevTarget, ...(incoming as Record<string, unknown>) }
+          }
+        }
+        heroPatch.elementStyles = merged
+        log("element styles patch", { styleCount: Object.keys(merged), mergedTargets: Object.keys(merged) })
       }
     }
 
