@@ -15,6 +15,7 @@ type NodeType = "section" | "background" | "card" | "text" | "button" | "image"
 type Point = { x: number; y: number }
 
 type Size = { width: number; height: number }
+type ConcertField = "date" | "venue" | "city" | "country" | "genre" | "price" | "status" | "time" | "capacity"
 
 interface TextSegment {
   text: string
@@ -805,11 +806,14 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       })
     }
     const observer = new ResizeObserver(scheduleRegistryRefresh)
+    const mutationObserver = new MutationObserver(scheduleRegistryRefresh)
     registry.forEach((entry) => observer.observe(entry.element))
+    mutationObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-editor-node-id"] })
     window.addEventListener("scroll", scheduleRegistryRefresh, true)
     window.addEventListener("resize", scheduleRegistryRefresh)
     return () => {
       observer.disconnect()
+      mutationObserver.disconnect()
       window.removeEventListener("scroll", scheduleRegistryRefresh, true)
       window.removeEventListener("resize", scheduleRegistryRefresh)
       if (registryRafRef.current !== null) {
@@ -946,6 +950,7 @@ export function VisualEditorOverlay() {
   const [deployStatus, setDeployStatus] = useState<string | null>(null)
   const [deployDetails, setDeployDetails] = useState<string | null>(null)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
+  const [assetUploadState, setAssetUploadState] = useState<Record<string, { status: "idle" | "uploading" | "uploaded" | "error"; message?: string }>>({})
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
@@ -955,6 +960,10 @@ export function VisualEditorOverlay() {
   const selectedBandMemberIndex = selectedNode?.id.startsWith("member-item-")
     ? Number(selectedNode.id.replace("member-item-", ""))
     : null
+  const selectedConcertCardId = selectedNode && /^live-(upcoming|history)-event-\d+$/.test(selectedNode.id)
+    ? selectedNode.id
+    : null
+  const [concertDraft, setConcertDraft] = useState<Record<ConcertField, string> | null>(null)
 
   const getBandMemberFieldValue = useCallback((index: number, field: "number" | "name" | "role" | "photo"): string => {
     if (typeof document === "undefined") return ""
@@ -963,6 +972,86 @@ export function VisualEditorOverlay() {
     if (field === "role") return document.querySelector<HTMLElement>(`[data-member-role-index="${index}"]`)?.textContent?.trim() || ""
     return document.querySelector<HTMLImageElement>(`[data-member-photo-index="${index}"]`)?.src || ""
   }, [])
+
+  const formatConcertDate = useCallback((value: string): string => {
+    const parsed = new Date(value)
+    if (Number.isNaN(parsed.getTime())) return value
+    return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  }, [])
+
+  const getConcertCardFieldValue = useCallback((cardId: string, field: ConcertField): string => {
+    if (typeof document === "undefined") return ""
+    const card = document.querySelector<HTMLElement>(`[data-editor-node-id="${cardId}"]`)
+    if (!card) return ""
+    if (field === "date") return card.dataset.concertDate || ""
+    if (field === "venue") return card.dataset.concertVenue || ""
+    if (field === "city") return card.dataset.concertCity || ""
+    if (field === "country") return card.dataset.concertCountry || ""
+    if (field === "genre") return card.dataset.concertGenre || ""
+    if (field === "price") return card.dataset.concertPrice || ""
+    if (field === "status") return card.dataset.concertStatus || ""
+    if (field === "time") return card.dataset.concertTime || ""
+    return card.dataset.concertCapacity || ""
+  }, [])
+
+  const updateConcertCardField = useCallback((cardId: string, field: ConcertField, value: string) => {
+    if (typeof document === "undefined") return
+    const card = document.querySelector<HTMLElement>(`[data-editor-node-id="${cardId}"]`)
+    if (!card) return
+
+    if (field === "date") card.dataset.concertDate = value
+    if (field === "venue") card.dataset.concertVenue = value
+    if (field === "city") card.dataset.concertCity = value
+    if (field === "country") card.dataset.concertCountry = value
+    if (field === "genre") card.dataset.concertGenre = value
+    if (field === "price") card.dataset.concertPrice = value
+    if (field === "status") card.dataset.concertStatus = value
+    if (field === "time") card.dataset.concertTime = value
+    if (field === "capacity") card.dataset.concertCapacity = value
+
+    const dateEl = card.querySelector<HTMLElement>('[data-concert-field="date"]')
+    const venueEl = card.querySelector<HTMLElement>('[data-concert-field="venue"]')
+    const locationEl = card.querySelector<HTMLElement>('[data-concert-field="location"]')
+    const genreEl = card.querySelector<HTMLElement>('[data-concert-field="genre"]')
+    const priceEl = card.querySelector<HTMLElement>('[data-concert-field="price"]')
+    const statusEl = card.querySelector<HTMLElement>('[data-concert-field="status"]')
+    const timeEl = card.querySelector<HTMLElement>('[data-concert-field="time"]')
+    const capacityEl = card.querySelector<HTMLElement>('[data-concert-field="capacity"]')
+
+    if (dateEl) dateEl.textContent = formatConcertDate(card.dataset.concertDate || "")
+    if (venueEl) venueEl.textContent = card.dataset.concertVenue || ""
+    if (locationEl) locationEl.textContent = `${card.dataset.concertCity || ""}, ${card.dataset.concertCountry || ""}`.replace(/^,\s*/, "").replace(/,\s*$/, "")
+    if (genreEl) genreEl.textContent = card.dataset.concertGenre || ""
+    if (priceEl) {
+      const raw = card.dataset.concertPrice || ""
+      priceEl.textContent = raw === "Free" ? "Free" : raw ? `€${raw}` : ""
+    }
+    if (statusEl) statusEl.textContent = card.dataset.concertStatus || ""
+    if (timeEl) timeEl.textContent = card.dataset.concertTime || ""
+    if (capacityEl) capacityEl.textContent = card.dataset.concertCapacity || ""
+
+    window.dispatchEvent(new CustomEvent("editor-live-concert-update", {
+      detail: { cardId, field, value },
+    }))
+  }, [formatConcertDate])
+
+  useEffect(() => {
+    if (!selectedConcertCardId) {
+      setConcertDraft(null)
+      return
+    }
+    setConcertDraft({
+      date: getConcertCardFieldValue(selectedConcertCardId, "date"),
+      venue: getConcertCardFieldValue(selectedConcertCardId, "venue"),
+      city: getConcertCardFieldValue(selectedConcertCardId, "city"),
+      country: getConcertCardFieldValue(selectedConcertCardId, "country"),
+      genre: getConcertCardFieldValue(selectedConcertCardId, "genre"),
+      price: getConcertCardFieldValue(selectedConcertCardId, "price"),
+      status: getConcertCardFieldValue(selectedConcertCardId, "status"),
+      time: getConcertCardFieldValue(selectedConcertCardId, "time"),
+      capacity: getConcertCardFieldValue(selectedConcertCardId, "capacity"),
+    })
+  }, [selectedConcertCardId, getConcertCardFieldValue])
 
   const updateBandMemberField = useCallback((index: number, field: "number" | "name" | "role" | "photo", value: string) => {
     if (typeof document === "undefined") return
@@ -987,6 +1076,32 @@ export function VisualEditorOverlay() {
       img.src = value
     })
   }, [])
+
+  const uploadEditorImageAsset = useCallback(async (nodeId: string, nodeType: "image" | "background", file: File) => {
+    setAssetUploadState((prev) => ({ ...prev, [nodeId]: { status: "uploading", message: "Uploading to Sanity..." } }))
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const response = await fetch("/api/editor-upload-asset", {
+        method: "POST",
+        body: formData,
+      })
+      const data = (await response.json()) as { url?: string; message?: string }
+      if (!response.ok || !data.url) {
+        throw new Error(data.message || "Upload failed")
+      }
+
+      dispatch({
+        type: nodeType === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
+        nodeId,
+        patch: { src: data.url, mediaKind: "image" },
+      })
+      setAssetUploadState((prev) => ({ ...prev, [nodeId]: { status: "uploaded", message: "Uploaded successfully." } }))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Upload failed"
+      setAssetUploadState((prev) => ({ ...prev, [nodeId]: { status: "error", message } }))
+    }
+  }, [dispatch])
   const exitEditor = () => {
     setIsEditing(false)
     window.location.reload()
@@ -1426,6 +1541,121 @@ export function VisualEditorOverlay() {
               </div>
             )}
 
+            {selectedConcertCardId && concertDraft && (
+              <div className="space-y-2 rounded border border-slate-200 p-2">
+                <label className="text-[11px] font-semibold">Concert Date (YYYY-MM-DD)</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={concertDraft.date}
+                  onChange={(e) => {
+                    const next = { ...concertDraft, date: e.target.value }
+                    setConcertDraft(next)
+                    updateConcertCardField(selectedConcertCardId, "date", e.target.value)
+                  }}
+                />
+                <label className="text-[11px] font-semibold">Venue</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={concertDraft.venue}
+                  onChange={(e) => {
+                    const next = { ...concertDraft, venue: e.target.value }
+                    setConcertDraft(next)
+                    updateConcertCardField(selectedConcertCardId, "venue", e.target.value)
+                  }}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-semibold">City</label>
+                    <input
+                      className="w-full rounded border p-1 text-xs"
+                      value={concertDraft.city}
+                      onChange={(e) => {
+                        const next = { ...concertDraft, city: e.target.value }
+                        setConcertDraft(next)
+                        updateConcertCardField(selectedConcertCardId, "city", e.target.value)
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold">Country</label>
+                    <input
+                      className="w-full rounded border p-1 text-xs"
+                      value={concertDraft.country}
+                      onChange={(e) => {
+                        const next = { ...concertDraft, country: e.target.value }
+                        setConcertDraft(next)
+                        updateConcertCardField(selectedConcertCardId, "country", e.target.value)
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-semibold">Genre</label>
+                    <input
+                      className="w-full rounded border p-1 text-xs"
+                      value={concertDraft.genre}
+                      onChange={(e) => {
+                        const next = { ...concertDraft, genre: e.target.value }
+                        setConcertDraft(next)
+                        updateConcertCardField(selectedConcertCardId, "genre", e.target.value)
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold">Price</label>
+                    <input
+                      className="w-full rounded border p-1 text-xs"
+                      value={concertDraft.price}
+                      onChange={(e) => {
+                        const next = { ...concertDraft, price: e.target.value }
+                        setConcertDraft(next)
+                        updateConcertCardField(selectedConcertCardId, "price", e.target.value)
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[11px] font-semibold">Status</label>
+                    <input
+                      className="w-full rounded border p-1 text-xs"
+                      value={concertDraft.status}
+                      onChange={(e) => {
+                        const next = { ...concertDraft, status: e.target.value }
+                        setConcertDraft(next)
+                        updateConcertCardField(selectedConcertCardId, "status", e.target.value)
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold">Time</label>
+                    <input
+                      className="w-full rounded border p-1 text-xs"
+                      value={concertDraft.time}
+                      onChange={(e) => {
+                        const next = { ...concertDraft, time: e.target.value }
+                        setConcertDraft(next)
+                        updateConcertCardField(selectedConcertCardId, "time", e.target.value)
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold">Capacity</label>
+                    <input
+                      className="w-full rounded border p-1 text-xs"
+                      value={concertDraft.capacity}
+                      onChange={(e) => {
+                        const next = { ...concertDraft, capacity: e.target.value }
+                        setConcertDraft(next)
+                        updateConcertCardField(selectedConcertCardId, "capacity", e.target.value)
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {selectedNode.type === "text" && selectedNode.id === "hero-title" && heroTitleSegments.length > 0 && (
               <>
                 <label className="text-xs font-semibold">Hero Title Segments</label>
@@ -1768,17 +1998,23 @@ export function VisualEditorOverlay() {
                   type="file"
                   accept="image/*"
                   className="w-full text-xs"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0]
                     if (!file) return
-                    const url = URL.createObjectURL(file)
-                    dispatch({
-                      type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
-                      nodeId: selectedNode.id,
-                      patch: { src: url, mediaKind: "image" },
-                    })
+                    await uploadEditorImageAsset(
+                      selectedNode.id,
+                      selectedNode.type === "image" ? "image" : "background",
+                      file
+                    )
+                    e.currentTarget.value = ""
                   }}
                 />
+                {assetUploadState[selectedNode.id] && (
+                  <div className="rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-700">
+                    Upload status: <span className="font-semibold capitalize">{assetUploadState[selectedNode.id]?.status}</span>
+                    {assetUploadState[selectedNode.id]?.message ? ` — ${assetUploadState[selectedNode.id]?.message}` : ""}
+                  </div>
+                )}
                 <div>
                   <label className="text-[10px]">Contrast ({Math.round(selectedNode.style.contrast ?? 100)}%)</label>
                   <input

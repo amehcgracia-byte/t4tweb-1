@@ -14,65 +14,74 @@ import { loadHeroData } from "@/lib/sanity/hero-loader"
 import { loadNavigationData } from "@/lib/sanity/navigation-loader"
 import { loadIntroBannerData } from "@/lib/sanity/intro-banner-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
+import { HomeEditorStateApplier } from "@/components/home-editor-state-applier"
+import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
 
 /** Always refetch hero from Sanity (editor deploy + revalidate); avoids stale static shell in dev). */
 export const dynamic = "force-dynamic"
 
 export default async function Home() {
-  const [heroData, navigationData, introBannerData] = await Promise.all([
+  const [heroData, navigationData, introBannerData, homeEditorNodes] = await Promise.all([
     loadHeroData(),
     loadNavigationData(),
     loadIntroBannerData(),
+    loadHomeEditorState(),
   ])
 
   return (
-    <main className="relative bg-black">
+    <main
+      data-editor-node-id="home-page-main"
+      data-editor-node-type="section"
+      data-editor-node-label="Home Page Main"
+      className="relative bg-black"
+    >
+      <HomeEditorStateApplier nodes={homeEditorNodes} />
       <RibbonsBlock />
       <Navigation data={navigationData} />
 
       <HeroSectionWrapper data={heroData} />
 
-      <SectionDivider />
+      <SectionDivider editorId="section-divider-hero-intro" />
 
       <IntroBannerSection data={introBannerData} />
 
-      <SectionDivider />
+      <SectionDivider editorId="section-divider-intro-release" />
 
       <SceneSection id="latest-release">
         <LatestReleaseSection />
       </SceneSection>
 
-      <SectionDivider />
+      <SectionDivider editorId="section-divider-release-about" />
 
       <SceneSection id="about">
         <AboutSection />
       </SceneSection>
 
-      <SectionDivider />
+      <SectionDivider editorId="section-divider-about-press" />
 
       <SceneSection id="press-kit">
         <PressKitSection />
       </SceneSection>
 
-      <SectionDivider />
+      <SectionDivider editorId="section-divider-press-band" />
 
       <SceneSection id="band">
         <BandMembersSection />
       </SceneSection>
 
-      <SectionDivider />
+      <SectionDivider editorId="section-divider-band-live" />
 
       <SceneSection id="live">
         <LiveSection />
       </SceneSection>
 
-      <SectionDivider />
+      <SectionDivider editorId="section-divider-live-contact" />
 
       <SceneSection id="contact">
         <ContactSection />
       </SceneSection>
 
-      <SectionDivider />
+      <SectionDivider editorId="section-divider-contact-footer" />
 
       <Footer />
     </main>

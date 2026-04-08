@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "next-sanity"
 import { roundLayoutPx } from "@/lib/hero-layout-styles"
 import { DEFAULT_NAV_LINKS } from "@/lib/sanity/navigation-loader"
+import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
 interface DeployNodePayload {
   id: string
@@ -10,8 +11,34 @@ interface DeployNodePayload {
   label: string
   isGrouped: boolean
   geometry: { x: number; y: number; width: number; height: number }
-  style: Record<string, unknown>
-  content: Record<string, unknown>
+  style: {
+    color?: string
+    backgroundColor?: string
+    opacity?: number
+    contrast?: number
+    saturation?: number
+    brightness?: number
+    negative?: boolean
+    fontSize?: string
+    fontFamily?: string
+    fontWeight?: string
+    fontStyle?: string
+    textDecoration?: string
+    scale?: number
+    minHeight?: string
+    paddingTop?: string
+    paddingBottom?: string
+  }
+  content: {
+    text?: string
+    textSegments?: HeroTitleSegment[]
+    titleSegments?: HeroTitleSegment[]
+    href?: string
+    src?: string
+    alt?: string
+    videoUrl?: string
+    mediaKind?: "image" | "video"
+  }
   explicitContent: boolean
   explicitStyle: boolean
   explicitPosition: boolean
@@ -59,6 +86,8 @@ const TARGET_SECTION = "hero"
 const SANITY_DOC_TYPE = "heroSection"
 const SANITY_DOC_NAV = "navigation"
 const SANITY_DOC_INTRO = "introBanner"
+const SANITY_DOC_HOME_EDITOR_STATE = "homeEditorState"
+const HOME_EDITOR_STATE_DOCUMENT_ID = "homeEditorState"
 const REVALIDATED_PATH = "/"
 
 const INTRO_LAYOUT_IDS = new Set([
@@ -80,6 +109,92 @@ function toPublishedDocumentId(id: string): string {
 
 function isNavLayoutId(id: string): boolean {
   return id === "navigation" || id === "navigation-inner" || id.startsWith("nav-")
+}
+
+const HERO_NODE_IDS = new Set([
+  "hero-section",
+  "hero-bg-image",
+  "hero-title",
+  "hero-title-main",
+  "hero-title-accent",
+  "hero-subtitle",
+  "hero-logo",
+  "hero-scroll-indicator",
+  "hero-buttons",
+])
+
+const INTRO_NODE_IDS = new Set([
+  "intro-section",
+  "intro-banner-gif",
+  "intro-banner-text",
+  "intro-book-button",
+  "intro-press-button",
+])
+
+function isImageSrcPersistable(src: string): boolean {
+  const value = src.trim()
+  if (!value) return false
+  if (value.startsWith("blob:") || value.startsWith("data:") || value.startsWith("javascript:")) return false
+  if (value.startsWith("http://") || value.startsWith("https://") || value.startsWith("/")) return true
+  return false
+}
+
+function shouldPersistInCentralHomeState(node: DeployNodePayload): boolean {
+  if (HERO_NODE_IDS.has(node.id)) return false
+  if (isNavLayoutId(node.id)) return false
+  if (INTRO_NODE_IDS.has(node.id)) return false
+  return node.explicitContent || node.explicitStyle || node.explicitPosition || node.explicitSize
+}
+
+function buildHomeEditorStateNode(node: DeployNodePayload): { node: HomeEditorNodeOverride; skippedImageSrc: boolean } {
+  const skippedImageSrc = typeof node.content?.src === "string" && !!node.content.src && !isImageSrcPersistable(node.content.src)
+
+  const content: HomeEditorNodeOverride["content"] = {
+    text: typeof node.content?.text === "string" ? node.content.text : undefined,
+    href: typeof node.content?.href === "string" ? node.content.href : undefined,
+    src: skippedImageSrc ? undefined : (typeof node.content?.src === "string" ? node.content.src : undefined),
+    alt: typeof node.content?.alt === "string" ? node.content.alt : undefined,
+    videoUrl: typeof node.content?.videoUrl === "string" ? node.content.videoUrl : undefined,
+    mediaKind: node.content?.mediaKind === "video" ? "video" : "image",
+  }
+
+  return {
+    node: {
+      nodeId: node.id,
+      nodeType: node.type as HomeEditorNodeOverride["nodeType"],
+      geometry: {
+        x: roundLayoutPx(node.geometry.x),
+        y: roundLayoutPx(node.geometry.y),
+        width: roundLayoutPx(node.geometry.width),
+        height: roundLayoutPx(node.geometry.height),
+      },
+      style: {
+        color: typeof node.style?.color === "string" ? node.style.color : undefined,
+        backgroundColor: typeof node.style?.backgroundColor === "string" ? node.style.backgroundColor : undefined,
+        opacity: typeof node.style?.opacity === "number" ? node.style.opacity : undefined,
+        contrast: typeof node.style?.contrast === "number" ? node.style.contrast : undefined,
+        saturation: typeof node.style?.saturation === "number" ? node.style.saturation : undefined,
+        brightness: typeof node.style?.brightness === "number" ? node.style.brightness : undefined,
+        negative: typeof node.style?.negative === "boolean" ? node.style.negative : undefined,
+        fontSize: typeof node.style?.fontSize === "string" ? node.style.fontSize : undefined,
+        fontFamily: typeof node.style?.fontFamily === "string" ? node.style.fontFamily : undefined,
+        fontWeight: typeof node.style?.fontWeight === "string" ? node.style.fontWeight : undefined,
+        fontStyle: typeof node.style?.fontStyle === "string" ? node.style.fontStyle : undefined,
+        textDecoration: typeof node.style?.textDecoration === "string" ? node.style.textDecoration : undefined,
+        scale: typeof node.style?.scale === "number" ? Math.round(node.style.scale * 1000) / 1000 : undefined,
+        minHeight: typeof node.style?.minHeight === "string" ? node.style.minHeight : undefined,
+        paddingTop: typeof node.style?.paddingTop === "string" ? node.style.paddingTop : undefined,
+        paddingBottom: typeof node.style?.paddingBottom === "string" ? node.style.paddingBottom : undefined,
+      },
+      content,
+      explicitContent: node.explicitContent,
+      explicitStyle: node.explicitStyle,
+      explicitPosition: node.explicitPosition,
+      explicitSize: node.explicitSize,
+      updatedAt: new Date().toISOString(),
+    },
+    skippedImageSrc,
+  }
 }
 
 /** Persist brand name, CTA, and link rows from editor nodes (explicitContent). */
@@ -157,8 +272,9 @@ function mergeDeployVisualStyleIntoTarget(target: Record<string, unknown>, node:
   }
 }
 
-function buildIntroContentPatch(nodes: DeployNodePayload[]): Record<string, unknown> {
+function buildIntroContentPatch(nodes: DeployNodePayload[]): { patch: Record<string, unknown>; skipped: string[] } {
   const patch: Record<string, unknown> = {}
+  const skipped: string[] = []
   for (const node of nodes) {
     if (!node.explicitContent) continue
     if (node.id === "intro-banner-text") {
@@ -167,7 +283,11 @@ function buildIntroContentPatch(nodes: DeployNodePayload[]): Record<string, unkn
     }
     if (node.id === "intro-banner-gif") {
       const src = typeof node.content?.src === "string" ? node.content.src.trim() : ""
-      if (src) patch.gifUrl = src
+      if (src && isImageSrcPersistable(src)) {
+        patch.gifUrl = src
+      } else if (src) {
+        skipped.push("intro-banner-gif:src(blob/data url)")
+      }
     }
     if (node.id === "intro-book-button") {
       const text = typeof node.content?.text === "string" ? node.content.text.trim() : ""
@@ -182,7 +302,7 @@ function buildIntroContentPatch(nodes: DeployNodePayload[]): Record<string, unkn
       if (href) patch.pressHref = href
     }
   }
-  return patch
+  return { patch, skipped }
 }
 
 function getEnvDiagnostics(): DeployEnvDiagnostics {
@@ -646,7 +766,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const introContentPatch = existingIntro?._id ? buildIntroContentPatch(payload.nodes) : {}
+    const introContentResult: { patch: Record<string, unknown>; skipped: string[] } = existingIntro?._id
+      ? buildIntroContentPatch(payload.nodes)
+      : { patch: {}, skipped: [] }
+    const introContentPatch = introContentResult.patch
     const hasIntroLayout =
       mergedIntroElementStyles !== null && Object.keys(mergedIntroElementStyles).length > 0
     const hasIntroContent = Object.keys(introContentPatch).length > 0
@@ -685,6 +808,43 @@ export async function POST(request: Request) {
           if (!persistedFields.includes(k)) persistedFields.push(k)
         }
       }
+    }
+
+    if (introContentResult.skipped.length > 0) {
+      skippedFields.push(...introContentResult.skipped)
+      if (!skippedNodes.includes("intro-banner-gif")) skippedNodes.push("intro-banner-gif")
+    }
+
+    const centralHomeNodes: HomeEditorNodeOverride[] = []
+    const skippedNodeDiagnostics: string[] = []
+    for (const node of payload.nodes) {
+      if (!shouldPersistInCentralHomeState(node)) continue
+      const built = buildHomeEditorStateNode(node)
+      centralHomeNodes.push(built.node)
+      if (built.skippedImageSrc) {
+        skippedNodeDiagnostics.push(`${node.id}:src(blob/data url)`)
+        if (!skippedNodes.includes(node.id)) skippedNodes.push(node.id)
+      }
+      if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
+    }
+
+    let homeEditorStateDocumentId: string | null = null
+    if (centralHomeNodes.length > 0) {
+      const homeStateDocument = {
+        _id: HOME_EDITOR_STATE_DOCUMENT_ID,
+        _type: SANITY_DOC_HOME_EDITOR_STATE,
+        updatedAt: new Date().toISOString(),
+        nodes: centralHomeNodes,
+      }
+      const homeStateResponse = await writeClient.createOrReplace(homeStateDocument)
+      homeEditorStateDocumentId = homeStateResponse._id
+      steps.push({
+        step: "saving",
+        ok: true,
+        message: `Home editor central state saved: ${HOME_EDITOR_STATE_DOCUMENT_ID} (${centralHomeNodes.length} nodes).`,
+      })
+      persistedFields.push("homeEditorState.nodes")
+      skippedFields.push(...skippedNodeDiagnostics)
     }
 
     // Process Hero element style overrides (position, size, typography)
@@ -837,10 +997,12 @@ export async function POST(request: Request) {
     const heroPatched = Object.keys(heroPatch).length > 0
     const navPatched = navigationDocumentId != null
     const introPatched = introDocumentId != null
+    const homeStatePatched = homeEditorStateDocumentId != null
     const parts: string[] = []
     if (heroPatched) parts.push("Hero")
     if (navPatched) parts.push("Navigation")
     if (introPatched) parts.push("Intro banner")
+    if (homeStatePatched) parts.push("Home editor state")
     let deployMessage = "Deploy complete: public path revalidated."
     if (parts.length > 0) {
       deployMessage = `Deploy complete: ${parts.join(", ")} updated in Sanity; public path revalidated.`
@@ -858,6 +1020,7 @@ export async function POST(request: Request) {
       publishedDocumentType: SANITY_DOC_TYPE,
       navigationDocumentId: navigationDocumentId ?? undefined,
       introDocumentId: introDocumentId ?? undefined,
+      homeEditorStateDocumentId: homeEditorStateDocumentId ?? undefined,
       targetSection: TARGET_SECTION,
       heroTitleMode,
       revalidatedPath: REVALIDATED_PATH,

@@ -18,6 +18,7 @@ interface Concert {
   capacity: string
   price: string
 }
+type ConcertEditableField = "date" | "venue" | "city" | "country" | "genre" | "price" | "status" | "time" | "capacity"
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr)
@@ -95,6 +96,43 @@ export function LiveSection() {
       }
     }
     fetchConcerts()
+  }, [])
+
+  useEffect(() => {
+    const onConcertFieldUpdate = (event: Event) => {
+      const custom = event as CustomEvent<{ cardId?: string; field?: ConcertEditableField; value?: string }>
+      const cardId = custom.detail?.cardId || ""
+      const field = custom.detail?.field
+      const value = custom.detail?.value ?? ""
+      const match = /^live-(upcoming|history)-event-(\d+)$/.exec(cardId)
+      if (!match || !field) return
+
+      const listType = match[1]
+      const listIndex = Number(match[2])
+      if (Number.isNaN(listIndex)) return
+
+      setConcerts((prev) => {
+        const sorted = [...prev].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        const filteredIndices: number[] = []
+        sorted.forEach((item, i) => {
+          const isUpcoming = item.status === "Upcoming"
+          if ((listType === "upcoming" && isUpcoming) || (listType === "history" && !isUpcoming)) {
+            filteredIndices.push(i)
+          }
+        })
+        const targetOriginalIndex = filteredIndices[listIndex]
+        if (targetOriginalIndex === undefined) return prev
+        const next = [...sorted]
+        const current = next[targetOriginalIndex]
+        next[targetOriginalIndex] = { ...current, [field]: value }
+        return next
+      })
+    }
+
+    window.addEventListener("editor-live-concert-update", onConcertFieldUpdate as EventListener)
+    return () => {
+      window.removeEventListener("editor-live-concert-update", onConcertFieldUpdate as EventListener)
+    }
   }, [])
 
   const upcomingConcerts = concerts.filter(c => c.status === "Upcoming")
@@ -268,7 +306,13 @@ export function LiveSection() {
               )}
 
               {!loading && !error && upcomingConcerts.length > 0 && (
-                <div className="space-y-3">
+                <div
+                  data-editor-node-id="live-upcoming-list"
+                  data-editor-node-type="card"
+                  data-editor-node-label="Live Upcoming List"
+                  data-editor-grouped="true"
+                  className="space-y-3"
+                >
                   {upcomingConcerts.map((concert, index) => (
                     <motion.div
                       key={`upcoming-${index}`}
@@ -280,17 +324,94 @@ export function LiveSection() {
                       data-editor-node-type="card"
                       data-editor-node-label={`Upcoming Event ${index + 1}`}
                       data-editor-grouped="true"
+                      data-concert-card="true"
+                      data-concert-list-type="upcoming"
+                      data-concert-date={concert.date}
+                      data-concert-venue={concert.venue}
+                      data-concert-city={concert.city}
+                      data-concert-country={concert.country}
+                      data-concert-genre={concert.genre}
+                      data-concert-price={concert.price}
+                      data-concert-status={concert.status}
+                      data-concert-time={concert.time}
+                      data-concert-capacity={concert.capacity}
                       className="min-h-[80px] p-5 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all duration-300 group shadow-lg hover:shadow-xl flex items-center"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
-                        <div data-editor-node-id={`live-upcoming-event-${index}-date`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Date`} className="shrink-0 text-primary font-medium min-w-[100px]">{formatDate(concert.date)}</div>
+                        <div
+                          data-editor-node-id={`live-upcoming-event-${index}-date`}
+                          data-editor-node-type="text"
+                          data-editor-node-label={`Upcoming Event ${index + 1} Date`}
+                          data-concert-field="date"
+                          className="shrink-0 text-primary font-medium min-w-[100px]"
+                        >
+                          {formatDate(concert.date)}
+                        </div>
                         <div className="flex-1">
-                          <div data-editor-node-id={`live-upcoming-event-${index}-venue`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Venue`} className="font-serif text-lg text-foreground group-hover:text-primary transition-colors">{concert.venue}</div>
-                          <div data-editor-node-id={`live-upcoming-event-${index}-city`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Location`} className="text-muted-foreground text-sm">{concert.city}, {concert.country}</div>
+                          <div
+                            data-editor-node-id={`live-upcoming-event-${index}-venue`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`Upcoming Event ${index + 1} Venue`}
+                            data-concert-field="venue"
+                            className="font-serif text-lg text-foreground group-hover:text-primary transition-colors"
+                          >
+                            {concert.venue}
+                          </div>
+                          <div
+                            data-editor-node-id={`live-upcoming-event-${index}-city`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`Upcoming Event ${index + 1} Location`}
+                            data-concert-field="location"
+                            className="text-muted-foreground text-sm"
+                          >
+                            {concert.city}, {concert.country}
+                          </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground sm:ml-auto">
-                          <span data-editor-node-id={`live-upcoming-event-${index}-genre`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Genre`} className="px-3 py-1 bg-primary/10 rounded-full text-primary text-xs">{concert.genre}</span>
-                          <span>{concert.price === "Free" ? "Free" : `€${concert.price}`}</span>
+                          <span
+                            data-editor-node-id={`live-upcoming-event-${index}-genre`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`Upcoming Event ${index + 1} Genre`}
+                            data-concert-field="genre"
+                            className="px-3 py-1 bg-primary/10 rounded-full text-primary text-xs"
+                          >
+                            {concert.genre}
+                          </span>
+                          <span
+                            data-editor-node-id={`live-upcoming-event-${index}-price`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`Upcoming Event ${index + 1} Price`}
+                            data-concert-field="price"
+                          >
+                            {concert.price === "Free" ? "Free" : `€${concert.price}`}
+                          </span>
+                          <span
+                            data-editor-node-id={`live-upcoming-event-${index}-status`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`Upcoming Event ${index + 1} Status`}
+                            data-concert-field="status"
+                            className="text-xs uppercase tracking-wide"
+                          >
+                            {concert.status}
+                          </span>
+                          <span
+                            data-editor-node-id={`live-upcoming-event-${index}-time`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`Upcoming Event ${index + 1} Time`}
+                            data-concert-field="time"
+                            className="text-xs"
+                          >
+                            {concert.time}
+                          </span>
+                          <span
+                            data-editor-node-id={`live-upcoming-event-${index}-capacity`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`Upcoming Event ${index + 1} Capacity`}
+                            data-concert-field="capacity"
+                            className="text-xs"
+                          >
+                            {concert.capacity}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
@@ -299,8 +420,20 @@ export function LiveSection() {
               )}
 
               {!loading && !error && upcomingConcerts.length === 0 && (
-                <div className="text-center py-8 px-6 bg-secondary/20 border border-border rounded-xl">
-                  <p className="text-muted-foreground">No upcoming shows scheduled.</p>
+                <div
+                  data-editor-node-id="live-upcoming-empty"
+                  data-editor-node-type="card"
+                  data-editor-node-label="Live Upcoming Empty State"
+                  className="text-center py-8 px-6 bg-secondary/20 border border-border rounded-xl"
+                >
+                  <p
+                    data-editor-node-id="live-upcoming-empty-text"
+                    data-editor-node-type="text"
+                    data-editor-node-label="Live Upcoming Empty Text"
+                    className="text-muted-foreground"
+                  >
+                    No upcoming shows scheduled.
+                  </p>
                 </div>
               )}
             </motion.div>
@@ -322,7 +455,13 @@ export function LiveSection() {
               </h3>
 
               {!loading && !error && historyConcerts.length > 0 && (
-                <div className="space-y-3">
+                <div
+                  data-editor-node-id="live-history-list"
+                  data-editor-node-type="card"
+                  data-editor-node-label="Live History List"
+                  data-editor-grouped="true"
+                  className="space-y-3"
+                >
                   {historyConcerts.map((concert, index) => (
                     <motion.div
                       key={`history-${index}`}
@@ -334,21 +473,115 @@ export function LiveSection() {
                       data-editor-node-type="card"
                       data-editor-node-label={`History Event ${index + 1}`}
                       data-editor-grouped="true"
+                      data-concert-card="true"
+                      data-concert-list-type="history"
+                      data-concert-date={concert.date}
+                      data-concert-venue={concert.venue}
+                      data-concert-city={concert.city}
+                      data-concert-country={concert.country}
+                      data-concert-genre={concert.genre}
+                      data-concert-price={concert.price}
+                      data-concert-status={concert.status}
+                      data-concert-time={concert.time}
+                      data-concert-capacity={concert.capacity}
                       className="min-h-[80px] p-5 bg-secondary/30 rounded-xl border border-border/50 hover:border-primary/20 transition-all duration-300 group shadow-lg hover:shadow-xl flex items-center"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
-                        <div data-editor-node-id={`live-history-event-${index}-date`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Date`} className="shrink-0 text-muted-foreground font-medium min-w-[100px]">{formatDate(concert.date)}</div>
+                        <div
+                          data-editor-node-id={`live-history-event-${index}-date`}
+                          data-editor-node-type="text"
+                          data-editor-node-label={`History Event ${index + 1} Date`}
+                          data-concert-field="date"
+                          className="shrink-0 text-muted-foreground font-medium min-w-[100px]"
+                        >
+                          {formatDate(concert.date)}
+                        </div>
                         <div className="flex-1">
-                          <div data-editor-node-id={`live-history-event-${index}-venue`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Venue`} className="font-serif text-lg text-muted-foreground group-hover:text-foreground transition-colors">{concert.venue}</div>
-                          <div data-editor-node-id={`live-history-event-${index}-city`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Location`} className="text-muted-foreground/70 text-sm">{concert.city}, {concert.country}</div>
+                          <div
+                            data-editor-node-id={`live-history-event-${index}-venue`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`History Event ${index + 1} Venue`}
+                            data-concert-field="venue"
+                            className="font-serif text-lg text-muted-foreground group-hover:text-foreground transition-colors"
+                          >
+                            {concert.venue}
+                          </div>
+                          <div
+                            data-editor-node-id={`live-history-event-${index}-city`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`History Event ${index + 1} Location`}
+                            data-concert-field="location"
+                            className="text-muted-foreground/70 text-sm"
+                          >
+                            {concert.city}, {concert.country}
+                          </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground/70 sm:ml-auto">
-                          <span className="px-3 py-1 bg-secondary/50 rounded-full text-xs">{concert.genre}</span>
-                          <span>{concert.price === "Free" ? "Free" : `€${concert.price}`}</span>
+                          <span
+                            data-editor-node-id={`live-history-event-${index}-genre`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`History Event ${index + 1} Genre`}
+                            data-concert-field="genre"
+                            className="px-3 py-1 bg-secondary/50 rounded-full text-xs"
+                          >
+                            {concert.genre}
+                          </span>
+                          <span
+                            data-editor-node-id={`live-history-event-${index}-price`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`History Event ${index + 1} Price`}
+                            data-concert-field="price"
+                          >
+                            {concert.price === "Free" ? "Free" : `€${concert.price}`}
+                          </span>
+                          <span
+                            data-editor-node-id={`live-history-event-${index}-status`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`History Event ${index + 1} Status`}
+                            data-concert-field="status"
+                            className="text-xs uppercase tracking-wide"
+                          >
+                            {concert.status}
+                          </span>
+                          <span
+                            data-editor-node-id={`live-history-event-${index}-time`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`History Event ${index + 1} Time`}
+                            data-concert-field="time"
+                            className="text-xs"
+                          >
+                            {concert.time}
+                          </span>
+                          <span
+                            data-editor-node-id={`live-history-event-${index}-capacity`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`History Event ${index + 1} Capacity`}
+                            data-concert-field="capacity"
+                            className="text-xs"
+                          >
+                            {concert.capacity}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
                   ))}
+                </div>
+              )}
+              {!loading && !error && historyConcerts.length === 0 && (
+                <div
+                  data-editor-node-id="live-history-empty"
+                  data-editor-node-type="card"
+                  data-editor-node-label="Live History Empty State"
+                  className="text-center py-8 px-6 bg-secondary/20 border border-border rounded-xl"
+                >
+                  <p
+                    data-editor-node-id="live-history-empty-text"
+                    data-editor-node-type="text"
+                    data-editor-node-label="Live History Empty Text"
+                    className="text-muted-foreground"
+                  >
+                    No past shows available.
+                  </p>
                 </div>
               )}
             </motion.div>
