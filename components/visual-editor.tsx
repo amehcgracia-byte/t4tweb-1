@@ -161,6 +161,7 @@ type Command =
   | { type: "COPY_NODE"; nodeId: string }
   | { type: "CUT_NODE"; nodeId: string }
   | { type: "PASTE_NODE"; targetNodeId?: string }
+  | { type: "RESTORE_SNAPSHOT"; nodes: EditorNode[] }
   | { type: "BEGIN_TRANSACTION" }
   | { type: "END_TRANSACTION" }
 
