@@ -12,13 +12,18 @@ import { LatestReleaseSection } from "@/components/latest-release-section"
 import { IntroBannerSection } from "@/components/intro-banner-section"
 import { loadHeroData } from "@/lib/sanity/hero-loader"
 import { loadNavigationData } from "@/lib/sanity/navigation-loader"
+import { loadIntroBannerData } from "@/lib/sanity/intro-banner-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
 
 /** Always refetch hero from Sanity (editor deploy + revalidate); avoids stale static shell in dev). */
 export const dynamic = "force-dynamic"
 
 export default async function Home() {
-  const [heroData, navigationData] = await Promise.all([loadHeroData(), loadNavigationData()])
+  const [heroData, navigationData, introBannerData] = await Promise.all([
+    loadHeroData(),
+    loadNavigationData(),
+    loadIntroBannerData(),
+  ])
 
   return (
     <main className="relative bg-black">
@@ -29,7 +34,7 @@ export default async function Home() {
 
       <SectionDivider />
 
-      <IntroBannerSection />
+      <IntroBannerSection data={introBannerData} />
 
       <SectionDivider />
 
