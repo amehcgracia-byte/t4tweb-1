@@ -4,6 +4,7 @@ import { useRef, useEffect, useMemo, useState } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
+import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 import {
   buildHeroScrollIndicatorLayoutStyle,
@@ -225,6 +226,8 @@ export function HeroSection({ data }: { data: HeroData }) {
   const backgroundY = useTransform(scrollYProgress, [0, 1], [0, 35])
 
   const content = data
+  const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
+  const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
   const scrollLayoutSaved = scrollIndicatorHasLayout(content.elementStyles)
   const heroTitleMode: "legacy" | "segmented" = Array.isArray(content.titleSegments) && content.titleSegments.length > 0 ? "segmented" : "legacy"
   const normalizedTitleSegments = useMemo(() => {
@@ -283,7 +286,7 @@ export function HeroSection({ data }: { data: HeroData }) {
             style={getElementStyle(content.elementStyles, "hero-bg-image")}
           >
             <Image
-              src={content.bgUrl}
+              src={resolvedHeroBgSrc}
               alt="Tales for the Tillerman live atmosphere"
               fill
               priority
@@ -367,7 +370,7 @@ export function HeroSection({ data }: { data: HeroData }) {
               style={{ width: 141, height: 141, ...getElementStyle(data.elementStyles, "hero-logo") }}
             >
               <Image
-                src={content.logoUrl}
+                src={resolvedHeroLogoSrc}
                 alt="Tales for the Tillerman logo"
                 fill
                 priority

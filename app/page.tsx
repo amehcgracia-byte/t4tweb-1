@@ -15,6 +15,7 @@ import { loadNavigationData } from "@/lib/sanity/navigation-loader"
 import { loadIntroBannerData } from "@/lib/sanity/intro-banner-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
 import { HomeEditorStateApplier } from "@/components/home-editor-state-applier"
+import { HomeEditorOverridesProvider } from "@/components/home-editor-overrides-provider"
 import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
 
 /** Always refetch hero from Sanity (editor deploy + revalidate); avoids stale static shell in dev). */
@@ -35,11 +36,12 @@ export default async function Home() {
       data-editor-node-label="Home Page Main"
       className="relative bg-black"
     >
-      <HomeEditorStateApplier nodes={homeEditorNodes} />
-      <RibbonsBlock />
-      <Navigation data={navigationData} />
+      <HomeEditorOverridesProvider nodes={homeEditorNodes}>
+        <HomeEditorStateApplier nodes={homeEditorNodes} />
+        <RibbonsBlock />
+        <Navigation data={navigationData} />
 
-      <HeroSectionWrapper data={heroData} />
+        <HeroSectionWrapper data={heroData} />
 
       <SectionDivider editorId="section-divider-hero-intro" />
 
@@ -83,7 +85,8 @@ export default async function Home() {
 
       <SectionDivider editorId="section-divider-contact-footer" />
 
-      <Footer />
+        <Footer />
+      </HomeEditorOverridesProvider>
     </main>
   )
 }

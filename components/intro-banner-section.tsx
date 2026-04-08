@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { useVisualEditor } from "@/components/visual-editor"
+import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { IntroBannerData } from "@/lib/sanity/intro-banner-loader"
 
@@ -15,6 +16,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
   const pressButtonRef = useRef<HTMLAnchorElement>(null)
 
   const es = data.elementStyles
+  const resolvedIntroGifSrc = useHomeEditorImageSrc("intro-banner-gif", data.gifUrl)
 
   useEffect(() => {
     if (!isEditing) return
@@ -104,7 +106,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
     >
       <img
         ref={bannerGifRef}
-        src={data.gifUrl}
+        src={resolvedIntroGifSrc}
         alt="Animated banner"
         data-editor-node-id="intro-banner-gif"
         data-editor-node-type="image"

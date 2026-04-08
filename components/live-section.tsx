@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
+import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import { useVisualEditor } from "@/components/visual-editor"
 
 interface Concert {
@@ -36,6 +37,7 @@ export function LiveSection() {
   const [error, setError] = useState(false)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
+  const resolvedLiveBackgroundSrc = useHomeEditorImageSrc("live-section-bg-image", "/images/sections/live-bg.jpg")
 
   useEffect(() => {
     if (!isEditing) return
@@ -157,7 +159,7 @@ export function LiveSection() {
     <section ref={sectionRef} data-editor-node-id="live-section" data-editor-node-type="section" data-editor-node-label="Live Section" className="relative min-h-screen overflow-hidden">
 <div className="absolute inset-0 -z-10">
   <Image
-    src="/images/sections/live-bg.jpg"
+    src={resolvedLiveBackgroundSrc}
     alt="Live section background"
     fill
     data-editor-node-id="live-section-bg-image"
