@@ -58,7 +58,16 @@ const ROUTE_VERSION = "sanity-debug-v3-brutal"
 const TARGET_SECTION = "hero"
 const SANITY_DOC_TYPE = "heroSection"
 const SANITY_DOC_NAV = "navigation"
+const SANITY_DOC_INTRO = "introBanner"
 const REVALIDATED_PATH = "/"
+
+const INTRO_LAYOUT_IDS = new Set([
+  "intro-section",
+  "intro-banner-gif",
+  "intro-banner-text",
+  "intro-book-button",
+  "intro-press-button",
+])
 
 function isNavLayoutId(id: string): boolean {
   return id === "navigation" || id === "navigation-inner" || id.startsWith("nav-")
@@ -115,6 +124,55 @@ function buildNavigationContentPatch(
   }
 
   if (linksDirty) patch.links = baseLinks
+  return patch
+}
+
+function parsePxNumber(value: string | undefined): number | undefined {
+  if (!value) return undefined
+  const px = /^([\d.]+)px$/i.exec(value.trim())
+  if (px) return Math.round(parseFloat(px[1]))
+  return undefined
+}
+
+/** Map visual-editor `node.style` (color, fontSize, fontWeight) into Sanity elementStyles shape. */
+function mergeDeployVisualStyleIntoTarget(target: Record<string, unknown>, node: DeployNodePayload): void {
+  if (!node.explicitStyle) return
+  const st = node.style as Record<string, unknown>
+  if (typeof st.color === "string" && st.color) target.color = st.color
+  const fs = parsePxNumber(st.fontSize as string | undefined)
+  if (typeof fs === "number") target.fontSize = fs
+  const fw = st.fontWeight
+  if (fw !== undefined && fw !== "") {
+    const n = typeof fw === "number" ? fw : parseInt(String(fw), 10)
+    if (!Number.isNaN(n)) target.fontWeight = n
+  }
+}
+
+function buildIntroContentPatch(nodes: DeployNodePayload[]): Record<string, unknown> {
+  const patch: Record<string, unknown> = {}
+  for (const node of nodes) {
+    if (!node.explicitContent) continue
+    if (node.id === "intro-banner-text") {
+      const t = typeof node.content?.text === "string" ? node.content.text.trim() : ""
+      if (t) patch.bannerText = t
+    }
+    if (node.id === "intro-banner-gif") {
+      const src = typeof node.content?.src === "string" ? node.content.src.trim() : ""
+      if (src) patch.gifUrl = src
+    }
+    if (node.id === "intro-book-button") {
+      const text = typeof node.content?.text === "string" ? node.content.text.trim() : ""
+      const href = typeof node.content?.href === "string" ? node.content.href.trim() : ""
+      if (text) patch.bookLabel = text
+      if (href) patch.bookHref = href
+    }
+    if (node.id === "intro-press-button") {
+      const text = typeof node.content?.text === "string" ? node.content.text.trim() : ""
+      const href = typeof node.content?.href === "string" ? node.content.href.trim() : ""
+      if (text) patch.pressLabel = text
+      if (href) patch.pressHref = href
+    }
+  }
   return patch
 }
 
@@ -300,7 +358,7 @@ export async function POST(request: Request) {
       perspective: "drafts",
     })
 
-    const [existingHero, existingNavigation] = await Promise.all([
+    const [existingHero, existingNavigation, existingIntro] = await Promise.all([
       writeClient.fetch<{
         _id: string
         title?: string
@@ -318,8 +376,21 @@ export async function POST(request: Request) {
       } | null>(`*[_type == $navType][0]{ _id, brandName, links[]{ label, href }, ctaLabel, ctaHref, elementStyles }`, {
         navType: SANITY_DOC_NAV,
       }),
+      writeClient.fetch<{
+        _id: string
+        bannerText?: string
+        gifUrl?: string
+        bookLabel?: string
+        bookHref?: string
+        pressLabel?: string
+        pressHref?: string
+        elementStyles?: Record<string, Record<string, unknown>>
+      } | null>(
+        `*[_type == $introType][0]{ _id, bannerText, gifUrl, bookLabel, bookHref, pressLabel, pressHref, elementStyles }`,
+        { introType: SANITY_DOC_INTRO }
+      ),
     ])
-    log("document fetch", { hero: !!existingHero?._id, navigation: !!existingNavigation?._id })
+    log("document fetch", { hero: !!existingHero?._id, navigation: !!existingNavigation?._id, intro: !!existingIntro?._id })
     const heroTitleMode: "legacy" | "segmented" = hasSegments || (Array.isArray(existingHero?.titleSegments) && existingHero.titleSegments.length > 0)
       ? "segmented"
       : "legacy"
@@ -359,6 +430,7 @@ export async function POST(request: Request) {
     const skippedNodes: string[] = []
     let elementStylesInPayload: Record<string, Record<string, unknown>> = {}
     const navElementStylesInPayload: Record<string, Record<string, unknown>> = {}
+    const introElementStylesInPayload: Record<string, Record<string, unknown>> = {}
     const failedNodes: string[] = []
     const heroPatch: Record<string, unknown> = {}
 
@@ -456,6 +528,29 @@ export async function POST(request: Request) {
       if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
     }
 
+    for (const node of payload.nodes) {
+      if (!INTRO_LAYOUT_IDS.has(node.id)) continue
+      const scaleVal = (node.style as { scale?: number })?.scale
+      const hasScale = node.explicitStyle && typeof scaleVal === "number"
+      const hasLayout = node.explicitPosition || node.explicitSize || hasScale
+      if (!hasLayout && !node.explicitStyle) continue
+
+      introElementStylesInPayload[node.id] = { ...(introElementStylesInPayload[node.id] || {}) }
+      const s = introElementStylesInPayload[node.id] as Record<string, unknown>
+      if (node.explicitPosition) {
+        s.x = roundLayoutPx(node.geometry.x)
+        s.y = roundLayoutPx(node.geometry.y)
+      }
+      if (node.explicitSize) {
+        s.width = roundLayoutPx(node.geometry.width)
+        s.height = roundLayoutPx(node.geometry.height)
+      }
+      if (hasScale) s.scale = Math.round(scaleVal * 1000) / 1000
+      if (node.explicitStyle) mergeDeployVisualStyleIntoTarget(s, node)
+      log("intro layout captured", { id: node.id, x: s.x, y: s.y, w: s.width, h: s.height, scale: s.scale })
+      if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
+    }
+
     let mergedNavigationElementStyles: Record<string, unknown> | null = null
     if (Object.keys(navElementStylesInPayload).length > 0 && existingNavigation?._id) {
       const priorRaw = existingNavigation.elementStyles
@@ -472,6 +567,24 @@ export async function POST(request: Request) {
         }
       }
       log("navigation element styles merged", { targets: Object.keys(mergedNavigationElementStyles) })
+    }
+
+    let mergedIntroElementStyles: Record<string, unknown> | null = null
+    if (Object.keys(introElementStylesInPayload).length > 0 && existingIntro?._id) {
+      const priorRaw = existingIntro.elementStyles
+      const prior =
+        priorRaw && typeof priorRaw === "object" && !Array.isArray(priorRaw) ? { ...priorRaw } : {}
+      mergedIntroElementStyles = { ...prior }
+      for (const [targetId, incoming] of Object.entries(introElementStylesInPayload)) {
+        if (typeof incoming === "object" && incoming !== null) {
+          const prevTarget =
+            mergedIntroElementStyles[targetId] && typeof mergedIntroElementStyles[targetId] === "object"
+              ? (mergedIntroElementStyles[targetId] as Record<string, unknown>)
+              : {}
+          mergedIntroElementStyles[targetId] = { ...prevTarget, ...(incoming as Record<string, unknown>) }
+        }
+      }
+      log("intro element styles merged", { targets: Object.keys(mergedIntroElementStyles) })
     }
 
     const navContentPatch = existingNavigation?._id
@@ -518,6 +631,47 @@ export async function POST(request: Request) {
           }
         }
         for (const k of Object.keys(navContentPatch)) {
+          if (!persistedFields.includes(k)) persistedFields.push(k)
+        }
+      }
+    }
+
+    const introContentPatch = existingIntro?._id ? buildIntroContentPatch(payload.nodes) : {}
+    const hasIntroLayout =
+      mergedIntroElementStyles !== null && Object.keys(mergedIntroElementStyles).length > 0
+    const hasIntroContent = Object.keys(introContentPatch).length > 0
+
+    let introDocumentId: string | null = null
+    if (existingIntro?._id && (hasIntroLayout || hasIntroContent)) {
+      const introSetPayload: Record<string, unknown> = {
+        updatedAt: new Date().toISOString(),
+      }
+      if (hasIntroLayout) introSetPayload.elementStyles = mergedIntroElementStyles
+      Object.assign(introSetPayload, introContentPatch)
+      const introPatchResponse = await writeClient.patch(existingIntro._id).set(introSetPayload).commit()
+      introDocumentId = introPatchResponse._id
+      log("intro patch committed", { docId: introDocumentId, hasIntroLayout, hasIntroContent })
+      const introParts: string[] = []
+      if (hasIntroLayout) introParts.push("layout")
+      if (hasIntroContent) introParts.push("content")
+      steps.push({
+        step: "saving",
+        ok: true,
+        message: `Intro banner ${introParts.join(" + ")} saved: ${existingIntro._id}`,
+      })
+      if (hasIntroContent) {
+        for (const node of payload.nodes) {
+          if (!node.explicitContent) continue
+          if (
+            node.id === "intro-banner-text" ||
+            node.id === "intro-banner-gif" ||
+            node.id === "intro-book-button" ||
+            node.id === "intro-press-button"
+          ) {
+            if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
+          }
+        }
+        for (const k of Object.keys(introContentPatch)) {
           if (!persistedFields.includes(k)) persistedFields.push(k)
         }
       }
@@ -669,10 +823,15 @@ export async function POST(request: Request) {
 
     const heroPatched = Object.keys(heroPatch).length > 0
     const navPatched = navigationDocumentId != null
+    const introPatched = introDocumentId != null
+    const parts: string[] = []
+    if (heroPatched) parts.push("Hero")
+    if (navPatched) parts.push("Navigation")
+    if (introPatched) parts.push("Intro banner")
     let deployMessage = "Deploy complete: public path revalidated."
-    if (heroPatched && navPatched) deployMessage = "Deploy complete: Hero and Navigation updated in Sanity; public path revalidated."
-    else if (heroPatched) deployMessage = "Deploy complete: Hero section updated in Sanity; public path revalidated."
-    else if (navPatched) deployMessage = "Deploy complete: Navigation updated in Sanity; public path revalidated."
+    if (parts.length > 0) {
+      deployMessage = `Deploy complete: ${parts.join(", ")} updated in Sanity; public path revalidated.`
+    }
 
     const successResponse = {
       status: "ok",
@@ -685,6 +844,7 @@ export async function POST(request: Request) {
       publishedDocumentId,
       publishedDocumentType: SANITY_DOC_TYPE,
       navigationDocumentId: navigationDocumentId ?? undefined,
+      introDocumentId: introDocumentId ?? undefined,
       targetSection: TARGET_SECTION,
       heroTitleMode,
       revalidatedPath: REVALIDATED_PATH,
