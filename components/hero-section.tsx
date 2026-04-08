@@ -314,6 +314,7 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-node-type="text"
             data-editor-node-label="Título Principal"
             data-editor-title-mode={heroTitleMode}
+            data-editor-title-segments={heroTitleMode === "segmented" ? JSON.stringify(normalizedTitleSegments) : ""}
             className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6"
             style={getElementStyle(data.elementStyles, "hero-title")}
           >

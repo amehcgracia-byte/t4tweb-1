@@ -66,6 +66,7 @@ interface EditorNode {
   content: {
     text?: string
     textSegments?: TextSegment[]
+    titleSegments?: TextSegment[]
     href?: string
     src?: string
     alt?: string
@@ -262,6 +263,21 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   if (entry.type === "text" || entry.type === "button" || entry.type === "card") {
     content.text = el.textContent?.trim() || ""
     if (entry.id === "hero-title") {
+      let loadedFromDataset = false
+      const encodedSegments = el.dataset.editorTitleSegments
+      if (encodedSegments) {
+        try {
+          const parsed = JSON.parse(encodedSegments) as TextSegment[]
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            content.titleSegments = parsed
+            content.textSegments = parsed
+            loadedFromDataset = true
+          }
+        } catch {
+          // fall through to DOM extraction
+        }
+      }
+      if (!loadedFromDataset) {
       const baseStyle = getComputedStyle(el)
       const baseSegment: TextSegment = {
         text: (el.textContent || "").trim(),
@@ -309,8 +325,10 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
         }
       })
       const normalizedSegments = segments.filter((segment) => segment.text.length > 0)
-      if (normalizedSegments.length > 0) {
+      if (normalizedSegments.length > 1) {
+        content.titleSegments = normalizedSegments
         content.textSegments = normalizedSegments
+      }
       }
     }
   }
@@ -629,7 +647,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             let isContentEdit = !!n.explicitContent
             let isStyleEdit = !!n.explicitStyle
             Object.entries(command.patch).forEach(([k, v]) => {
-              if (["text", "textSegments", "href", "src", "alt", "videoUrl"].includes(k)) {
+              if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl"].includes(k)) {
                 isContentEdit = true;
                 (content as Record<string, unknown>)[k] = v
               }
@@ -931,6 +949,9 @@ export function VisualEditorOverlay() {
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
+  const heroTitleSegments = selectedNode?.id === "hero-title"
+    ? (selectedNode.content.titleSegments || selectedNode.content.textSegments || [])
+    : []
   const selectedBandMemberIndex = selectedNode?.id.startsWith("member-item-")
     ? Number(selectedNode.id.replace("member-item-", ""))
     : null
@@ -1405,20 +1426,26 @@ export function VisualEditorOverlay() {
               </div>
             )}
 
-            {selectedNode.type === "text" && selectedNode.id === "hero-title" && Array.isArray(selectedNode.content.textSegments) && (
+            {selectedNode.type === "text" && selectedNode.id === "hero-title" && heroTitleSegments.length > 0 && (
               <>
                 <label className="text-xs font-semibold">Hero Title Segments</label>
+                <div className="rounded border border-emerald-300 bg-emerald-50 p-2 text-[10px] text-emerald-900">
+                  heroTitleInspectorMode: segmented{"\n"}
+                  selectedNode.id: {selectedNode.id}{"\n"}
+                  hasTitleSegments: yes{"\n"}
+                  segmentCount: {heroTitleSegments.length}
+                </div>
                 <div className="space-y-2">
-                  {selectedNode.content.textSegments.map((segment, index) => (
+                  {heroTitleSegments.map((segment, index) => (
                     <div key={`hero-segment-editor-${index}`} className="rounded border border-slate-200 p-2">
                       <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Segment {index + 1}</div>
                       <input
                         className="mb-2 w-full rounded border p-1 text-xs"
                         value={segment.text}
-                        onChange={(e) => {
-                          const next = [...(selectedNode.content.textSegments || [])]
+                          onChange={(e) => {
+                          const next = [...heroTitleSegments]
                           next[index] = { ...next[index], text: e.target.value }
-                          dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
+                          dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
                         }}
                       />
                       <div className="grid grid-cols-2 gap-2">
@@ -1427,9 +1454,9 @@ export function VisualEditorOverlay() {
                           className="h-8 w-full rounded border p-1"
                           value={segment.color || "#ffffff"}
                           onChange={(e) => {
-                            const next = [...(selectedNode.content.textSegments || [])]
+                            const next = [...heroTitleSegments]
                             next[index] = { ...next[index], color: e.target.value }
-                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next } })
                           }}
                         />
                         <div>
@@ -1442,9 +1469,9 @@ export function VisualEditorOverlay() {
                             className="w-full"
                             value={segment.opacity ?? 1}
                             onChange={(e) => {
-                              const next = [...(selectedNode.content.textSegments || [])]
+                              const next = [...heroTitleSegments]
                               next[index] = { ...next[index], opacity: Number(e.target.value) }
-                              dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                              dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next } })
                             }}
                           />
                         </div>
@@ -1503,9 +1530,9 @@ export function VisualEditorOverlay() {
                           type="button"
                           className={`rounded border px-2 py-1 text-xs ${segment.bold ? "bg-slate-900 text-white" : ""}`}
                           onClick={() => {
-                            const next = [...(selectedNode.content.textSegments || [])]
+                            const next = [...heroTitleSegments]
                             next[index] = { ...next[index], bold: !segment.bold }
-                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next } })
                           }}
                         >
                           B
@@ -1514,9 +1541,9 @@ export function VisualEditorOverlay() {
                           type="button"
                           className={`rounded border px-2 py-1 text-xs ${segment.italic ? "bg-slate-900 text-white" : ""}`}
                           onClick={() => {
-                            const next = [...(selectedNode.content.textSegments || [])]
+                            const next = [...heroTitleSegments]
                             next[index] = { ...next[index], italic: !segment.italic }
-                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next } })
                           }}
                         >
                           I
@@ -1525,9 +1552,9 @@ export function VisualEditorOverlay() {
                           type="button"
                           className={`rounded border px-2 py-1 text-xs ${segment.underline ? "bg-slate-900 text-white" : ""}`}
                           onClick={() => {
-                            const next = [...(selectedNode.content.textSegments || [])]
+                            const next = [...heroTitleSegments]
                             next[index] = { ...next[index], underline: !segment.underline }
-                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next } })
                           }}
                         >
                           U
@@ -1536,8 +1563,8 @@ export function VisualEditorOverlay() {
                           type="button"
                           className="rounded border px-2 py-1 text-xs"
                           onClick={() => {
-                            const next = (selectedNode.content.textSegments || []).filter((_, i) => i !== index)
-                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
+                            const next = heroTitleSegments.filter((_, i) => i !== index)
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
                           }}
                         >
                           Delete phrase
@@ -1548,11 +1575,11 @@ export function VisualEditorOverlay() {
                           disabled={index === 0}
                           onClick={() => {
                             if (index === 0) return
-                            const next = [...(selectedNode.content.textSegments || [])]
+                            const next = [...heroTitleSegments]
                             const temp = next[index - 1]
                             next[index - 1] = next[index]
                             next[index] = temp
-                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next } })
                           }}
                         >
                           ↑
@@ -1560,14 +1587,14 @@ export function VisualEditorOverlay() {
                         <button
                           type="button"
                           className="rounded border px-2 py-1 text-xs"
-                          disabled={index === (selectedNode.content.textSegments || []).length - 1}
+                          disabled={index === heroTitleSegments.length - 1}
                           onClick={() => {
-                            const next = [...(selectedNode.content.textSegments || [])]
+                            const next = [...heroTitleSegments]
                             if (index >= next.length - 1) return
                             const temp = next[index + 1]
                             next[index + 1] = next[index]
                             next[index] = temp
-                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next } })
                           }}
                         >
                           ↓
@@ -1580,7 +1607,7 @@ export function VisualEditorOverlay() {
                     className="rounded border px-2 py-1 text-xs"
                     onClick={() => {
                       const next = [
-                        ...(selectedNode.content.textSegments || []),
+                        ...heroTitleSegments,
                         {
                           text: "New phrase",
                           color: "#ffffff",
@@ -1593,7 +1620,11 @@ export function VisualEditorOverlay() {
                           gradientEnd: "#FF6C00",
                         },
                       ]
-                      dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
+                      dispatch({
+                        type: "UPDATE_TEXT",
+                        nodeId: selectedNode.id,
+                        patch: { titleSegments: next, textSegments: next, text: next.map((s) => s.text).join(" ").trim() },
+                      })
                     }}
                   >
                     Add phrase
@@ -1602,7 +1633,7 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {(selectedNode.type === "text" || selectedNode.type === "button") && !(selectedNode.type === "text" && selectedNode.id === "hero-title" && Array.isArray(selectedNode.content.textSegments)) && (
+            {(selectedNode.type === "text" || selectedNode.type === "button") && !(selectedNode.type === "text" && selectedNode.id === "hero-title" && heroTitleSegments.length > 0) && (
               <>
                 <label className="text-xs font-semibold">Content</label>
                 <textarea
