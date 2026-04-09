@@ -17,6 +17,7 @@ import { RibbonsBlock } from "@/components/ribbons-block"
 import { HomeEditorStateApplier } from "@/components/home-editor-state-applier"
 import { HomeEditorOverridesProvider } from "@/components/home-editor-overrides-provider"
 import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
+import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
 /** Always refetch hero from Sanity (editor deploy + revalidate); avoids stale static shell in dev). */
 export const dynamic = "force-dynamic"
@@ -28,14 +29,27 @@ export default async function Home() {
     loadIntroBannerData(),
     loadHomeEditorState(),
   ])
+  const latestReleaseNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("latest-release-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
+  const bandMembersNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("band-members-") || node.nodeId.startsWith("member-item-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
+  const liveNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("live-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
 
   return (
-    <main
-      data-editor-node-id="home-page-main"
-      data-editor-node-type="section"
-      data-editor-node-label="Home Page Main"
-      className="relative bg-black"
-    >
+    <main className="relative bg-black">
       <HomeEditorOverridesProvider nodes={homeEditorNodes}>
         <HomeEditorStateApplier nodes={homeEditorNodes} />
         <RibbonsBlock />
@@ -49,9 +63,7 @@ export default async function Home() {
 
       <SectionDivider editorId="section-divider-intro-release" />
 
-      <SceneSection id="latest-release">
-        <LatestReleaseSection />
-      </SceneSection>
+      <LatestReleaseSection overrides={latestReleaseNodeOverrides} />
 
       <SectionDivider editorId="section-divider-release-about" />
 
@@ -68,13 +80,13 @@ export default async function Home() {
       <SectionDivider editorId="section-divider-press-band" />
 
       <SceneSection id="band">
-        <BandMembersSection />
+        <BandMembersSection overrides={bandMembersNodeOverrides} />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-band-live" />
 
       <SceneSection id="live">
-        <LiveSection />
+        <LiveSection overrides={liveNodeOverrides} />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-live-contact" />

@@ -7,9 +7,10 @@ interface HomeEditorStateRaw {
 
 export async function loadHomeEditorState(): Promise<HomeEditorNodeOverride[]> {
   try {
+    const projectId = process.env.SANITY_PROJECT_ID || process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || "qtpb6qpz"
     const client = createClient({
-      projectId: process.env.SANITY_PROJECT_ID || process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
-      dataset: process.env.SANITY_DATASET || "production",
+      projectId,
+      dataset: process.env.SANITY_DATASET || process.env.NEXT_PUBLIC_SANITY_DATASET || "production",
       apiVersion: "2024-01-01",
       useCdn: false,
       perspective: "published",

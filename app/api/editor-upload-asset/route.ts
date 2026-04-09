@@ -23,7 +23,7 @@ interface UploadResponse {
 export async function POST(request: Request) {
   try {
     const projectId = process.env.SANITY_PROJECT_ID || process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
-    const dataset = process.env.SANITY_DATASET || "production"
+    const dataset = process.env.SANITY_DATASET || process.env.NEXT_PUBLIC_SANITY_DATASET || "production"
     const token = process.env.SANITY_API_WRITE_TOKEN || process.env.SANITY_API_TOKEN
 
     if (!projectId) {
