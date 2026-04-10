@@ -245,7 +245,7 @@ export function PressKitSection() {
           <motion.div 
             ref={headerRef}
             style={isEditing ? undefined : { opacity, y }} 
-            className="mb-8 md:mb-11"
+            className="mb-10 md:mb-12"
           >
             <SectionHeader
               eyebrow="Media Resources"
@@ -263,7 +263,7 @@ export function PressKitSection() {
             whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
             viewport={isEditing ? undefined : { once: true, amount: 0.2 }}
             transition={isEditing ? undefined : { duration: 0.45 }}
-            className="mb-7 md:mb-10"
+            className="mb-10 md:mb-12"
           >
             <div 
               className="rounded-xl border border-border bg-card/35 p-4 text-center shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-6 md:p-9"
@@ -307,7 +307,7 @@ export function PressKitSection() {
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {visibleResources.map((resource, index) => {
               const Icon = resource.icon
               return (

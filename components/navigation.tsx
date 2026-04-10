@@ -176,20 +176,15 @@ export function Navigation({ data }: { data: NavigationData }) {
           ? "backdrop-blur-2xl border-b border-white/10 shadow-xl shadow-black/25"
           : "bg-transparent"
       }`}
-        style={{
-          backgroundColor: isScrolled ? "rgb(0 0 0 / var(--nav-scroll-bg-opacity, 0.8))" : "transparent",
-          boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none",
-          ...getElementLayoutStyle(data.elementStyles, "navigation", { includeGeometry: allowGeometryOverrides }),
-        }}
+        style={{ boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none" }}
     >
-      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
-        <div className="flex h-14 items-center sm:h-16 md:h-[5.25rem]">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-20 items-center md:h-[5.5rem]">
           <div
             data-editor-node-id="navigation-inner"
             data-editor-node-type="card"
             data-editor-node-label="Navigation Inner Container"
-            className="flex h-12 w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-2.5 sm:h-14 sm:rounded-2xl sm:px-3 md:h-[4.25rem] md:px-4"
-            style={getElementLayoutStyle(data.elementStyles, "navigation-inner", { includeGeometry: allowGeometryOverrides })}
+            className="flex h-16 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 md:h-[4.5rem] md:px-4"
           >
             <a
               ref={logoLinkRef}

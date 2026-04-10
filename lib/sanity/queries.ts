@@ -11,10 +11,7 @@ export const heroQuery = groq`*[_type == "heroSection"][0]{
     underline,
     opacity,
     fontSize,
-    fontFamily,
-    gradientEnabled,
-    gradientStart,
-    gradientEnd
+    fontFamily
   },
   subtitle,
   description,

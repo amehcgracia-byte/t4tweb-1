@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState, type CSSProperties } from "react"
+import { useRef, useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { useVisualEditor } from "@/components/visual-editor"
@@ -58,7 +58,6 @@ function resolveHrefOverride(node: HomeEditorNodeOverride | undefined, fallback:
 
 export function LatestReleaseSection({ overrides = {} }: LatestReleaseSectionProps) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
-  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
   const [isIosMobile, setIsIosMobile] = useState(false)
   const [isAndroidMobile, setIsAndroidMobile] = useState(false)
 
@@ -86,6 +85,16 @@ export function LatestReleaseSection({ overrides = {} }: LatestReleaseSectionPro
   const renderStaticCard = isEditing || !!(
     cardOverride && (cardOverride.explicitPosition || cardOverride.explicitSize || cardOverride.explicitStyle)
   )
+
+  useEffect(() => {
+    const userAgent = navigator.userAgent || ""
+    const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches
+    const ios = /iPhone|iPad|iPod/i.test(userAgent) || ((navigator.platform === "MacIntel" || navigator.platform === "MacPPC") && navigator.maxTouchPoints > 1)
+    const android = /Android/i.test(userAgent)
+
+    setIsIosMobile(ios && hasCoarsePointer)
+    setIsAndroidMobile(android && hasCoarsePointer)
+  }, [])
 
   useEffect(() => {
     const userAgent = navigator.userAgent || ""
@@ -321,12 +330,11 @@ export function LatestReleaseSection({ overrides = {} }: LatestReleaseSectionPro
             data-editor-node-id="latest-release-card"
             data-editor-node-type="card"
             data-editor-node-label="Release Card"
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.25 }}
-            transition={{ duration: 0.45 }}
-            className="mx-auto flex w-full max-w-4xl flex-col items-center rounded-xl border border-primary/28 bg-black/24 p-4 text-center shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-6 md:p-8"
-            style={buildInlineStyleFromOverride(cardOverride, allowGeometryOverrides)}
+            initial={isEditing ? false : { opacity: 0, y: 10 }}
+            whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
+            viewport={isEditing ? undefined : { once: true, amount: 0.25 }}
+            transition={isEditing ? undefined : { duration: 0.45 }}
+            className="flex w-full max-w-4xl flex-col items-center rounded-2xl border border-primary/28 bg-black/24 p-6 text-center shadow-md backdrop-blur-sm md:p-8"
           >
             <h2 
               ref={titleRef}

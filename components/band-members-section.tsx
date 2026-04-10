@@ -7,10 +7,6 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
-import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
-import { getTraceNodeId } from "@/lib/sanity/env"
-import type { BandMemberData } from "@/lib/sanity/band-members-loader"
-import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
 interface BandMembersSectionProps {
   initialMembers: BandMemberData[]
@@ -130,17 +126,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
   const [members] = useState<BandMemberData[]>(initialMembers)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
-  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
-  const traceNodeId = getTraceNodeId()
-  const sectionOverride = overrides["band-members-section"]
-  const bgOverride = overrides["band-members-bg"]
-  const resolvedBandMembersBackgroundSrc = useHomeEditorImageSrc("band-members-bg", "/images/t4t-2.jpg")
-  const headerEyebrow = resolveTextOverride(overrides["band-members-header-eyebrow"], "The Musicians")
-  const headerTitle = resolveTextOverride(overrides["band-members-header-title"], "Meet the Band")
-  const headerDescription = resolveTextOverride(
-    overrides["band-members-header-description"],
-    "Five musicians from diverse backgrounds, united by a passion for rhythm and groove."
-  )
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024)
@@ -206,8 +191,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
       data-editor-node-id="band-members-section"
       data-editor-node-type="section"
       data-editor-node-label="Sección Miembros de la Banda"
-      className="relative isolate min-h-[88vh] min-h-[88dvh] w-full overflow-hidden bg-black sm:min-h-screen sm:min-h-[100dvh]"
-      style={buildInlineStyleFromOverride(sectionOverride, allowGeometryOverrides)}
+      className="relative isolate min-h-screen w-full overflow-hidden bg-black"
     >
       {/* Fondo full width */}
       <div 
@@ -216,7 +200,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo banda"
         className="absolute inset-0 z-0"
-        style={buildInlineStyleFromOverride(bgOverride, allowGeometryOverrides)}
       >
         <Image
           src={resolvedBandMembersBackgroundSrc}
@@ -234,15 +217,15 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
 
       <div className="section-photo-scrim z-10" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
             style={isEditing ? undefined : { opacity, y }}
-            className="mb-7 text-center md:mb-11 lg:mb-14"
+            className="mb-8 md:mb-12 lg:mb-16 text-center"
           >
           <SectionHeader
-            eyebrow={headerEyebrow}
-            title={headerTitle}
-            description={headerDescription}
+            eyebrow="The Musicians"
+            title="Meet the Band"
+            description="Five musicians from diverse backgrounds, united by a passion for rhythm and groove."
             dataEditId="band-members-header"
             dataEditLabel="Encabezado Miembros"
           />
@@ -267,9 +250,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                     src={member.image}
                     alt={member.fullName}
                     fill
-                    data-editor-node-id={`member-item-${index}-image`}
-                    data-editor-node-type="image"
-                    data-editor-node-label={`Member ${index + 1} Photo`}
                     data-member-photo-index={index}
                     className="object-cover"
                     style={buildInlineImageStyleFromOverride(overrides[`member-item-${index}-image`])}
@@ -294,12 +274,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
               <motion.div
                 key={member.id}
                 onClick={() => handleMemberClick(index)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    handleMemberClick(index)
-                  }
-                }}
                 onMouseEnter={() => (!isEditing && !isMobile) && setActiveIndex(index)}
                 whileHover={isEditing ? undefined : { scale: 1.02, x: 8 }}
                 transition={isEditing ? undefined : { type: "spring", stiffness: 400, damping: 25 }}
@@ -316,15 +290,11 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                       ? "border-orange-500 bg-zinc-900/80"
                       : "border-white/10 hover:border-white/20 bg-black/40 hover:bg-zinc-950"
                   }`}
-                style={buildInlineStyleFromOverride(overrides[`member-item-${index}`], allowGeometryOverrides)}
-                >
-                <span className="min-w-0 flex-1">
-                  <span
-                    data-editor-node-id={`member-item-${index}-name`}
-                    data-editor-node-type="text"
-                    data-editor-node-label={`Member ${index + 1} Name`}
+              >
+                <div className="min-w-0 flex-1">
+                  <h4
                     data-member-name-index={index}
-                    className={`block truncate text-[0.95rem] font-medium transition-colors md:text-xl ${
+                    className={`text-base md:text-xl font-medium transition-colors truncate ${
                       activeIndex === index ? "text-white" : "text-white/80 group-hover:text-white"
                     }`}
                     style={buildInlineTextStyleFromOverride(
@@ -333,13 +303,10 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                     )}
                   >
                     {member.fullName}
-                  </span>
-                  <span
-                    data-editor-node-id={`member-item-${index}-role`}
-                    data-editor-node-type="text"
-                    data-editor-node-label={`Member ${index + 1} Role`}
+                  </h4>
+                  <p
                     data-member-role-index={index}
-                    className={`mt-0.5 block text-[11px] transition-colors md:mt-1 md:text-sm ${
+                    className={`text-xs md:text-sm mt-0.5 md:mt-1 transition-colors ${
                       activeIndex === index ? "text-orange-400" : "text-white/50"
                     }`}
                     style={buildInlineTextStyleFromOverride(
@@ -351,12 +318,9 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                   </span>
                 </span>
 
-                <span
-                  data-editor-node-id={`member-item-${index}-number`}
-                  data-editor-node-type="text"
-                  data-editor-node-label={`Member ${index + 1} Number`}
+                <div
                   data-member-number-index={index}
-                  className={`ml-2.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-mono transition-all md:ml-3 md:h-8 md:w-8 md:text-xs ${
+                  className={`w-7 h-7 md:w-8 md:h-8 shrink-0 ml-3 rounded-full flex items-center justify-center text-xs font-mono border transition-all ${
                     activeIndex === index
                       ? "border-orange-500 text-orange-400 bg-orange-950"
                       : "border-white/20 text-white/40 group-hover:border-white/40"

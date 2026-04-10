@@ -177,7 +177,7 @@ Their performances balance musical depth with danceable power, bringing together
       data-editor-node-id="about-section"
       data-editor-node-type="section"
       data-editor-node-label="Sección Sobre Nosotros"
-      className={`relative isolate min-h-screen min-h-[100dvh] w-full overflow-hidden bg-black ${className}`}
+      className={`relative isolate min-h-screen w-full overflow-hidden bg-black ${className}`}
     >
       <div 
         ref={bgRef}

@@ -248,8 +248,8 @@ export function ContactSection() {
       <div className="section-photo-fade-top" />
       <div className="section-photo-fade-bottom" />
 
-      <div className="relative z-10 mx-auto flex min-h-[82vh] min-h-[82dvh] w-full max-w-5xl flex-col justify-center px-4 py-8 sm:min-h-screen sm:min-h-[100dvh] sm:justify-end sm:px-6 sm:py-12">
-        <motion.div ref={headerRef} style={isEditing ? undefined : { opacity, y }} className="mb-7 md:mb-11">
+      <div className="relative z-10 mx-auto w-full max-w-5xl min-h-screen flex flex-col justify-end">
+        <motion.div ref={headerRef} style={isEditing ? undefined : { opacity, y }} className="mb-10 md:mb-12">
           <SectionHeader
             eyebrow="Contact"
             title="Book the Band"
@@ -273,7 +273,9 @@ export function ContactSection() {
             whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
             transition={isEditing ? undefined : { duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
             href={contactMethods[0].href}
-            className="group w-full rounded-xl border border-border bg-card/90 p-4 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg md:max-w-xs md:flex-1 md:p-5 lg:p-7"
+            className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
+              isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
+            }`}
           >
             <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/18 group-hover:bg-primary/26 md:mb-4 md:h-14 md:w-14">
               <EmailIcon className="h-6 w-6 text-primary md:h-7 md:w-7" />
@@ -329,7 +331,9 @@ export function ContactSection() {
             href={contactMethods[1].href}
             target="_blank"
             rel="noopener noreferrer"
-            className="group w-full rounded-xl border border-border bg-card/90 p-4 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg md:max-w-xs md:flex-1 md:p-5 lg:p-7"
+            className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
+              isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
+            }`}
           >
             <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/18 group-hover:bg-primary/26 md:mb-4 md:h-14 md:w-14">
               <TelegramIcon className="h-6 w-6 text-primary md:h-7 md:w-7" />
