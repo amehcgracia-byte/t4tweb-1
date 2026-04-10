@@ -71,6 +71,13 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
       ;(window as Window & { __HOME_EDITOR_NODE_OVERRIDES__?: Record<string, HomeEditorNodeOverride> }).__HOME_EDITOR_NODE_OVERRIDES__ =
         Object.fromEntries(nodes.map((node) => [node.nodeId, node]))
     }
+    const isEditMode =
+      typeof window !== "undefined" &&
+      (window.location.pathname === "/editor" || new URLSearchParams(window.location.search).get("editMode") === "true")
+
+    if (isEditMode) {
+      return
+    }
     if (process.env.NODE_ENV !== "production" && traceNodeId) {
       const traceNode = nodes.find((node) => node.nodeId === traceNodeId)
       console.info("[home-editor-state-applier][trace][begin]", {

@@ -544,10 +544,10 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       ...(hydratedStyle || {}),
     },
     content,
-    explicitContent: false,
-    explicitStyle: false,
-    explicitPosition: false,
-    explicitSize: false,
+    explicitContent,
+    explicitStyle,
+    explicitPosition,
+    explicitSize,
   }
 }
 
@@ -1149,6 +1149,7 @@ export function VisualEditorOverlay() {
   const [deployStatus, setDeployStatus] = useState<string | null>(null)
   const [deployDetails, setDeployDetails] = useState<string | null>(null)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
+  const [hasNonPersistableUpload, setHasNonPersistableUpload] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const selectedIdsRef = useRef<string[]>([])
   const [marqueeRect, setMarqueeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
@@ -1211,6 +1212,9 @@ export function VisualEditorOverlay() {
   const onDeploy = async () => {
     setDeployStatus("connecting")
     try {
+      const nonPersistableNodes = Array.from(nodes.values())
+        .filter((node) => (node.type === "image" || node.type === "background") && !isPersistableImageSrc(node.content.src))
+        .map((node) => node.id)
       const payload = {
         level: "green" as const,
         findings: [],
@@ -1234,6 +1238,7 @@ export function VisualEditorOverlay() {
         body: JSON.stringify(payload),
       })
       const data = (await response.json()) as {
+        status?: "ok" | "partial" | "failed"
         step?: "checking" | "saving" | "publishing" | "revalidating" | "done" | "failed"
         message?: string
         routeVersion?: string
@@ -1263,14 +1268,16 @@ export function VisualEditorOverlay() {
       })
 
       const lines: string[] = ["connecting"]
+      if (nonPersistableNodes.length > 0) {
+        lines.push(`nonPersistableImageSrcNodes: ${nonPersistableNodes.join(", ")}`)
+      }
       if (Array.isArray(data.steps) && data.steps.length > 0) {
         data.steps.forEach((item) => {
           lines.push(item.step)
-          setDeployStatus(item.step)
         })
-      } else if (data.step) {
+      }
+      if (data.step) {
         lines.push(data.step)
-        setDeployStatus(data.step)
       }
 
       if (!response.ok) {
@@ -1285,10 +1292,9 @@ export function VisualEditorOverlay() {
         return
       }
 
-      if (data.step === "done" || lines.includes("revalidating")) {
-        setDeployStatus("done")
-        if (!lines.includes("done")) lines.push("done")
-      }
+      const backendStatus = data.status || (data.step === "failed" ? "failed" : "ok")
+      setDeployStatus(backendStatus === "ok" ? "success" : backendStatus)
+      if (data.step === "done" && !lines.includes("done")) lines.push("done")
       lines.push(`routeVersion: ${data.routeVersion || "missing"}`)
       lines.push(`step: ${data.step || "missing"}`)
       lines.push(`message: ${data.message || "missing"}`)
@@ -1682,9 +1688,15 @@ export function VisualEditorOverlay() {
                     const file = e.target.files?.[0]
                     if (!file) return
                     const url = URL.createObjectURL(file)
+                    setHasNonPersistableUpload(true)
                     updateBandMemberField(selectedBandMemberIndex, "photo", url)
                   }}
                 />
+                {hasNonPersistableUpload && (
+                  <p className="text-[10px] text-amber-700">
+                    Local blob preview only. Upload to Sanity asset URL before relying on deploy persistence.
+                  </p>
+                )}
               </div>
             )}
 
@@ -1943,6 +1955,7 @@ export function VisualEditorOverlay() {
                     const file = e.target.files?.[0]
                     if (!file) return
                     const url = URL.createObjectURL(file)
+                    setHasNonPersistableUpload(true)
                     dispatch({
                       type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
                       nodeId: selectedNode.id,
@@ -1950,6 +1963,11 @@ export function VisualEditorOverlay() {
                     })
                   }}
                 />
+                {hasNonPersistableUpload && (
+                  <p className="text-[10px] text-amber-700">
+                    Blob preview detected. This src is not persistible in deploy.
+                  </p>
+                )}
                 <div>
                   <label className="text-[10px]">Contrast ({Math.round(selectedNode.style.contrast ?? 100)}%)</label>
                   <input
