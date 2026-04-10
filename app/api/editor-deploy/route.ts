@@ -78,6 +78,8 @@ interface DeployRequestPayload {
   diagnosticMode?: boolean
   findings: Array<{ element: string; issue: string; severity: "green" | "yellow" | "red"; blocks: boolean }>
   nodes: DeployNodePayload[]
+  allNodes?: DeployNodePayload[]
+  changedNodeIds?: string[]
   heroElementStyles?: Record<string, Record<string, unknown>> // { [targetId]: { text?, color?, fontSize?, x?, y?, ... } }
 }
 
@@ -215,6 +217,17 @@ function shouldPersistInCentralHomeState(node: DeployNodePayload): boolean {
   if (isNavLayoutId(node.id)) return false
   if (INTRO_NODE_IDS.has(node.id)) return false
   return node.explicitContent || node.explicitStyle || node.explicitPosition || node.explicitSize
+}
+
+function toChangedNodeIds(payload: DeployRequestPayload): string[] {
+  if (Array.isArray(payload.changedNodeIds) && payload.changedNodeIds.length > 0) {
+    return Array.from(new Set(payload.changedNodeIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)))
+  }
+  return []
+}
+
+function markerMatchesNode(marker: string, nodeId: string): boolean {
+  return marker === nodeId || marker.startsWith(`${nodeId}:`) || marker.includes(nodeId)
 }
 
 function buildHomeEditorStateNode(node: DeployNodePayload): { node: HomeEditorNodeOverride; skippedImageSrc: boolean } {
@@ -586,7 +599,9 @@ export async function POST(request: Request) {
 
     log("environment", { projectId: projectId ? "set" : "missing", dataset, writeToken: sanityToken ? "set" : "missing" })
 
-    const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text")
+    const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text") // legacy alias
+    const heroTitleMainNode = payload.nodes.find((node) => node.id === "hero-title-main" && node.type === "text")
+    const heroTitleAccentNode = payload.nodes.find((node) => node.id === "hero-title-accent" && node.type === "text")
     const heroSubtitleNode = payload.nodes.find((node) => node.id === "hero-subtitle" && node.type === "text")
     const incomingSegments = Array.isArray(heroTitleNode?.content?.textSegments)
       ? (heroTitleNode.content.textSegments as HeroTitleSegment[])
@@ -613,6 +628,9 @@ export async function POST(request: Request) {
     if (payload.nodes.length === 0) {
       return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload: nodes array is empty.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, heroTitleMode: "unknown", revalidatedPath: REVALIDATED_PATH, persistedNodes: [], skippedNodes: [], failedNodes: ["payload.nodes"], diagnostics, envDiagnostics }, { status: 400 })
     }
+    const changedNodeIds = toChangedNodeIds(payload)
+    const changedNodeSet = new Set(changedNodeIds)
+    const payloadNodeById = new Map(payload.nodes.map((node) => [node.id, node]))
 
     if (!projectId) {
       return NextResponse.json(
@@ -756,7 +774,7 @@ export async function POST(request: Request) {
     const failedNodes: string[] = []
     const heroPatch: Record<string, unknown> = {}
 
-    if (heroTitleNode?.explicitContent || hasSegments) {
+    if (heroTitleNode?.explicitContent || heroTitleMainNode?.explicitContent || heroTitleAccentNode?.explicitContent || hasSegments) {
       if (hasSegments && heroTitleMode === "segmented") {
         heroPatch.titleSegments = validSegments
         persistedFields.push("titleSegments")
@@ -779,9 +797,23 @@ export async function POST(request: Request) {
         persistedFields.push("title")
         persistedNodes.push("hero-title")
       } else {
-        skippedFields.push("title")
-        failedNodes.push("hero-title-empty")
-        skippedNodes.push("hero-title")
+        const mainText = typeof heroTitleMainNode?.content?.text === "string" ? heroTitleMainNode.content.text.trim() : ""
+        const accentText = typeof heroTitleAccentNode?.content?.text === "string" ? heroTitleAccentNode.content.text.trim() : ""
+        if (mainText) {
+          heroPatch.title = mainText
+          if (!persistedFields.includes("title")) persistedFields.push("title")
+          if (!persistedNodes.includes("hero-title-main")) persistedNodes.push("hero-title-main")
+        }
+        if (accentText) {
+          heroPatch.titleHighlight = accentText
+          if (!persistedFields.includes("titleHighlight")) persistedFields.push("titleHighlight")
+          if (!persistedNodes.includes("hero-title-accent")) persistedNodes.push("hero-title-accent")
+        }
+        if (!mainText && !accentText) {
+          skippedFields.push("title")
+          failedNodes.push("hero-title-empty")
+          skippedNodes.push("hero-title")
+        }
       }
     }
 
@@ -841,7 +873,8 @@ export async function POST(request: Request) {
     const HERO_LAYOUT_IDS = new Set([
       "hero-section",
       "hero-bg-image",
-      "hero-title",
+      "hero-title-main",
+      "hero-title-accent",
       "hero-subtitle",
       "hero-logo",
       "hero-scroll-indicator",
@@ -1366,13 +1399,89 @@ export async function POST(request: Request) {
       })
     }
 
+    // Changed-node read-back verification (persisted means verified on read, not just attempted write).
+    const [heroReadback, navReadback, introReadback, homeStateReadback] = await Promise.all([
+      writeClient.fetch<{ elementStyles?: Record<string, Record<string, unknown>>; title?: string; titleHighlight?: string; subtitle?: string } | null>(
+        `*[_type == $type][0]{ title, titleHighlight, subtitle, elementStyles }`,
+        { type: SANITY_DOC_TYPE }
+      ),
+      writeClient.fetch<{ elementStyles?: Record<string, Record<string, unknown>> } | null>(
+        `*[_type == $type][0]{ elementStyles }`,
+        { type: SANITY_DOC_NAV }
+      ),
+      writeClient.fetch<{ elementStyles?: Record<string, Record<string, unknown>> } | null>(
+        `*[_type == $type][0]{ elementStyles }`,
+        { type: SANITY_DOC_INTRO }
+      ),
+      writeClient.fetch<{ nodes?: HomeEditorNodeOverride[] } | null>(
+        `*[_type == $homeType && _id == $homeId][0]{ nodes }`,
+        { homeType: SANITY_DOC_HOME_EDITOR_STATE, homeId: HOME_EDITOR_STATE_DOCUMENT_ID }
+      ),
+    ])
+
+    const changedNodesPersisted: string[] = []
+    const changedNodesSkipped: string[] = []
+    const changedNodesFailed: string[] = []
+
+    for (const nodeId of changedNodeIds) {
+      const node = payloadNodeById.get(nodeId)
+      if (!node) {
+        changedNodesFailed.push(nodeId)
+        if (!failedNodes.includes(`${nodeId}:missing-payload-node`)) failedNodes.push(`${nodeId}:missing-payload-node`)
+        continue
+      }
+
+      if (failedNodes.some((m) => markerMatchesNode(m, nodeId))) {
+        changedNodesFailed.push(nodeId)
+        continue
+      }
+      if (skippedNodes.some((m) => markerMatchesNode(m, nodeId))) {
+        changedNodesSkipped.push(nodeId)
+        continue
+      }
+
+      const isHeroLayoutId = nodeId === "hero-section" || nodeId === "hero-bg-image" || nodeId === "hero-title-main" || nodeId === "hero-title-accent" || nodeId === "hero-subtitle" || nodeId === "hero-logo" || nodeId === "hero-scroll-indicator" || nodeId === "hero-buttons"
+      const isNavLayoutIdChanged = isNavLayoutId(nodeId)
+      const isIntroLayoutIdChanged = INTRO_LAYOUT_IDS.has(nodeId)
+      const shouldVerifyHomeState = shouldPersistInCentralHomeState(node)
+
+      let verified = false
+      if (nodeId === "hero-title-main" && node.explicitContent) {
+        const expected = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        verified = !!expected && heroReadback?.title === expected
+      } else if (nodeId === "hero-title-accent" && node.explicitContent) {
+        const expected = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        verified = !!expected && heroReadback?.titleHighlight === expected
+      } else if (nodeId === "hero-subtitle" && node.explicitContent) {
+        const expected = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        verified = !!expected && heroReadback?.subtitle === expected
+      } else if (isHeroLayoutId && (node.explicitPosition || node.explicitSize || node.explicitStyle)) {
+        verified = !!heroReadback?.elementStyles?.[nodeId]
+      } else if (isNavLayoutIdChanged && (node.explicitPosition || node.explicitSize || node.explicitStyle)) {
+        verified = !!navReadback?.elementStyles?.[nodeId]
+      } else if (isIntroLayoutIdChanged && (node.explicitPosition || node.explicitSize || node.explicitStyle)) {
+        verified = !!introReadback?.elementStyles?.[nodeId]
+      } else if (shouldVerifyHomeState) {
+        verified = !!homeStateReadback?.nodes?.some((n) => n.nodeId === nodeId)
+      } else {
+        verified = persistedNodes.some((m) => markerMatchesNode(m, nodeId))
+      }
+
+      if (verified) {
+        changedNodesPersisted.push(nodeId)
+      } else {
+        changedNodesFailed.push(nodeId)
+        if (!failedNodes.includes(`${nodeId}:readback-mismatch`)) failedNodes.push(`${nodeId}:readback-mismatch`)
+      }
+    }
+
     const heroPatched = Object.keys(heroPatch).length > 0
     const navPatched = navigationDocumentId != null
     const introPatched = introDocumentId != null
     const homeStatePatched = homeEditorStateDocumentId != null
     const publicPropagationConfigured = !!PUBLIC_REVALIDATE_URL || !!VERCEL_DEPLOY_HOOK
     const publicPropagationOk = publicRevalidate.ok || vercelDeploy.ok
-    const hasPersistenceIssues = failedNodes.length > 0 || skippedNodes.length > 0
+    const hasPersistenceIssues = failedNodes.length > 0 || skippedNodes.length > 0 || changedNodesFailed.length > 0
     const parts: string[] = []
     if (heroPatched) parts.push("Hero")
     if (navPatched) parts.push("Navigation")
@@ -1420,6 +1529,10 @@ export async function POST(request: Request) {
       vercelDeployHookConfigured: !!VERCEL_DEPLOY_HOOK,
       publicPropagationConfigured,
       publicPropagationOk,
+      changedNodeIds,
+      changedNodesPersisted,
+      changedNodesSkipped,
+      changedNodesFailed,
       persistedNodes,
       skippedNodes,
       failedNodes,

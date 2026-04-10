@@ -1154,6 +1154,20 @@ export function VisualEditorOverlay() {
   const selectedIdsRef = useRef<string[]>([])
   const [marqueeRect, setMarqueeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const marqueeRef = useRef<{ active: boolean; start: Point }>({ active: false, start: { x: 0, y: 0 } })
+  const baselineNodeSignaturesRef = useRef<Map<string, string>>(new Map())
+  const dirtyNodeIdsRef = useRef<Set<string>>(new Set())
+
+  const getNodeSignature = useCallback((node: EditorNode): string => {
+    return JSON.stringify({
+      geometry: node.geometry,
+      style: node.style,
+      content: node.content,
+      explicitContent: node.explicitContent,
+      explicitStyle: node.explicitStyle,
+      explicitPosition: node.explicitPosition,
+      explicitSize: node.explicitSize,
+    })
+  }, [])
 
   useEffect(() => {
     selectedIdsRef.current = selectedIds
@@ -1163,6 +1177,27 @@ export function VisualEditorOverlay() {
     if (selectedId) setSelectedIds([selectedId])
     else setSelectedIds([])
   }, [selectedId])
+
+  useEffect(() => {
+    if (!isEditing) {
+      baselineNodeSignaturesRef.current = new Map()
+      dirtyNodeIdsRef.current = new Set()
+      return
+    }
+    if (baselineNodeSignaturesRef.current.size === 0) {
+      const baseline = new Map<string, string>()
+      nodes.forEach((node, id) => baseline.set(id, getNodeSignature(node)))
+      baselineNodeSignaturesRef.current = baseline
+      return
+    }
+    nodes.forEach((node, id) => {
+      const baseline = baselineNodeSignaturesRef.current.get(id)
+      const current = getNodeSignature(node)
+      if (baseline === undefined || baseline !== current) {
+        dirtyNodeIdsRef.current.add(id)
+      }
+    })
+  }, [isEditing, nodes, getNodeSignature])
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
@@ -1212,25 +1247,29 @@ export function VisualEditorOverlay() {
   const onDeploy = async () => {
     setDeployStatus("connecting")
     try {
+      const changedNodeIds = Array.from(dirtyNodeIdsRef.current)
       const nonPersistableNodes = Array.from(nodes.values())
         .filter((node) => (node.type === "image" || node.type === "background") && !isPersistableImageSrc(node.content.src))
         .map((node) => node.id)
+      const serializedNodes = Array.from(nodes.values()).map((node) => ({
+        id: node.id,
+        type: node.type,
+        label: node.label,
+        isGrouped: node.isGrouped,
+        geometry: node.geometry,
+        style: node.style,
+        content: node.content,
+        explicitContent: node.explicitContent,
+        explicitStyle: node.explicitStyle,
+        explicitPosition: node.explicitPosition,
+        explicitSize: node.explicitSize,
+      }))
       const payload = {
         level: "green" as const,
         findings: [],
-        nodes: Array.from(nodes.values()).map((node) => ({
-          id: node.id,
-          type: node.type,
-          label: node.label,
-          isGrouped: node.isGrouped,
-          geometry: node.geometry,
-          style: node.style,
-          content: node.content,
-          explicitContent: node.explicitContent,
-          explicitStyle: node.explicitStyle,
-          explicitPosition: node.explicitPosition,
-          explicitSize: node.explicitSize,
-        })),
+        nodes: serializedNodes,
+        allNodes: serializedNodes,
+        changedNodeIds,
       }
       const response = await fetch("/api/editor-deploy", {
         method: "POST",
@@ -1257,6 +1296,13 @@ export function VisualEditorOverlay() {
           SANITY_API_TOKEN: "yes" | "no"
         }
         steps?: Array<{ step: string; ok: boolean; message: string }>
+        changedNodeIds?: string[]
+        changedNodesPersisted?: string[]
+        changedNodesSkipped?: string[]
+        changedNodesFailed?: string[]
+        persistedNodes?: string[]
+        skippedNodes?: string[]
+        failedNodes?: string[]
       }
       const envDiagnostics = data.envDiagnostics || data.diagnostics
 
@@ -1268,6 +1314,7 @@ export function VisualEditorOverlay() {
       })
 
       const lines: string[] = ["connecting"]
+      lines.push(`changedNodeIds: ${JSON.stringify(changedNodeIds)}`)
       if (nonPersistableNodes.length > 0) {
         lines.push(`nonPersistableImageSrcNodes: ${nonPersistableNodes.join(", ")}`)
       }
@@ -1295,12 +1342,24 @@ export function VisualEditorOverlay() {
       const backendStatus = data.status || (data.step === "failed" ? "failed" : "ok")
       setDeployStatus(backendStatus === "ok" ? "success" : backendStatus)
       if (data.step === "done" && !lines.includes("done")) lines.push("done")
+      lines.push(`changedNodesPersisted: ${JSON.stringify(data.changedNodesPersisted || [])}`)
+      lines.push(`changedNodesSkipped: ${JSON.stringify(data.changedNodesSkipped || [])}`)
+      lines.push(`changedNodesFailed: ${JSON.stringify(data.changedNodesFailed || [])}`)
+      lines.push(`persistedNodes: ${JSON.stringify(data.persistedNodes || [])}`)
+      lines.push(`skippedNodes: ${JSON.stringify(data.skippedNodes || [])}`)
+      lines.push(`failedNodes: ${JSON.stringify(data.failedNodes || [])}`)
       lines.push(`routeVersion: ${data.routeVersion || "missing"}`)
       lines.push(`step: ${data.step || "missing"}`)
       lines.push(`message: ${data.message || "missing"}`)
       lines.push(`envDiagnostics: ${JSON.stringify(envDiagnostics || null)}`)
       lines.push(`rawResponse: ${JSON.stringify(data)}`)
       setDeployDetails(lines.join("\n"))
+      if (backendStatus === "ok" || backendStatus === "partial") {
+        const baseline = new Map<string, string>()
+        nodes.forEach((node, id) => baseline.set(id, getNodeSignature(node)))
+        baselineNodeSignaturesRef.current = baseline
+        dirtyNodeIdsRef.current.clear()
+      }
     } catch (error) {
       setDeployStatus("failed")
       const message = error instanceof Error ? error.message : "Unknown error"
