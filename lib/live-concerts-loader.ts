@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 
 export interface LiveConcert {
+  _editorId: number
   venue: string
   city: string
   country: string
@@ -20,7 +21,7 @@ export async function loadLiveConcerts(): Promise<LiveConcert[]> {
     const text = await readFile(csvPath, "utf8")
     const lines = text.trim().split("\n")
     if (lines.length <= 1) return []
-    return lines
+    const concerts = lines
       .slice(1)
       .map((line) => {
         const values = line.split(",")
@@ -35,12 +36,12 @@ export async function loadLiveConcerts(): Promise<LiveConcert[]> {
           capacity: values[7] || "",
           price: values[8] || "Free",
           locationUrl: values[9] || "",
-        }
+        } satisfies Omit<LiveConcert, "_editorId">
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    return concerts.map((concert, index) => ({ ...concert, _editorId: index }))
   } catch (error) {
     console.error("[loadLiveConcerts]", error)
     return []
   }
 }
-
