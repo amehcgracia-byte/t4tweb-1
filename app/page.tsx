@@ -53,6 +53,30 @@ export default async function Home() {
       acc[node.nodeId] = node
       return acc
     }, {})
+  const aboutNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("about-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
+  const pressKitNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("press-kit-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
+  const contactNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("contact-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
+  const footerNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("footer-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
 
   if (process.env.NODE_ENV !== "production" && traceNodeId) {
     const tracedNode = homeEditorNodes.find((node) => node.nodeId === traceNodeId)
@@ -86,13 +110,13 @@ export default async function Home() {
       <SectionDivider editorId="section-divider-release-about" />
 
       <SceneSection id="about">
-        <AboutSection />
+        <AboutSection overrides={aboutNodeOverrides} />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-about-press" />
 
       <SceneSection id="press-kit">
-        <PressKitSection />
+        <PressKitSection overrides={pressKitNodeOverrides} />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-press-band" />
@@ -110,12 +134,12 @@ export default async function Home() {
       <SectionDivider editorId="section-divider-live-contact" />
 
       <SceneSection id="contact">
-        <ContactSection />
+        <ContactSection overrides={contactNodeOverrides} />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-contact-footer" />
 
-        <Footer />
+        <Footer overrides={footerNodeOverrides} />
       </HomeEditorOverridesProvider>
     </main>
   )

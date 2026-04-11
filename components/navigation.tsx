@@ -26,6 +26,8 @@ export function Navigation({ data }: { data: NavigationData }) {
 
   const navLinks = data.links
   const resolvedNavLogoSrc = useHomeEditorImageSrc("nav-logo", data.brandLogoUrl || "/images/logo-qr.png")
+  const navigationRootStyle = getElementLayoutStyle(data.elementStyles, "navigation", { includeGeometry: allowGeometryOverrides })
+  const navigationInnerStyle = getElementLayoutStyle(data.elementStyles, "navigation-inner", { includeGeometry: allowGeometryOverrides })
 
   // Register editable elements when editing
   useEffect(() => {
@@ -176,7 +178,7 @@ export function Navigation({ data }: { data: NavigationData }) {
           ? "backdrop-blur-2xl border-b border-white/10 shadow-xl shadow-black/25"
           : "bg-transparent"
       }`}
-        style={{ boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none" }}
+      style={{ ...navigationRootStyle, boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none" }}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center md:h-[5.5rem]">
@@ -185,6 +187,7 @@ export function Navigation({ data }: { data: NavigationData }) {
             data-editor-node-type="card"
             data-editor-node-label="Navigation Inner Container"
             className="flex h-16 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 md:h-[4.5rem] md:px-4"
+            style={navigationInnerStyle}
           >
             <a
               ref={logoLinkRef}

@@ -340,6 +340,7 @@ export function HeroSection({ data }: { data: HeroData }) {
               data-editor-node-type="text"
               data-editor-node-label="Hero Title Main"
               className="mr-[0.25em]"
+              style={getElementStyle(content.elementStyles, "hero-title-main", { includeGeometry: allowGeometryOverrides })}
             >
               {mainTitleText}
             </span>
@@ -349,6 +350,7 @@ export function HeroSection({ data }: { data: HeroData }) {
               data-editor-node-type="text"
               data-editor-node-label="Hero Title Accent"
               className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent"
+              style={getElementStyle(content.elementStyles, "hero-title-accent", { includeGeometry: allowGeometryOverrides })}
             >
               {accentTitleText}
             </span>
