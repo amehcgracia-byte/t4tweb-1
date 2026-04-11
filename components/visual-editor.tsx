@@ -154,7 +154,7 @@ type Command =
   | { type: "DESELECT_NODE" }
   | { type: "MOVE_NODE"; nodeId: string; dx: number; dy: number; transient?: boolean }
   | { type: "RESIZE_NODE"; nodeId: string; width: number; height: number; transient?: boolean }
-  | { type: "SET_NODE_GEOMETRY"; nodeId: string; x: number; y: number; width: number; height: number; transient?: boolean }
+  | { type: "SET_NODE_GEOMETRY"; nodeId: string; x: number; y: number; width: number; height: number; explicitSize?: boolean; transient?: boolean }
   | { type: "SET_NODE_SCALE"; nodeId: string; scale: number; transient?: boolean }
   | { type: "UPDATE_TEXT"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_BUTTON"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
@@ -780,7 +780,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           patchNode(command.nodeId, (n) => ({
             ...n,
             explicitPosition: true,
-            explicitSize: true,
+            explicitSize: command.explicitSize !== false ? true : n.explicitSize,
             geometry: { ...n.geometry, x: command.x, y: command.y, width: command.width, height: command.height },
           }))
           shouldSnapshot = false
@@ -1505,6 +1505,7 @@ export function VisualEditorOverlay() {
           y: originY + dy,
           width: state.origin?.width ?? 0,
           height: state.origin?.height ?? 0,
+          explicitSize: false,
           transient: true,
         })
       } else if (state.mode === "resize" && state.origin && state.nodeId && state.handle) {

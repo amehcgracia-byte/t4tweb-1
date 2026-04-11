@@ -40,18 +40,8 @@ export function LatestReleaseSection({ overrides = {} }: LatestReleaseSectionPro
   const releaseWatchHref = resolveHrefOverride(watchButtonOverride, CAMPAIGN_CONTENT.releaseCtaHref)
   const releaseShowsHref = resolveHrefOverride(showsButtonOverride, CAMPAIGN_CONTENT.showsCtaHref)
   const renderStaticCard = isEditing || !!(
-    cardOverride && (cardOverride.explicitPosition || cardOverride.explicitSize || cardOverride.explicitStyle)
+    cardOverride && (cardOverride.explicitContent || cardOverride.explicitPosition || cardOverride.explicitSize || cardOverride.explicitStyle)
   )
-
-  useEffect(() => {
-    const userAgent = navigator.userAgent || ""
-    const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches
-    const ios = /iPhone|iPad|iPod/i.test(userAgent) || ((navigator.platform === "MacIntel" || navigator.platform === "MacPPC") && navigator.maxTouchPoints > 1)
-    const android = /Android/i.test(userAgent)
-
-    setIsIosMobile(ios && hasCoarsePointer)
-    setIsAndroidMobile(android && hasCoarsePointer)
-  }, [])
 
   useEffect(() => {
     const userAgent = navigator.userAgent || ""
