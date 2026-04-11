@@ -247,33 +247,6 @@ export function HeroSection({ data }: { data: HeroData }) {
   const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
   const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
   const scrollLayoutSaved = allowGeometryOverrides && scrollIndicatorHasLayout(content.elementStyles)
-  const heroTitleMode: "legacy" | "segmented" = Array.isArray(content.titleSegments) && content.titleSegments.length > 0 ? "segmented" : "legacy"
-  const normalizedTitleSegments = useMemo(() => {
-    if (heroTitleMode !== "segmented") return []
-    const source = (content.titleSegments || []).map((segment) => ({ ...segment, text: (segment.text || "").trim() })).filter((segment) => segment.text.length > 0)
-    if (source.length === 0) return []
-
-    const deduped: HeroTitleSegment[] = []
-    source.forEach((segment) => {
-      const previous = deduped[deduped.length - 1]
-      if (previous && previous.text.toLowerCase() === segment.text.toLowerCase()) return
-      deduped.push(segment)
-    })
-
-    if (deduped.length >= 2) {
-      const first = deduped[0]
-      const second = deduped[1]
-      const firstLower = first.text.toLowerCase()
-      const secondLower = second.text.toLowerCase()
-      if (firstLower.endsWith(secondLower) && first.text.length > second.text.length) {
-        const trimmedFirst = first.text.slice(0, first.text.length - second.text.length).trim()
-        if (trimmedFirst.length > 0) {
-          deduped[0] = { ...first, text: trimmedFirst }
-        }
-      }
-    }
-    return deduped
-  }, [heroTitleMode, content.titleSegments])
 
   const mainTitleText = content.title || ""
   const accentTitleText = content.titleHighlight || ""

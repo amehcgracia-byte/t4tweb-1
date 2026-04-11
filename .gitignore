@@ -9,3 +9,6 @@ node_modules/
 .qodo/
 .vercel
 .env.local
+*.bak
+*.backup
+*.orig

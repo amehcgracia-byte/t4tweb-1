@@ -89,6 +89,14 @@ interface DeployStepResult {
   message: string
 }
 
+interface NodeVerificationResult {
+  storageTarget: string
+  expected: Record<string, unknown>
+  readBack: Record<string, unknown> | null
+  matched: boolean
+  mismatchReason: string | null
+}
+
 interface DeployEnvDiagnostics {
   SANITY_PROJECT_ID: "yes" | "no"
   NEXT_PUBLIC_SANITY_PROJECT_ID: "yes" | "no"
@@ -228,6 +236,46 @@ function toChangedNodeIds(payload: DeployRequestPayload): string[] {
 
 function markerMatchesNode(marker: string, nodeId: string): boolean {
   return marker === nodeId || marker.startsWith(`${nodeId}:`) || marker.includes(nodeId)
+}
+
+function getNodeFailureMarker(nodeId: string, markers: string[]): string | null {
+  return markers.find((m) => markerMatchesNode(m, nodeId)) || null
+}
+
+function approxEqualNumber(a: unknown, b: unknown): boolean {
+  if (typeof a !== "number" || typeof b !== "number") return false
+  return Math.abs(a - b) < 0.01
+}
+
+function normalizeComparableValue(value: unknown): unknown {
+  if (typeof value === "number") return roundLayoutPx(value)
+  if (Array.isArray(value) || (value && typeof value === "object")) return JSON.parse(JSON.stringify(value))
+  return value
+}
+
+function valuesMatch(expected: unknown, actual: unknown): boolean {
+  if (typeof expected === "number" && typeof actual === "number") {
+    return approxEqualNumber(expected, actual)
+  }
+  if (Array.isArray(expected) || (expected && typeof expected === "object")) {
+    return JSON.stringify(expected) === JSON.stringify(actual)
+  }
+  return expected === actual
+}
+
+function compareMaps(
+  expected: Record<string, unknown>,
+  actual: Record<string, unknown>
+): { matched: boolean; mismatchReason: string | null } {
+  for (const [key, value] of Object.entries(expected)) {
+    if (!valuesMatch(value, actual[key])) {
+      return {
+        matched: false,
+        mismatchReason: `mismatch:${key} expected=${JSON.stringify(value)} actual=${JSON.stringify(actual[key])}`,
+      }
+    }
+  }
+  return { matched: true, mismatchReason: null }
 }
 
 function buildHomeEditorStateNode(node: DeployNodePayload): { node: HomeEditorNodeOverride; skippedImageSrc: boolean } {
@@ -1401,16 +1449,38 @@ export async function POST(request: Request) {
 
     // Changed-node read-back verification (persisted means verified on read, not just attempted write).
     const [heroReadback, navReadback, introReadback, homeStateReadback] = await Promise.all([
-      writeClient.fetch<{ elementStyles?: Record<string, Record<string, unknown>>; title?: string; titleHighlight?: string; subtitle?: string } | null>(
-        `*[_type == $type][0]{ title, titleHighlight, subtitle, elementStyles }`,
+      writeClient.fetch<{
+        elementStyles?: Record<string, Record<string, unknown>>
+        title?: string
+        titleHighlight?: string
+        subtitle?: string
+        backgroundImage?: { asset?: { _ref?: string; _id?: string } }
+        logo?: { asset?: { _ref?: string; _id?: string } }
+      } | null>(
+        `*[_type == $type][0]{ title, titleHighlight, subtitle, elementStyles, backgroundImage{asset->{_id}}, logo{asset->{_id}} }`,
         { type: SANITY_DOC_TYPE }
       ),
-      writeClient.fetch<{ elementStyles?: Record<string, Record<string, unknown>> } | null>(
-        `*[_type == $type][0]{ elementStyles }`,
+      writeClient.fetch<{
+        elementStyles?: Record<string, Record<string, unknown>>
+        brandName?: string
+        links?: Array<{ label?: string; href?: string }>
+        ctaLabel?: string
+        ctaHref?: string
+        brandLogo?: { asset?: { _ref?: string; _id?: string } }
+      } | null>(
+        `*[_type == $type][0]{ elementStyles, brandName, links[]{label, href}, ctaLabel, ctaHref, brandLogo{asset->{_id}} }`,
         { type: SANITY_DOC_NAV }
       ),
-      writeClient.fetch<{ elementStyles?: Record<string, Record<string, unknown>> } | null>(
-        `*[_type == $type][0]{ elementStyles }`,
+      writeClient.fetch<{
+        elementStyles?: Record<string, Record<string, unknown>>
+        bannerText?: string
+        gifUrl?: string
+        bookLabel?: string
+        bookHref?: string
+        pressLabel?: string
+        pressHref?: string
+      } | null>(
+        `*[_type == $type][0]{ elementStyles, bannerText, gifUrl, bookLabel, bookHref, pressLabel, pressHref }`,
         { type: SANITY_DOC_INTRO }
       ),
       writeClient.fetch<{ nodes?: HomeEditorNodeOverride[] } | null>(
@@ -1422,56 +1492,312 @@ export async function POST(request: Request) {
     const changedNodesPersisted: string[] = []
     const changedNodesSkipped: string[] = []
     const changedNodesFailed: string[] = []
+    const verificationByNodeId: Record<string, NodeVerificationResult> = {}
 
     for (const nodeId of changedNodeIds) {
       const node = payloadNodeById.get(nodeId)
       if (!node) {
+        const mismatchReason = "missing-payload-node"
         changedNodesFailed.push(nodeId)
-        if (!failedNodes.includes(`${nodeId}:missing-payload-node`)) failedNodes.push(`${nodeId}:missing-payload-node`)
+        if (!failedNodes.includes(`${nodeId}:${mismatchReason}`)) failedNodes.push(`${nodeId}:${mismatchReason}`)
+        verificationByNodeId[nodeId] = {
+          storageTarget: "unknown",
+          expected: {},
+          readBack: null,
+          matched: false,
+          mismatchReason,
+        }
         continue
       }
 
-      if (failedNodes.some((m) => markerMatchesNode(m, nodeId))) {
+      const failedMarker = getNodeFailureMarker(nodeId, failedNodes)
+      if (failedMarker) {
         changedNodesFailed.push(nodeId)
+        verificationByNodeId[nodeId] = {
+          storageTarget: "unknown",
+          expected: {},
+          readBack: null,
+          matched: false,
+          mismatchReason: failedMarker,
+        }
         continue
       }
-      if (skippedNodes.some((m) => markerMatchesNode(m, nodeId))) {
+
+      const skippedMarker = getNodeFailureMarker(nodeId, skippedNodes)
+      if (skippedMarker) {
         changedNodesSkipped.push(nodeId)
+        verificationByNodeId[nodeId] = {
+          storageTarget: "unknown",
+          expected: {},
+          readBack: null,
+          matched: false,
+          mismatchReason: skippedMarker,
+        }
         continue
       }
 
-      const isHeroLayoutId = nodeId === "hero-section" || nodeId === "hero-bg-image" || nodeId === "hero-title-main" || nodeId === "hero-title-accent" || nodeId === "hero-subtitle" || nodeId === "hero-logo" || nodeId === "hero-scroll-indicator" || nodeId === "hero-buttons"
+      const expected: Record<string, unknown> = {}
+      const readBack: Record<string, unknown> = {}
+      let storageTarget = "unknown"
+
+      const writeStyleKeys = new Set<string>()
+      if (node.explicitStyle) {
+        for (const [key, value] of Object.entries(node.style || {})) {
+          if (value !== undefined && value !== null) writeStyleKeys.add(key)
+        }
+      }
+      const writeContentKeys = new Set<string>()
+      if (node.explicitContent) {
+        for (const [key, value] of Object.entries(node.content || {})) {
+          if (value !== undefined && value !== null) writeContentKeys.add(key)
+        }
+      }
+
+      const isHeroLayoutId =
+        nodeId === "hero-section" ||
+        nodeId === "hero-bg-image" ||
+        nodeId === "hero-title-main" ||
+        nodeId === "hero-title-accent" ||
+        nodeId === "hero-subtitle" ||
+        nodeId === "hero-logo" ||
+        nodeId === "hero-scroll-indicator" ||
+        nodeId === "hero-buttons"
       const isNavLayoutIdChanged = isNavLayoutId(nodeId)
       const isIntroLayoutIdChanged = INTRO_LAYOUT_IDS.has(nodeId)
       const shouldVerifyHomeState = shouldPersistInCentralHomeState(node)
 
-      let verified = false
+      const expectedScale =
+        node.explicitStyle && typeof node.style.scale === "number"
+          ? Math.round(node.style.scale * 1000) / 1000
+          : undefined
+
       if (nodeId === "hero-title-main" && node.explicitContent) {
-        const expected = typeof node.content.text === "string" ? node.content.text.trim() : ""
-        verified = !!expected && heroReadback?.title === expected
+        storageTarget = "heroSection.fields"
+        const expectedText = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        expected.title = expectedText
+        readBack.title = heroReadback?.title
       } else if (nodeId === "hero-title-accent" && node.explicitContent) {
-        const expected = typeof node.content.text === "string" ? node.content.text.trim() : ""
-        verified = !!expected && heroReadback?.titleHighlight === expected
+        storageTarget = "heroSection.fields"
+        const expectedText = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        expected.titleHighlight = expectedText
+        readBack.titleHighlight = heroReadback?.titleHighlight
       } else if (nodeId === "hero-subtitle" && node.explicitContent) {
-        const expected = typeof node.content.text === "string" ? node.content.text.trim() : ""
-        verified = !!expected && heroReadback?.subtitle === expected
-      } else if (isHeroLayoutId && (node.explicitPosition || node.explicitSize || node.explicitStyle)) {
-        verified = !!heroReadback?.elementStyles?.[nodeId]
-      } else if (isNavLayoutIdChanged && (node.explicitPosition || node.explicitSize || node.explicitStyle)) {
-        verified = !!navReadback?.elementStyles?.[nodeId]
-      } else if (isIntroLayoutIdChanged && (node.explicitPosition || node.explicitSize || node.explicitStyle)) {
-        verified = !!introReadback?.elementStyles?.[nodeId]
+        storageTarget = "heroSection.fields"
+        const expectedText = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        expected.subtitle = expectedText
+        readBack.subtitle = heroReadback?.subtitle
+      } else if (nodeId === "hero-bg-image" && node.explicitContent && writeContentKeys.has("src")) {
+        storageTarget = "heroSection.fields"
+        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        expected.backgroundImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        readBack.backgroundImageRef = heroReadback?.backgroundImage?.asset?._ref ?? heroReadback?.backgroundImage?.asset?._id
+      } else if (nodeId === "hero-logo" && node.explicitContent && writeContentKeys.has("src")) {
+        storageTarget = "heroSection.fields"
+        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        expected.logoRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        readBack.logoRef = heroReadback?.logo?.asset?._ref ?? heroReadback?.logo?.asset?._id
+      } else if (isHeroLayoutId && (node.explicitPosition || node.explicitSize || expectedScale !== undefined)) {
+        storageTarget = "heroSection.elementStyles"
+        const heroStyle = heroReadback?.elementStyles?.[nodeId] || {}
+        if (node.explicitPosition) {
+          expected.x = roundLayoutPx(node.geometry.x)
+          expected.y = roundLayoutPx(node.geometry.y)
+          readBack.x = (heroStyle as Record<string, unknown>).x
+          readBack.y = (heroStyle as Record<string, unknown>).y
+        }
+        if (node.explicitSize) {
+          expected.width = roundLayoutPx(node.geometry.width)
+          expected.height = roundLayoutPx(node.geometry.height)
+          readBack.width = (heroStyle as Record<string, unknown>).width
+          readBack.height = (heroStyle as Record<string, unknown>).height
+        }
+        if (expectedScale !== undefined) {
+          expected.scale = expectedScale
+          readBack.scale = (heroStyle as Record<string, unknown>).scale
+        }
+      } else if (isNavLayoutIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined)) {
+        storageTarget = "navigation.elementStyles"
+        const navStyle = navReadback?.elementStyles?.[nodeId] || {}
+        if (node.explicitPosition) {
+          expected.x = roundLayoutPx(node.geometry.x)
+          expected.y = roundLayoutPx(node.geometry.y)
+          readBack.x = (navStyle as Record<string, unknown>).x
+          readBack.y = (navStyle as Record<string, unknown>).y
+        }
+        if (node.explicitSize) {
+          expected.width = roundLayoutPx(node.geometry.width)
+          expected.height = roundLayoutPx(node.geometry.height)
+          readBack.width = (navStyle as Record<string, unknown>).width
+          readBack.height = (navStyle as Record<string, unknown>).height
+        }
+        if (expectedScale !== undefined) {
+          expected.scale = expectedScale
+          readBack.scale = (navStyle as Record<string, unknown>).scale
+        }
+      } else if (nodeId === "nav-brand-name" && node.explicitContent) {
+        storageTarget = "navigation.fields"
+        expected.brandName = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.brandName = navReadback?.brandName
+      } else if (/^nav-(?:mobile-)?link-\d+$/.test(nodeId) && node.explicitContent) {
+        storageTarget = "navigation.fields"
+        const match = /^nav-(?:mobile-)?link-(\d+)$/.exec(nodeId)
+        const linkIndex = match ? Number(match[1]) : -1
+        const navLink = linkIndex >= 0 ? navReadback?.links?.[linkIndex] : undefined
+        if (writeContentKeys.has("text")) {
+          expected[`links[${linkIndex}].label`] = typeof node.content.text === "string" ? node.content.text.trim() : ""
+          readBack[`links[${linkIndex}].label`] = navLink?.label
+        }
+        if (writeContentKeys.has("href")) {
+          expected[`links[${linkIndex}].href`] = typeof node.content.href === "string" ? node.content.href.trim() : ""
+          readBack[`links[${linkIndex}].href`] = navLink?.href
+        }
+      } else if ((nodeId === "nav-book-button" || nodeId === "nav-mobile-book-button") && node.explicitContent) {
+        storageTarget = "navigation.fields"
+        if (writeContentKeys.has("text")) {
+          expected.ctaLabel = typeof node.content.text === "string" ? node.content.text.trim() : ""
+          readBack.ctaLabel = navReadback?.ctaLabel
+        }
+        if (writeContentKeys.has("href")) {
+          expected.ctaHref = typeof node.content.href === "string" ? node.content.href.trim() : ""
+          readBack.ctaHref = navReadback?.ctaHref
+        }
+      } else if (nodeId === "nav-logo" && node.explicitContent && writeContentKeys.has("src")) {
+        storageTarget = "navigation.fields"
+        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        expected.brandLogoRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        readBack.brandLogoRef = navReadback?.brandLogo?.asset?._ref ?? navReadback?.brandLogo?.asset?._id
+      } else if (isIntroLayoutIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
+        storageTarget = "introBanner.elementStyles"
+        const introStyle = introReadback?.elementStyles?.[nodeId] || {}
+        if (node.explicitPosition) {
+          expected.x = roundLayoutPx(node.geometry.x)
+          expected.y = roundLayoutPx(node.geometry.y)
+          readBack.x = (introStyle as Record<string, unknown>).x
+          readBack.y = (introStyle as Record<string, unknown>).y
+        }
+        if (node.explicitSize) {
+          expected.width = roundLayoutPx(node.geometry.width)
+          expected.height = roundLayoutPx(node.geometry.height)
+          readBack.width = (introStyle as Record<string, unknown>).width
+          readBack.height = (introStyle as Record<string, unknown>).height
+        }
+        if (expectedScale !== undefined) {
+          expected.scale = expectedScale
+          readBack.scale = (introStyle as Record<string, unknown>).scale
+        }
+        if (node.explicitStyle) {
+          if (writeStyleKeys.has("color")) {
+            expected.color = node.style.color
+            readBack.color = (introStyle as Record<string, unknown>).color
+          }
+          if (writeStyleKeys.has("fontSize")) {
+            expected.fontSize = parsePxNumber(node.style.fontSize)
+            readBack.fontSize = (introStyle as Record<string, unknown>).fontSize
+          }
+          if (writeStyleKeys.has("fontWeight")) {
+            const fw = node.style.fontWeight
+            const parsedFw = typeof fw === "number" ? fw : (typeof fw === "string" ? parseInt(fw, 10) : undefined)
+            expected.fontWeight = Number.isNaN(parsedFw as number) ? undefined : parsedFw
+            readBack.fontWeight = (introStyle as Record<string, unknown>).fontWeight
+          }
+        }
+      } else if (nodeId === "intro-banner-text" && node.explicitContent) {
+        storageTarget = "introBanner.fields"
+        expected.bannerText = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.bannerText = introReadback?.bannerText
+      } else if (nodeId === "intro-banner-gif" && node.explicitContent && writeContentKeys.has("src")) {
+        storageTarget = "introBanner.fields"
+        expected.gifUrl = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        readBack.gifUrl = introReadback?.gifUrl
+      } else if (nodeId === "intro-book-button" && node.explicitContent) {
+        storageTarget = "introBanner.fields"
+        if (writeContentKeys.has("text")) {
+          expected.bookLabel = typeof node.content.text === "string" ? node.content.text.trim() : ""
+          readBack.bookLabel = introReadback?.bookLabel
+        }
+        if (writeContentKeys.has("href")) {
+          expected.bookHref = typeof node.content.href === "string" ? node.content.href.trim() : ""
+          readBack.bookHref = introReadback?.bookHref
+        }
+      } else if (nodeId === "intro-press-button" && node.explicitContent) {
+        storageTarget = "introBanner.fields"
+        if (writeContentKeys.has("text")) {
+          expected.pressLabel = typeof node.content.text === "string" ? node.content.text.trim() : ""
+          readBack.pressLabel = introReadback?.pressLabel
+        }
+        if (writeContentKeys.has("href")) {
+          expected.pressHref = typeof node.content.href === "string" ? node.content.href.trim() : ""
+          readBack.pressHref = introReadback?.pressHref
+        }
       } else if (shouldVerifyHomeState) {
-        verified = !!homeStateReadback?.nodes?.some((n) => n.nodeId === nodeId)
+        storageTarget = "homeEditorState.nodes"
+        const readNode = homeStateReadback?.nodes?.find((n) => n.nodeId === nodeId)
+        if (!readNode) {
+          changedNodesFailed.push(nodeId)
+          const mismatchReason = "missing-home-editor-state-node"
+          if (!failedNodes.includes(`${nodeId}:${mismatchReason}`)) failedNodes.push(`${nodeId}:${mismatchReason}`)
+          verificationByNodeId[nodeId] = {
+            storageTarget,
+            expected: {},
+            readBack: null,
+            matched: false,
+            mismatchReason,
+          }
+          continue
+        }
+        if (node.explicitPosition) {
+          expected.x = roundLayoutPx(node.geometry.x)
+          expected.y = roundLayoutPx(node.geometry.y)
+          readBack.x = readNode.geometry?.x
+          readBack.y = readNode.geometry?.y
+        }
+        if (node.explicitSize) {
+          expected.width = roundLayoutPx(node.geometry.width)
+          expected.height = roundLayoutPx(node.geometry.height)
+          readBack.width = readNode.geometry?.width
+          readBack.height = readNode.geometry?.height
+        }
+        if (node.explicitStyle) {
+          for (const key of writeStyleKeys) {
+            expected[`style.${key}`] = normalizeComparableValue(node.style[key as keyof DeployNodePayload["style"]])
+            readBack[`style.${key}`] = normalizeComparableValue(readNode.style?.[key as keyof HomeEditorNodeOverride["style"]])
+          }
+        }
+        if (node.explicitContent) {
+          for (const key of writeContentKeys) {
+            expected[`content.${key}`] = normalizeComparableValue(node.content[key as keyof DeployNodePayload["content"]])
+            readBack[`content.${key}`] = normalizeComparableValue(readNode.content?.[key as keyof HomeEditorNodeOverride["content"]])
+          }
+        }
+        expected.explicitContent = node.explicitContent
+        expected.explicitStyle = node.explicitStyle
+        expected.explicitPosition = node.explicitPosition
+        expected.explicitSize = node.explicitSize
+        readBack.explicitContent = readNode.explicitContent
+        readBack.explicitStyle = readNode.explicitStyle
+        readBack.explicitPosition = readNode.explicitPosition
+        readBack.explicitSize = readNode.explicitSize
       } else {
-        verified = persistedNodes.some((m) => markerMatchesNode(m, nodeId))
+        storageTarget = "unknown"
+        expected.persistedMarker = true
+        readBack.persistedMarker = persistedNodes.some((m) => markerMatchesNode(m, nodeId))
       }
 
-      if (verified) {
+      const comparison = compareMaps(expected, readBack)
+      verificationByNodeId[nodeId] = {
+        storageTarget,
+        expected,
+        readBack: Object.keys(readBack).length > 0 ? readBack : null,
+        matched: comparison.matched,
+        mismatchReason: comparison.mismatchReason,
+      }
+
+      if (comparison.matched) {
         changedNodesPersisted.push(nodeId)
       } else {
         changedNodesFailed.push(nodeId)
-        if (!failedNodes.includes(`${nodeId}:readback-mismatch`)) failedNodes.push(`${nodeId}:readback-mismatch`)
+        const reason = comparison.mismatchReason || "readback-mismatch"
+        if (!failedNodes.includes(`${nodeId}:${reason}`)) failedNodes.push(`${nodeId}:${reason}`)
       }
     }
 
@@ -1533,6 +1859,7 @@ export async function POST(request: Request) {
       changedNodesPersisted,
       changedNodesSkipped,
       changedNodesFailed,
+      verificationByNodeId,
       persistedNodes,
       skippedNodes,
       failedNodes,

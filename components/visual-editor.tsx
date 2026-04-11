@@ -779,11 +779,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         }
         case "MOVE_NODE":
           patchNode(command.nodeId, (n) => ({ ...n, explicitPosition: true, geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy } }))
-          shouldSnapshot = !command.transient && !transactionRef.current.active
+          shouldSnapshot = false
           break
         case "RESIZE_NODE":
           patchNode(command.nodeId, (n) => ({ ...n, explicitSize: true, geometry: { ...n.geometry, width: command.width, height: command.height } }))
-          shouldSnapshot = !command.transient && !transactionRef.current.active
+          shouldSnapshot = false
           break
         case "SET_NODE_GEOMETRY":
           patchNode(command.nodeId, (n) => ({
@@ -792,7 +792,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             explicitSize: true,
             geometry: { ...n.geometry, x: command.x, y: command.y, width: command.width, height: command.height },
           }))
-          shouldSnapshot = !command.transient && !transactionRef.current.active
+          shouldSnapshot = false
           break
         case "SET_NODE_SCALE":
           patchNode(command.nodeId, (n) => ({
@@ -800,7 +800,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             explicitStyle: true,
             style: { ...n.style, scale: Math.max(0.1, command.scale) },
           }))
-          shouldSnapshot = !command.transient && !transactionRef.current.active
+          shouldSnapshot = false
           break
         case "UPDATE_TEXT":
         case "UPDATE_BUTTON":
@@ -998,7 +998,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         registryRafRef.current = null
       }
     }
-  }, [isEditing, registry, refreshRegistry])
+  }, [isEditing, registry])
 
   useEffect(() => {
     if (!isEditing) return
@@ -1300,6 +1300,13 @@ export function VisualEditorOverlay() {
         changedNodesPersisted?: string[]
         changedNodesSkipped?: string[]
         changedNodesFailed?: string[]
+        verificationByNodeId?: Record<string, {
+          storageTarget: string
+          expected: Record<string, unknown>
+          readBack: Record<string, unknown> | null
+          matched: boolean
+          mismatchReason: string | null
+        }>
         persistedNodes?: string[]
         skippedNodes?: string[]
         failedNodes?: string[]
@@ -1339,12 +1346,15 @@ export function VisualEditorOverlay() {
         return
       }
 
-      const backendStatus = data.status || (data.step === "failed" ? "failed" : "ok")
+      const hasChangedNodeFailures = Array.isArray(data.changedNodesFailed) && data.changedNodesFailed.length > 0
+      const backendStatus = hasChangedNodeFailures ? "failed" : (data.status || (data.step === "failed" ? "failed" : "ok"))
       setDeployStatus(backendStatus === "ok" ? "success" : backendStatus)
       if (data.step === "done" && !lines.includes("done")) lines.push("done")
+      lines.push(`changedNodeIds(response): ${JSON.stringify(data.changedNodeIds || [])}`)
       lines.push(`changedNodesPersisted: ${JSON.stringify(data.changedNodesPersisted || [])}`)
       lines.push(`changedNodesSkipped: ${JSON.stringify(data.changedNodesSkipped || [])}`)
       lines.push(`changedNodesFailed: ${JSON.stringify(data.changedNodesFailed || [])}`)
+      lines.push(`verificationByNodeId: ${JSON.stringify(data.verificationByNodeId || {}, null, 2)}`)
       lines.push(`persistedNodes: ${JSON.stringify(data.persistedNodes || [])}`)
       lines.push(`skippedNodes: ${JSON.stringify(data.skippedNodes || [])}`)
       lines.push(`failedNodes: ${JSON.stringify(data.failedNodes || [])}`)
@@ -1414,7 +1424,7 @@ export function VisualEditorOverlay() {
     document.body.setAttribute("data-editor-mode", "true")
 
     const onPointerDown = (e: PointerEvent) => {
-      const multiModifier = e.metaKey || e.ctrlKey
+      const multiModifier = false
       const target = e.target as HTMLElement
       const resizeHandleTarget = target.closest<HTMLElement>("[data-editor-resize-handle]")
       if (resizeHandleTarget instanceof HTMLElement) {
@@ -2140,7 +2150,11 @@ export function VisualEditorOverlay() {
                         className="w-full rounded border p-1 text-xs"
                         value={Math.round(selectedNode.geometry.width)}
                         onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height, transient: true })}
-                        onBlur={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height })}
+                        onBlur={(e) => {
+                          dispatch({ type: "BEGIN_TRANSACTION" })
+                          dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value) || selectedNode.geometry.width, height: selectedNode.geometry.height, transient: true })
+                          dispatch({ type: "END_TRANSACTION" })
+                        }}
                       />
                     </div>
                     <div>
@@ -2150,7 +2164,11 @@ export function VisualEditorOverlay() {
                         className="w-full rounded border p-1 text-xs"
                         value={Math.round(selectedNode.geometry.height)}
                         onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height, transient: true })}
-                        onBlur={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height })}
+                        onBlur={(e) => {
+                          dispatch({ type: "BEGIN_TRANSACTION" })
+                          dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: selectedNode.geometry.width, height: Number(e.target.value) || selectedNode.geometry.height, transient: true })
+                          dispatch({ type: "END_TRANSACTION" })
+                        }}
                       />
                     </div>
                   </div>

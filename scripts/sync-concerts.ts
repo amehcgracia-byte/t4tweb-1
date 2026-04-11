@@ -3,12 +3,16 @@ import { createClient } from 'next-sanity'
 const client = createClient({
   projectId: 'qtpb6qpz',
   dataset: 'production',
-  token: 'skvNlCKiqwS9j9OoLpTgVQF7U9sS4Q0YQQiv61hhectMxwQSajLzsMDvAwur19Q39r2RCTC1h8JazV8y5eVVXqfI92v6VWmLu4KvENaaFACcOGPmNJbHjRTReJ2hMjfYmGUBD88Bz4rxG2DxkPbURrsKlFpKkbwxJQmYflF4jD8TyCXZioWI',
+  token: process.env.SANITY_API_TOKEN,
   apiVersion: '2024-01-01',
   useCdn: false,
 })
 
 async function main() {
+  if (!process.env.SANITY_API_TOKEN) {
+    throw new Error('SANITY_API_TOKEN env variable is required')
+  }
+
   console.log('Deleting existing concerts...')
   await client.delete({ query: '_type == "concert"' }).catch(() => {})
 
