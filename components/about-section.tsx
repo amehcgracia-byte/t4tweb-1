@@ -296,76 +296,131 @@ Their performances balance musical depth with danceable power, bringing together
           </div>
 
           {/* Box de texto reducido ~20% */}
-          <motion.div
-            ref={textCardRef}
-            data-editor-node-id="about-text-card"
-            data-editor-node-type="card"
-            data-editor-node-label="About Text Card"
-            initial={isEditing ? false : { opacity: 0, y: 16 }}
-            whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
-            viewport={isEditing ? undefined : { once: true, amount: 0.2 }}
-            transition={isEditing ? undefined : { duration: 0.6, delay: 0.05 }}
-            className="w-full rounded-3xl border border-white/10 bg-black/50 px-6 py-8 md:px-10 md:py-12 lg:px-12 lg:py-14 shadow-2xl backdrop-blur-md"
-            style={buildInlineStyleFromOverride(textCardOverride, allowGeometryOverrides)}
-          >
-            <div className="space-y-6 text-white md:space-y-8">
-              <p 
-                ref={text1Ref}
-                data-editor-node-id="about-text-1"
-                data-editor-node-type="text"
-                data-editor-node-label="Descripción 1"
-                className="mb-0 max-w-none text-base leading-relaxed text-white/95 md:text-lg"
-                style={buildInlineStyleFromOverride(text1Override, allowGeometryOverrides)}
-              >
-                {aboutText1}
-              </p>
-
-              <p 
-                ref={text2Ref}
-                data-editor-node-id="about-text-2"
-                data-editor-node-type="text"
-                data-editor-node-label="Descripción 2"
-                className="mb-0 max-w-none text-base leading-relaxed text-white/90 md:text-lg"
-                style={buildInlineStyleFromOverride(text2Override, allowGeometryOverrides)}
-              >
-                {aboutText2}
-              </p>
-
-              <p 
-                ref={tagsRef}
-                data-editor-node-id="about-tags"
-                data-editor-node-type="text"
-                data-editor-node-label="Etiquetas"
-                className="mb-0 max-w-none pt-2 text-sm leading-relaxed md:text-base text-[#FF8C21]"
-                style={buildInlineStyleFromOverride(tagsOverride, allowGeometryOverrides)}
-              >
-                {aboutTags}
-              </p>
+          {isEditing ? (
+            <div
+              ref={textCardRef}
+              data-editor-node-id="about-text-card"
+              data-editor-node-type="card"
+              data-editor-node-label="About Text Card"
+              className="w-full rounded-3xl border border-white/10 bg-black/50 px-6 py-8 md:px-10 md:py-12 lg:px-12 lg:py-14 shadow-2xl backdrop-blur-md"
+              style={buildInlineStyleFromOverride(textCardOverride, allowGeometryOverrides)}
+            >
+              <div className="space-y-6 text-white md:space-y-8">
+                <p
+                  ref={text1Ref}
+                  data-editor-node-id="about-text-1"
+                  data-editor-node-type="text"
+                  data-editor-node-label="Descripción 1"
+                  className="mb-0 max-w-none text-base leading-relaxed text-white/95 md:text-lg"
+                  style={buildInlineStyleFromOverride(text1Override, allowGeometryOverrides)}
+                >
+                  {aboutText1}
+                </p>
+                <p
+                  ref={text2Ref}
+                  data-editor-node-id="about-text-2"
+                  data-editor-node-type="text"
+                  data-editor-node-label="Descripción 2"
+                  className="mb-0 max-w-none text-base leading-relaxed text-white/90 md:text-lg"
+                  style={buildInlineStyleFromOverride(text2Override, allowGeometryOverrides)}
+                >
+                  {aboutText2}
+                </p>
+                <p
+                  ref={tagsRef}
+                  data-editor-node-id="about-tags"
+                  data-editor-node-type="text"
+                  data-editor-node-label="Etiquetas"
+                  className="mb-0 max-w-none pt-2 text-sm leading-relaxed md:text-base text-[#FF8C21]"
+                  style={buildInlineStyleFromOverride(tagsOverride, allowGeometryOverrides)}
+                >
+                  {aboutTags}
+                </p>
+              </div>
             </div>
-          </motion.div>
+          ) : (
+            <motion.div
+              ref={textCardRef}
+              data-editor-node-id="about-text-card"
+              data-editor-node-type="card"
+              data-editor-node-label="About Text Card"
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.6, delay: 0.05 }}
+              className="w-full rounded-3xl border border-white/10 bg-black/50 px-6 py-8 md:px-10 md:py-12 lg:px-12 lg:py-14 shadow-2xl backdrop-blur-md"
+              style={buildInlineStyleFromOverride(textCardOverride, allowGeometryOverrides)}
+            >
+              <div className="space-y-6 text-white md:space-y-8">
+                <p
+                  ref={text1Ref}
+                  data-editor-node-id="about-text-1"
+                  data-editor-node-type="text"
+                  data-editor-node-label="Descripción 1"
+                  className="mb-0 max-w-none text-base leading-relaxed text-white/95 md:text-lg"
+                  style={buildInlineStyleFromOverride(text1Override, allowGeometryOverrides)}
+                >
+                  {aboutText1}
+                </p>
+                <p
+                  ref={text2Ref}
+                  data-editor-node-id="about-text-2"
+                  data-editor-node-type="text"
+                  data-editor-node-label="Descripción 2"
+                  className="mb-0 max-w-none text-base leading-relaxed text-white/90 md:text-lg"
+                  style={buildInlineStyleFromOverride(text2Override, allowGeometryOverrides)}
+                >
+                  {aboutText2}
+                </p>
+                <p
+                  ref={tagsRef}
+                  data-editor-node-id="about-tags"
+                  data-editor-node-type="text"
+                  data-editor-node-label="Etiquetas"
+                  className="mb-0 max-w-none pt-2 text-sm leading-relaxed md:text-base text-[#FF8C21]"
+                  style={buildInlineStyleFromOverride(tagsOverride, allowGeometryOverrides)}
+                >
+                  {aboutTags}
+                </p>
+              </div>
+            </motion.div>
+          )}
 
           <div className="mt-12 flex justify-center">
-            <motion.button
-              ref={copyButtonRef}
-              type="button"
-              onClick={copyBio}
-              whileTap={isEditing ? undefined : { scale: 0.98 }}
-              animate={isEditing ? undefined : (copied ? { scale: [1, 1.04, 1] } : { scale: 1 })}
-              transition={isEditing ? undefined : { duration: 0.3 }}
-              data-editor-node-id="about-copy-button"
-              data-editor-node-type="button"
-              data-editor-node-label="Copy Bio Button"
-              className={`inline-flex items-center justify-center rounded-2xl border px-8 py-3.5 text-base font-semibold shadow-lg md:text-lg ${
-                copied
-                  ? "border-[#FF8C21] bg-[#FF8C21] text-white shadow-[#FF8C21]/50"
-                  : isEditing
-                    ? "border-[#FF8C21]/70 bg-[#FF8C21]/90 text-white shadow-[#FF8C21]/30"
+            {isEditing ? (
+              <button
+                ref={copyButtonRef}
+                type="button"
+                onClick={copyBio}
+                data-editor-node-id="about-copy-button"
+                data-editor-node-type="button"
+                data-editor-node-label="Copy Bio Button"
+                className="inline-flex items-center justify-center rounded-2xl border border-[#FF8C21]/70 bg-[#FF8C21]/90 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#FF8C21]/30 md:text-lg"
+                style={buildInlineStyleFromOverride(copyButtonOverride, allowGeometryOverrides)}
+              >
+                {aboutCopyLabel}
+              </button>
+            ) : (
+              <motion.button
+                ref={copyButtonRef}
+                type="button"
+                onClick={copyBio}
+                whileTap={{ scale: 0.98 }}
+                animate={copied ? { scale: [1, 1.04, 1] } : { scale: 1 }}
+                transition={{ duration: 0.3 }}
+                data-editor-node-id="about-copy-button"
+                data-editor-node-type="button"
+                data-editor-node-label="Copy Bio Button"
+                className={`inline-flex items-center justify-center rounded-2xl border px-8 py-3.5 text-base font-semibold shadow-lg md:text-lg ${
+                  copied
+                    ? "border-[#FF8C21] bg-[#FF8C21] text-white shadow-[#FF8C21]/50"
                     : "border-[#FF8C21]/70 bg-[#FF8C21]/90 text-white shadow-[#FF8C21]/30 transition-all hover:bg-[#FF8C21] hover:shadow-[#FF8C21]/40"
-              }`}
-              style={buildInlineStyleFromOverride(copyButtonOverride, allowGeometryOverrides)}
-            >
-              {aboutCopyLabel}
-            </motion.button>
+                }`}
+                style={buildInlineStyleFromOverride(copyButtonOverride, allowGeometryOverrides)}
+              >
+                {aboutCopyLabel}
+              </motion.button>
+            )}
           </div>
         </motion.div>
       </div>
