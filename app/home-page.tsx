@@ -24,7 +24,7 @@ import { getTraceNodeId } from "@/lib/sanity/env"
 
 export const dynamic = "force-dynamic"
 
-export default async function HomePage({ perspective = "published" }: { perspective?: "published" | "previewDrafts" } = {}) {
+export default async function HomePage({ perspective = "published", isEditorRoute = false }: { perspective?: "published" | "previewDrafts"; isEditorRoute?: boolean } = {}) {
   const traceNodeId = getTraceNodeId()
   const [heroData, navigationData, introBannerData, bandMembersData, liveConcerts, homeEditorNodes] = await Promise.all([
     loadHeroData(),
@@ -84,7 +84,7 @@ export default async function HomePage({ perspective = "published" }: { perspect
         <RibbonsBlock />
         <Navigation data={navigationData} />
 
-        <HeroSectionWrapper data={heroData} />
+        <HeroSectionWrapper data={heroData} isEditorRoute={isEditorRoute} />
 
         <SectionDivider editorId="section-divider-hero-intro" />
 

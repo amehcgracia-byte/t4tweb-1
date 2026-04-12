@@ -5,12 +5,14 @@ import type { HeroData } from "@/lib/sanity/hero-loader"
 import { useVisualEditor } from "@/components/visual-editor"
 import { useMemo } from "react"
 
-export function HeroSectionWrapper({ data }: { data: HeroData }) {
+export function HeroSectionWrapper({ data, isEditorRoute = false }: { data: HeroData; isEditorRoute?: boolean }) {
   const { isEditing, nodes } = useVisualEditor()
 
-  // When editing, merge visual-editor node data over loader data
+  // When in editor (either via isEditing context or isEditorRoute prop), merge visual-editor node data over loader data
+  // isEditorRoute is used during SSR when context doesn't exist yet
   const effectiveData: HeroData = useMemo(() => {
-    if (!isEditing || !nodes.size) return data
+    const shouldMerge = (isEditing || isEditorRoute) && nodes.size
+    if (!shouldMerge) return data
 
     const heroTitle = nodes.get("hero-title")
     const heroSubtitle = nodes.get("hero-subtitle")
@@ -28,7 +30,7 @@ export function HeroSectionWrapper({ data }: { data: HeroData }) {
     }
 
     return merged
-  }, [isEditing, nodes, data])
+  }, [isEditing, isEditorRoute, nodes, data])
 
   return <HeroSection data={effectiveData} />
 }

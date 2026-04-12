@@ -6,7 +6,8 @@ export default async function EditorPage() {
   const draft = await draftMode()
   draft.enable()
 
-  // Load editor state from previewDrafts perspective to show draft content
-  // VisualEditorProvider will detect /editor route and activate editor based on pathname
-  return <HomePage perspective="previewDrafts" />
+  // Load editor state from previewDrafts perspective and mark as editor route
+  // This ensures server-side rendering uses editor data, not published data
+  // VisualEditorProvider will also detect /editor route on client and activate editor
+  return <HomePage perspective="previewDrafts" isEditorRoute={true} />
 }
