@@ -1,80 +1,19 @@
 "use client"
 
-import { useRef, useState, useEffect, type CSSProperties } from "react"
+import { useRef, useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
-import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import { SectionHeader } from "@/components/section-header"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import { useVisualEditor } from "@/components/visual-editor"
-import { buildInlineStyleFromOverride, resolveTextOverride } from "@/lib/editor-style-helpers"
-import { getTraceNodeId } from "@/lib/sanity/env"
-import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 import type { BandMemberData } from "@/lib/sanity/band-members-loader"
 
 interface BandMembersSectionProps {
   initialMembers: BandMemberData[]
-  overrides?: Record<string, HomeEditorNodeOverride>
 }
 
-function resolveMemberNameOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
-  return resolveTextOverride(node, fallback)
-}
-
-function resolveMemberRoleOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
-  return resolveTextOverride(node, fallback)
-}
-
-function resolveMemberNumberOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
-  return resolveTextOverride(node, fallback)
-}
-
-function buildInlineTextStyleFromOverride(
-  override: HomeEditorNodeOverride | undefined,
-  fallbackColor: string
-): CSSProperties | undefined {
-  if (!override) return undefined
-  const style: CSSProperties = {}
-  const gradientEnabled = !!override.content.gradientEnabled
-  const gradientStart = override.content.gradientStart || "#FFB15A"
-  const gradientEnd = override.content.gradientEnd || "#FF6C00"
-
-  if (gradientEnabled) {
-    style.background = `linear-gradient(90deg, ${gradientStart}, ${gradientEnd})`
-    style.WebkitBackgroundClip = "text"
-    style.backgroundClip = "text"
-    style.WebkitTextFillColor = "transparent"
-  } else {
-    style.color = override.style.color || fallbackColor
-  }
-
-  if (override.style.opacity !== undefined) style.opacity = override.style.opacity
-  if (override.style.fontSize) style.fontSize = override.style.fontSize
-  if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
-  if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
-  if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
-  if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
-  if (override.style.textAlign) style.textAlign = override.style.textAlign as CSSProperties["textAlign"]
-
-  return Object.keys(style).length > 0 ? style : undefined
-}
-
-function buildInlineImageStyleFromOverride(override: HomeEditorNodeOverride | undefined): CSSProperties | undefined {
-  if (!override) return undefined
-  const style: CSSProperties = {}
-  if (override.explicitStyle) {
-    const contrast = override.style.contrast ?? 100
-    const saturation = override.style.saturation ?? 100
-    const brightness = override.style.brightness ?? 100
-    const negative = override.style.negative ?? false
-    style.filter = `contrast(${contrast}%) saturate(${saturation}%) brightness(${brightness}%)${negative ? " invert(1)" : ""}`
-    if (override.style.opacity !== undefined) style.opacity = override.style.opacity
-  }
-  return Object.keys(style).length > 0 ? style : undefined
-}
-
-export function BandMembersSection({ initialMembers, overrides = {} }: BandMembersSectionProps) {
+export function BandMembersSection({ initialMembers }: BandMembersSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const [activeIndex, setActiveIndex] = useState<number>(0)
   const [modalOpen, setModalOpen] = useState(false)
@@ -82,7 +21,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
   const [members] = useState<BandMemberData[]>(initialMembers)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
-  const traceNodeId = getTraceNodeId()
   const resolvedBandMembersBackgroundSrc = useHomeEditorImageSrc("band-members-bg", "/images/sections/band-section.jpg")
 
   useEffect(() => {
@@ -115,33 +53,13 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
 
   const displayedMembers = members.map((member, index) => ({
     ...member,
-    number: resolveMemberNumberOverride(overrides[`member-item-${index}-number`], String(member.id).padStart(2, "0")),
-    fullName: resolveMemberNameOverride(
-      overrides[`member-item-${index}-name`] ?? overrides[`member-item-${index}`],
-      member.fullName
-    ),
-    role: resolveMemberRoleOverride(overrides[`member-item-${index}-role`], member.role),
-    image: overrides[`member-item-${index}-image`]?.explicitContent && overrides[`member-item-${index}-image`]?.content.src
-      ? (overrides[`member-item-${index}-image`]?.content.src as string)
-      : member.image,
+    number: String(member.id).padStart(2, "0"),
+    fullName: member.fullName,
+    role: member.role,
+    image: member.image,
   }))
   const activeMember = displayedMembers[activeIndex]
   const activeImage = activeMember?.image || initialMembers[0]?.image || ""
-  const activeImageStyle = buildInlineImageStyleFromOverride(overrides[`member-item-${activeIndex}-image`])
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === "production" || !traceNodeId) return
-    if (!traceNodeId.startsWith("member-item-") && !traceNodeId.startsWith("band-members-")) return
-    console.info("[band-members][trace]", {
-      traceNodeId,
-      hasOverride: !!overrides[traceNodeId],
-      override: overrides[traceNodeId] || null,
-      activeIndex,
-      activeMember: activeMember
-        ? { id: activeMember.id, fullName: activeMember.fullName, role: activeMember.role, image: activeMember.image }
-        : null,
-    })
-  }, [traceNodeId, overrides, activeIndex, activeMember])
 
   return (
     <section
@@ -210,7 +128,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                     fill
                     data-member-photo-index={index}
                     className="object-cover"
-                    style={buildInlineImageStyleFromOverride(overrides[`member-item-${index}-image`])}
                     priority={index === 0}
                   />
                 </div>
@@ -255,10 +172,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                     className={`text-base md:text-xl font-medium transition-colors truncate ${
                       activeIndex === index ? "text-white" : "text-white/80 group-hover:text-white"
                     }`}
-                    style={buildInlineTextStyleFromOverride(
-                      overrides[`member-item-${index}-name`],
-                      activeIndex === index ? "#ffffff" : "rgba(255,255,255,0.8)"
-                    )}
                   >
                     {member.fullName}
                   </h4>
@@ -267,10 +180,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                     className={`text-xs md:text-sm mt-0.5 md:mt-1 transition-colors ${
                       activeIndex === index ? "text-orange-400" : "text-white/50"
                     }`}
-                    style={buildInlineTextStyleFromOverride(
-                      overrides[`member-item-${index}-role`],
-                      activeIndex === index ? "#fb923c" : "rgba(255,255,255,0.5)"
-                    )}
                   >
                     {member.role}
                   </p>
@@ -283,10 +192,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                       ? "border-orange-500 text-orange-400 bg-orange-950"
                       : "border-white/20 text-white/40 group-hover:border-white/40"
                   }`}
-                  style={buildInlineTextStyleFromOverride(
-                    overrides[`member-item-${index}-number`],
-                    activeIndex === index ? "#fb923c" : "rgba(255,255,255,0.4)"
-                  )}
                 >
                   {member.number}
                 </div>

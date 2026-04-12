@@ -4,69 +4,10 @@ import { useRef, useEffect } from "react"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
-import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
-import type { CSSProperties } from "react"
-import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
-interface FooterProps {
-  overrides?: Record<string, HomeEditorNodeOverride>
-}
+interface FooterProps {}
 
-function buildInlineStyleFromOverride(
-  override: HomeEditorNodeOverride | undefined,
-  includeGeometry: boolean
-): CSSProperties | undefined {
-  if (!override) return undefined
-  const style: CSSProperties = {}
-  const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
-  if (includeGeometry && (override.explicitPosition || (override.explicitStyle && scale !== 1))) {
-    style.transform =
-      scale !== 1
-        ? `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px) scale(${scale})`
-        : `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px)`
-    style.transformOrigin = "top left"
-  }
-  if (includeGeometry && override.explicitSize) {
-    style.width = `${Math.max(8, Math.round(override.geometry.width))}px`
-    style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
-  }
-  if (override.explicitStyle) {
-    if (override.style.opacity !== undefined) style.opacity = override.style.opacity
-    if (override.style.backgroundColor) style.backgroundColor = override.style.backgroundColor
-    if (override.style.color) style.color = override.style.color
-    if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
-    if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
-    if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
-    if (includeGeometry) {
-      if (override.style.fontSize) style.fontSize = override.style.fontSize
-      if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
-      if (override.style.minHeight) style.minHeight = override.style.minHeight
-      if (override.style.paddingTop) style.paddingTop = override.style.paddingTop
-      if (override.style.paddingBottom) style.paddingBottom = override.style.paddingBottom
-    }
-  }
-  return Object.keys(style).length > 0 ? style : undefined
-}
-
-function resolveTextOverride(override: HomeEditorNodeOverride | undefined, fallback: string): string {
-  if (!override?.explicitContent) return fallback
-  const text = override.content.text?.trim()
-  return text ? text : fallback
-}
-
-function resolveHrefOverride(override: HomeEditorNodeOverride | undefined, fallback: string): string {
-  if (!override?.explicitContent) return fallback
-  const href = override.content.href?.trim()
-  return href ? href : fallback
-}
-
-function resolveImageSrcOverride(override: HomeEditorNodeOverride | undefined, fallback: string): string {
-  if (!override?.explicitContent) return fallback
-  const src = override.content.src?.trim()
-  return src ? src : fallback
-}
-
-export function Footer({ overrides = {} }: FooterProps) {
+export function Footer({}: FooterProps) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const footerRef = useRef<HTMLElement>(null)
   const logoRef = useRef<HTMLDivElement>(null)
@@ -75,16 +16,9 @@ export function Footer({ overrides = {} }: FooterProps) {
   const socialGroupRef = useRef<HTMLDivElement>(null)
   const dividerRef = useRef<HTMLDivElement>(null)
   const copyrightRef = useRef<HTMLParagraphElement>(null)
-  const footerSectionOverride = overrides["footer-section"]
-  const footerLogoOverride = overrides["footer-logo"]
-  const footerDescriptionOverride = overrides["footer-description"]
-  const footerCtaOverride = overrides["footer-cta"]
-  const footerSocialGroupOverride = overrides["footer-social-group"]
-  const footerDividerOverride = overrides["footer-divider"]
-  const footerCopyrightOverride = overrides["footer-copyright"]
   const resolvedFooterLogoSrc = useHomeEditorImageSrc(
     "footer-logo",
-    resolveImageSrcOverride(footerLogoOverride, "/images/t4tPics/logo-white.png")
+    "/images/t4tPics/logo-white.png"
   )
 
   useEffect(() => {
@@ -256,23 +190,13 @@ export function Footer({ overrides = {} }: FooterProps) {
       icon: LinktreeIcon,
     },
   ]
-  const footerDescription = resolveTextOverride(
-    footerDescriptionOverride,
-    "Berlin-based world music collective blending funk, soul, and reggae."
-  )
-  const footerCtaLabel = resolveTextOverride(footerCtaOverride, "Book the Band")
-  const footerCtaHref = resolveHrefOverride(footerCtaOverride, "#contact")
-  const footerCopyright = resolveTextOverride(footerCopyrightOverride, `© ${new Date().getFullYear()} Tales for the Tillerman`)
-
   return (
     <footer 
       ref={footerRef}
       data-editor-node-id="footer-section"
       data-editor-node-type="section"
       data-editor-node-label="Footer Section"
-      className="bg-black"
-      style={buildInlineStyleFromOverride(footerSectionOverride, false)}
-    >
+      className="bg-black">
       <div className="h-8 bg-gradient-to-b from-black/30 to-black sm:h-10 sm:from-black/20 md:h-12" />
       
       <div className="mx-auto max-w-4xl px-4 py-10 text-center sm:px-6 sm:py-12 flex flex-col items-center gap-10">
@@ -282,9 +206,7 @@ export function Footer({ overrides = {} }: FooterProps) {
           data-editor-node-id="footer-logo"
           data-editor-node-type="image"
           data-editor-node-label="Footer Logo"
-          className="mb-4 sm:mb-6"
-          style={buildInlineStyleFromOverride(footerLogoOverride, false)}
-        >
+          className="mb-4 sm:mb-6">
           <Image
             src={resolvedFooterLogoSrc}
             alt="Tales for the Tillerman"
@@ -299,9 +221,7 @@ export function Footer({ overrides = {} }: FooterProps) {
           data-editor-node-id="footer-description"
           data-editor-node-type="text"
           data-editor-node-label="Footer Description"
-          className="mx-auto mb-5 max-w-2xl px-2 text-sm text-white/70 sm:mb-6 sm:text-lg"
-          style={buildInlineStyleFromOverride(footerDescriptionOverride, false)}
-        >
+          className="mx-auto mb-5 max-w-2xl px-2 text-sm text-white/70 sm:mb-6 sm:text-lg">
           {footerDescription}
         </p>
 
@@ -312,9 +232,7 @@ export function Footer({ overrides = {} }: FooterProps) {
             data-editor-node-type="button"
             data-editor-node-label="Book the Band"
             href={footerCtaHref}
-            className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-7 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#FF8C21]/30 transition-all hover:shadow-xl hover:shadow-[#FF8C21]/40 sm:w-auto sm:px-8 sm:py-3 sm:text-base"
-            style={buildInlineStyleFromOverride(footerCtaOverride, false)}
-          >
+            className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-7 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#FF8C21]/30 transition-all hover:shadow-xl hover:shadow-[#FF8C21]/40 sm:w-auto sm:px-8 sm:py-3 sm:text-base">
             {footerCtaLabel}
           </a>
         </div>
@@ -326,9 +244,7 @@ export function Footer({ overrides = {} }: FooterProps) {
           data-editor-node-label="Footer Social Links"
           data-editor-grouped="true"
           data-link-group-summary="Footer Social Links"
-          className="mb-7 flex flex-wrap items-center justify-center gap-2 sm:gap-3"
-          style={buildInlineStyleFromOverride(footerSocialGroupOverride, false)}
-        >
+          className="mb-7 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           {socialLinks.map((link) => (
             <a
               key={link.id}
@@ -337,13 +253,11 @@ export function Footer({ overrides = {} }: FooterProps) {
               data-editor-node-label={`Footer ${link.name}`}
               data-link-item="true"
               data-link-item-name={link.name}
-              href={resolveHrefOverride(overrides[link.id], link.href)}
+              href={link.href}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={link.name}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-primary sm:h-12 sm:w-12"
-              style={buildInlineStyleFromOverride(overrides[link.id], false)}
-            >
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-primary sm:h-12 sm:w-12">
               <link.icon />
             </a>
           ))}
@@ -354,17 +268,13 @@ export function Footer({ overrides = {} }: FooterProps) {
           data-editor-node-id="footer-divider"
           data-editor-node-type="card"
           data-editor-node-label="Footer Divider"
-          className="flex flex-col items-center border-t border-white/10 pt-6 sm:pt-8 gap-4 w-full"
-          style={buildInlineStyleFromOverride(footerDividerOverride, false)}
-        >
+          className="flex flex-col items-center border-t border-white/10 pt-6 sm:pt-8 gap-4 w-full">
           <p 
             ref={copyrightRef}
             data-editor-node-id="footer-copyright"
             data-editor-node-type="text"
             data-editor-node-label="Footer Copyright"
-            className="text-white/40 text-sm text-center max-w-full"
-            style={buildInlineStyleFromOverride(footerCopyrightOverride, false)}
-          >
+            className="text-white/40 text-sm text-center max-w-full">
             {footerCopyright}
           </p>
         </div>

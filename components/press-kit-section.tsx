@@ -5,66 +5,10 @@ import { motion } from "framer-motion"
 import Image from "next/image"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
-import type { CSSProperties } from "react"
-import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
-interface PressKitSectionProps {
-  overrides?: Record<string, HomeEditorNodeOverride>
-}
+interface PressKitSectionProps {}
 
-function buildInlineStyleFromOverride(
-  override: HomeEditorNodeOverride | undefined,
-  includeGeometry: boolean
-): CSSProperties | undefined {
-  if (!override) return undefined
-  const style: CSSProperties = {}
-  const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
-  if (includeGeometry && (override.explicitPosition || (override.explicitStyle && scale !== 1))) {
-    style.transform =
-      scale !== 1
-        ? `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px) scale(${scale})`
-        : `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px)`
-    style.transformOrigin = "top left"
-  }
-  if (includeGeometry && override.explicitSize) {
-    style.width = `${Math.max(8, Math.round(override.geometry.width))}px`
-    style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
-  }
-  if (override.explicitStyle) {
-    if (override.style.opacity !== undefined) style.opacity = override.style.opacity
-    if (override.style.backgroundColor) style.backgroundColor = override.style.backgroundColor
-    if (override.style.color) style.color = override.style.color
-    if (override.style.fontSize) style.fontSize = override.style.fontSize
-    if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
-    if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
-    if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
-    if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
-    if (override.style.minHeight) style.minHeight = override.style.minHeight
-    if (override.style.paddingTop) style.paddingTop = override.style.paddingTop
-    if (override.style.paddingBottom) style.paddingBottom = override.style.paddingBottom
-  }
-  return Object.keys(style).length > 0 ? style : undefined
-}
-
-function resolveTextOverride(override: HomeEditorNodeOverride | undefined, fallback: string): string {
-  if (!override?.explicitContent) return fallback
-  const text = override.content.text?.trim()
-  return text ? text : fallback
-}
-
-function resolveHrefOverride(override: HomeEditorNodeOverride | undefined, fallback: string): string {
-  if (!override?.explicitContent) return fallback
-  const href = override.content.href?.trim()
-  return href ? href : fallback
-}
-
-function resolveImageSrcOverride(override: HomeEditorNodeOverride | undefined, fallback: string): string {
-  if (!override?.explicitContent) return fallback
-  const src = override.content.src?.trim()
-  return src ? src : fallback
-}
-
-export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
+export function PressKitSection({}: PressKitSectionProps) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
@@ -107,27 +51,12 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
     },
   ], [])
   const visibleResources = resources.slice(0, 2)
-  const sectionOverride = overrides["press-kit-section"]
-  const bgOverride = overrides["press-kit-bg"]
-  // SectionHeader stores title overrides under `${dataEditId}-title`.
-  const headerOverride = overrides["press-kit-header-title"]
-  const mainCardOverride = overrides["press-kit-main-card"]
-  const titleOverride = overrides["press-kit-title"]
-  const descriptionOverride = overrides["press-kit-description"]
-  const downloadButtonOverride = overrides["press-kit-download-button"]
-  const managerOverride = overrides["press-kit-manager"]
-  const resource0Override = overrides["press-kit-resource-0"]
-  const resource1Override = overrides["press-kit-resource-1"]
-  const resourceOverrides = [resource0Override, resource1Override]
-  const pressKitTitle = resolveTextOverride(titleOverride, "Complete Press Kit")
-  const pressKitDescription = resolveTextOverride(
-    descriptionOverride,
-    "Download our full press kit including high quality photos, biography, technical rider, and more."
-  )
-  const pressKitButtonLabel = resolveTextOverride(downloadButtonOverride, "Press Kit")
-  const pressKitButtonHref = resolveHrefOverride(downloadButtonOverride, "/PressKit T40 2025.26_compressed.pdf")
-  const pressKitManagerTitle = resolveTextOverride(managerOverride, "Manager")
-  const pressKitBgSrc = resolveImageSrcOverride(bgOverride, "/images/sections/press-bg.jpg")
+  const pressKitTitle = "Complete Press Kit"
+  const pressKitDescription = "Download our full press kit including high quality photos, biography, technical rider, and more."
+  const pressKitButtonLabel = "Press Kit"
+  const pressKitButtonHref = "/PressKit T40 2025.26_compressed.pdf"
+  const pressKitManagerTitle = "Manager"
+  const pressKitBgSrc = "/images/sections/press-bg.jpg"
 
   const resourceVariants = {
     hidden: { opacity: 0, y: 12 },
@@ -297,10 +226,8 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
       className="relative min-h-[85vh] min-h-[85dvh] w-full overflow-hidden sm:min-h-screen sm:min-h-[100dvh]"
       data-editor-node-id="press-kit-section"
       data-editor-node-type="section"
-      data-editor-node-label="Press Kit Section"
-      style={buildInlineStyleFromOverride(sectionOverride, false)}
-    >
-      <div ref={bgRef} className="absolute inset-0 -z-10" style={buildInlineStyleFromOverride(bgOverride, false)}>
+      data-editor-node-label="Press Kit Section">
+      <div ref={bgRef} className="absolute inset-0 -z-10">
         <Image
           src={pressKitBgSrc}
           alt="Press kit background"
@@ -323,7 +250,7 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
             ref={headerRef}
             className="mb-10 md:mb-12"
           >
-            <div style={buildInlineStyleFromOverride(headerOverride, false)}>
+            <div>
               <SectionHeader
               eyebrow="Media Resources"
               title="Professional Press Materials"
@@ -341,9 +268,7 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
             whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
             viewport={isEditing ? undefined : { once: true, amount: 0.2 }}
             transition={isEditing ? undefined : { duration: 0.45 }}
-            className="mb-10 md:mb-12"
-            style={buildInlineStyleFromOverride(mainCardOverride, false)}
-          >
+            className="mb-10 md:mb-12">
             <div 
               className="rounded-xl border border-border bg-card/35 p-4 text-center shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-6 md:p-9"
               data-editor-node-id="press-kit-main-card"
@@ -358,9 +283,7 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
                 className="mb-2 font-serif text-[clamp(1.5rem,6.5vw,2.1rem)] leading-tight text-foreground md:mb-3 md:text-[length:var(--text-h3)]"
                 data-editor-node-id="press-kit-title"
                 data-editor-node-type="text"
-                data-editor-node-label="Press Kit Title"
-                style={buildInlineStyleFromOverride(titleOverride, false)}
-              >
+                data-editor-node-label="Press Kit Title">
                 {pressKitTitle}
               </h3>
               <p 
@@ -368,9 +291,7 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
                 className="mx-auto mb-5 max-w-lg text-sm leading-relaxed text-muted-foreground md:mb-7 md:text-[length:var(--text-body)]"
                 data-editor-node-id="press-kit-description"
                 data-editor-node-type="text"
-                data-editor-node-label="Press Kit Description"
-                style={buildInlineStyleFromOverride(descriptionOverride, false)}
-              >
+                data-editor-node-label="Press Kit Description">
                 {pressKitDescription}
               </p>
               <a
@@ -380,9 +301,7 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF8C21] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-[#FF8C21]/22 transition-all hover:bg-[#FF7C00] sm:w-auto sm:px-7 sm:py-3.5 sm:text-base"
                 data-editor-node-id="press-kit-download-button"
                 data-editor-node-type="button"
-                data-editor-node-label="Download Press Kit Button"
-                style={buildInlineStyleFromOverride(downloadButtonOverride, false)}
-              >
+                data-editor-node-label="Download Press Kit Button">
                 <DownloadIcon className="h-6 w-6" />
                 {pressKitButtonLabel}
               </a>
@@ -392,9 +311,6 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {visibleResources.map((resource, index) => {
               const Icon = resource.icon
-              const resourceOverride = resourceOverrides[index]
-              const resourceTitle = resolveTextOverride(resourceOverride, resource.title)
-              const resourceHref = resolveHrefOverride(resourceOverride, resource.href)
               return (
                 <motion.a
                   ref={(el) => { resourceRefs.current[index] = el }}
@@ -405,7 +321,7 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
                   variants={resourceVariants}
                   whileHover={isEditing ? undefined : { y: -2 }}
                   transition={isEditing ? undefined : { type: "spring", stiffness: 320, damping: 22 }}
-                  href={resourceHref}
+                  href={resource.href}
                   target={resource.download ? undefined : "_blank"}
                   rel={resource.download ? undefined : "noopener noreferrer"}
                   download={resource.download ? true : undefined}
@@ -413,13 +329,11 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
                   data-editor-node-id={`press-kit-resource-${index}`}
                   data-editor-node-type="card"
                   data-editor-node-label={`Resource: ${resource.title}`}
-                  data-editor-grouped="true"
-                  style={buildInlineStyleFromOverride(resourceOverride, false)}
-                >
+                  data-editor-grouped="true">
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-muted-foreground transition-colors group-hover:text-foreground">
                     <Icon />
                   </div>
-                  <h3 className="mb-1 font-medium text-foreground">{resourceTitle}</h3>
+                  <h3 className="mb-1 font-medium text-foreground">{resource.title}</h3>
                   <p className="text-sm text-muted-foreground">{resource.description}</p>
                 </motion.a>
               )
@@ -428,9 +342,7 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
             <ManagerCard
               managerRef={managerRef}
               isEditing={isEditing}
-              managerTitle={pressKitManagerTitle}
-              managerStyle={buildInlineStyleFromOverride(managerOverride, false)}
-            />
+              managerTitle={pressKitManagerTitle}/>
           </div>
         </div>
       </div>

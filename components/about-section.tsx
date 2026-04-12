@@ -6,64 +6,13 @@ import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
-import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
-import type { CSSProperties } from "react"
-import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
 interface AboutSectionProps {
   className?: string
-  overrides?: Record<string, HomeEditorNodeOverride>
 }
 
-function buildInlineStyleFromOverride(
-  override: HomeEditorNodeOverride | undefined,
-  includeGeometry: boolean
-): CSSProperties | undefined {
-  if (!override) return undefined
-  const style: CSSProperties = {}
-  const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
-  if (includeGeometry && (override.explicitPosition || (override.explicitStyle && scale !== 1))) {
-    style.transform =
-      scale !== 1
-        ? `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px) scale(${scale})`
-        : `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px)`
-    style.transformOrigin = "top left"
-  }
-  if (includeGeometry && override.explicitSize) {
-    style.width = `${Math.max(8, Math.round(override.geometry.width))}px`
-    style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
-  }
-  if (override.explicitStyle) {
-    if (override.style.opacity !== undefined) style.opacity = override.style.opacity
-    if (override.style.backgroundColor) style.backgroundColor = override.style.backgroundColor
-    if (override.style.color) style.color = override.style.color
-    if (override.style.fontSize) style.fontSize = override.style.fontSize
-    if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
-    if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
-    if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
-    if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
-    if (override.style.minHeight) style.minHeight = override.style.minHeight
-    if (override.style.paddingTop) style.paddingTop = override.style.paddingTop
-    if (override.style.paddingBottom) style.paddingBottom = override.style.paddingBottom
-  }
-  return Object.keys(style).length > 0 ? style : undefined
-}
-
-function resolveTextOverride(override: HomeEditorNodeOverride | undefined, fallback: string): string {
-  if (!override?.explicitContent) return fallback
-  const text = override.content.text?.trim()
-  return text ? text : fallback
-}
-
-function resolveImageSrcOverride(override: HomeEditorNodeOverride | undefined, fallback: string): string {
-  if (!override?.explicitContent) return fallback
-  const src = override.content.src?.trim()
-  return src ? src : fallback
-}
-
-export function AboutSection({ className = "", overrides = {} }: AboutSectionProps) {
+export function AboutSection({ className = "" }: AboutSectionProps) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
-  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -75,16 +24,6 @@ export function AboutSection({ className = "", overrides = {} }: AboutSectionPro
 
   const { opacity, y } = useScrollAnimation(sectionRef)
   const [copied, setCopied] = useState(false)
-  const sectionOverride = overrides["about-section"]
-  const bgOverride = overrides["about-bg-image"]
-  // SectionHeader creates data-editor-node-id="about-header-title" (with -title suffix),
-  // so the editor stores overrides under "about-header-title", not "about-header".
-  const headerOverride = overrides["about-header-title"]
-  const textCardOverride = overrides["about-text-card"]
-  const text1Override = overrides["about-text-1"]
-  const text2Override = overrides["about-text-2"]
-  const tagsOverride = overrides["about-tags"]
-  const copyButtonOverride = overrides["about-copy-button"]
 
   // Register editable elements - only on isEditing change, not on callback changes
   useEffect(() => {
@@ -236,18 +175,12 @@ Their performances balance musical depth with danceable power, bringing together
     }
   }
 
-  const aboutHeaderTitle = resolveTextOverride(headerOverride, "A Journey Through Sound")
-  const aboutText1 = resolveTextOverride(
-    text1Override,
-    "Tales for the Tillerman is a Berlin-based collective blending world music, funk, soul, and reggae into a vibrant live experience. With roots spanning across continents, the band creates a sound that moves between groove, warmth, rhythm, and energy."
-  )
-  const aboutText2 = resolveTextOverride(
-    text2Override,
-    "Their performances balance musical depth with danceable power, bringing together five musicians into one fluid, dynamic live act. Based in Berlin, the project brings together world music fusion, stage energy, and a strong collective identity."
-  )
-  const aboutTags = resolveTextOverride(tagsOverride, "5 musicians • Berlin-based • World music fusion • Live experience")
-  const aboutCopyLabel = resolveTextOverride(copyButtonOverride, copied ? "✓ Copied to clipboard" : "Copy band bio")
-  const aboutBgSrc = resolveImageSrcOverride(bgOverride, "/images/about-bg-main.jpg")
+  const aboutHeaderTitle = "A Journey Through Sound"
+  const aboutText1 = "Tales for the Tillerman is a Berlin-based collective blending world music, funk, soul, and reggae into a vibrant live experience. With roots spanning across continents, the band creates a sound that moves between groove, warmth, rhythm, and energy."
+  const aboutText2 = "Their performances balance musical depth with danceable power, bringing together five musicians into one fluid, dynamic live act. Based in Berlin, the project brings together world music fusion, stage energy, and a strong collective identity."
+  const aboutTags = "5 musicians • Berlin-based • World music fusion • Live experience"
+  const aboutCopyLabel = copied ? "✓ Copied to clipboard" : "Copy band bio"
+  const aboutBgSrc = "/images/about-bg-main.jpg"
 
   return (
     <section 
@@ -256,7 +189,6 @@ Their performances balance musical depth with danceable power, bringing together
       data-editor-node-type="section"
       data-editor-node-label="Sección Sobre Nosotros"
       className={`relative isolate min-h-screen w-full overflow-hidden bg-black ${className}`}
-      style={buildInlineStyleFromOverride(sectionOverride, allowGeometryOverrides)}
     >
       <div 
         ref={bgRef}
@@ -265,7 +197,6 @@ Their performances balance musical depth with danceable power, bringing together
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo"
         className="absolute inset-0 z-0"
-        style={buildInlineStyleFromOverride(bgOverride, allowGeometryOverrides)}
       >
         <Image
           src={aboutBgSrc}
@@ -286,7 +217,7 @@ Their performances balance musical depth with danceable power, bringing together
           style={isEditing ? undefined : { opacity, y }} 
           className="mx-auto w-full max-w-4xl"
         >
-          <div ref={headerRef} style={buildInlineStyleFromOverride(headerOverride, allowGeometryOverrides)}>
+          <div ref={headerRef}>
             <SectionHeader
               eyebrow="About the Band"
               title={aboutHeaderTitle}
@@ -305,7 +236,6 @@ Their performances balance musical depth with danceable power, bringing together
               data-editor-node-type="card"
               data-editor-node-label="About Text Card"
               className="w-full rounded-3xl border border-white/10 bg-black/50 px-6 py-8 md:px-10 md:py-12 lg:px-12 lg:py-14 shadow-2xl backdrop-blur-md"
-              style={buildInlineStyleFromOverride(textCardOverride, allowGeometryOverrides)}
             >
               <div className="space-y-6 text-white md:space-y-8">
                 <p
@@ -314,7 +244,6 @@ Their performances balance musical depth with danceable power, bringing together
                   data-editor-node-type="text"
                   data-editor-node-label="Descripción 1"
                   className="mb-0 max-w-none text-base leading-relaxed text-white/95 md:text-lg"
-                  style={buildInlineStyleFromOverride(text1Override, allowGeometryOverrides)}
                 >
                   {aboutText1}
                 </p>
@@ -324,7 +253,6 @@ Their performances balance musical depth with danceable power, bringing together
                   data-editor-node-type="text"
                   data-editor-node-label="Descripción 2"
                   className="mb-0 max-w-none text-base leading-relaxed text-white/90 md:text-lg"
-                  style={buildInlineStyleFromOverride(text2Override, allowGeometryOverrides)}
                 >
                   {aboutText2}
                 </p>
@@ -334,7 +262,6 @@ Their performances balance musical depth with danceable power, bringing together
                   data-editor-node-type="text"
                   data-editor-node-label="Etiquetas"
                   className="mb-0 max-w-none pt-2 text-sm leading-relaxed md:text-base text-[#FF8C21]"
-                  style={buildInlineStyleFromOverride(tagsOverride, allowGeometryOverrides)}
                 >
                   {aboutTags}
                 </p>
@@ -351,7 +278,6 @@ Their performances balance musical depth with danceable power, bringing together
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.6, delay: 0.05 }}
               className="w-full rounded-3xl border border-white/10 bg-black/50 px-6 py-8 md:px-10 md:py-12 lg:px-12 lg:py-14 shadow-2xl backdrop-blur-md"
-              style={buildInlineStyleFromOverride(textCardOverride, allowGeometryOverrides)}
             >
               <div className="space-y-6 text-white md:space-y-8">
                 <p
@@ -360,7 +286,6 @@ Their performances balance musical depth with danceable power, bringing together
                   data-editor-node-type="text"
                   data-editor-node-label="Descripción 1"
                   className="mb-0 max-w-none text-base leading-relaxed text-white/95 md:text-lg"
-                  style={buildInlineStyleFromOverride(text1Override, allowGeometryOverrides)}
                 >
                   {aboutText1}
                 </p>
@@ -370,7 +295,6 @@ Their performances balance musical depth with danceable power, bringing together
                   data-editor-node-type="text"
                   data-editor-node-label="Descripción 2"
                   className="mb-0 max-w-none text-base leading-relaxed text-white/90 md:text-lg"
-                  style={buildInlineStyleFromOverride(text2Override, allowGeometryOverrides)}
                 >
                   {aboutText2}
                 </p>
@@ -380,7 +304,6 @@ Their performances balance musical depth with danceable power, bringing together
                   data-editor-node-type="text"
                   data-editor-node-label="Etiquetas"
                   className="mb-0 max-w-none pt-2 text-sm leading-relaxed md:text-base text-[#FF8C21]"
-                  style={buildInlineStyleFromOverride(tagsOverride, allowGeometryOverrides)}
                 >
                   {aboutTags}
                 </p>
@@ -398,7 +321,6 @@ Their performances balance musical depth with danceable power, bringing together
                 data-editor-node-type="button"
                 data-editor-node-label="Copy Bio Button"
                 className="inline-flex items-center justify-center rounded-2xl border border-[#FF8C21]/70 bg-[#FF8C21]/90 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#FF8C21]/30 md:text-lg"
-                style={buildInlineStyleFromOverride(copyButtonOverride, allowGeometryOverrides)}
               >
                 {aboutCopyLabel}
               </button>
@@ -418,7 +340,6 @@ Their performances balance musical depth with danceable power, bringing together
                     ? "border-[#FF8C21] bg-[#FF8C21] text-white shadow-[#FF8C21]/50"
                     : "border-[#FF8C21]/70 bg-[#FF8C21]/90 text-white shadow-[#FF8C21]/30 transition-all hover:bg-[#FF8C21] hover:shadow-[#FF8C21]/40"
                 }`}
-                style={buildInlineStyleFromOverride(copyButtonOverride, allowGeometryOverrides)}
               >
                 {aboutCopyLabel}
               </motion.button>
