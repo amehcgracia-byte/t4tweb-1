@@ -661,37 +661,31 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     // Set isHydrated first - don't activate editor until hydration is complete
   }, [])
 
-  // Separate effect for edit mode that runs AFTER hydration
+  // Single synchronous hydration and editor activation effect
+  // This runs once after the first client-side render to establish isHydrated and isEditing state
+  // without setTimeout delays that cause cascading visual changes during boot
   useEffect(() => {
+    // Mark as hydrated after first client-side render to prevent hydration mismatches
+    setIsHydrated(true)
+
     // ONLY activate editor on /editor route - ignore ?editMode=true query param completely
     const isEditorRoute = window.location.pathname === "/editor"
     const wantsEditMode = isEditorRoute
 
-    // Don't activate in edit mode until client is fully hydrated
-    const activateEditor = () => {
-      if (!wantsEditMode) {
-        setIsEditing(false)
-        setIsMobileEditBlocked(false)
-        return
-      }
-      const mediaQuery = window.matchMedia("(min-width: 1024px)")
-      if (mediaQuery.matches) {
-        setIsEditing(true)
-        setIsMobileEditBlocked(false)
-      } else {
-        setIsEditing(false)
-        setIsMobileEditBlocked(true)
-      }
+    if (!wantsEditMode) {
+      setIsEditing(false)
+      setIsMobileEditBlocked(false)
+      return
     }
 
-    // Wait for next tick after hydration to activate editor
-    const timeoutId = window.setTimeout(activateEditor, 0)
-    return () => window.clearTimeout(timeoutId)
-  }, [])
-
-  // Mark as hydrated after first client-side render to prevent hydration mismatches
-  useEffect(() => {
-    setIsHydrated(true)
+    const mediaQuery = window.matchMedia("(min-width: 1024px)")
+    if (mediaQuery.matches) {
+      setIsEditing(true)
+      setIsMobileEditBlocked(false)
+    } else {
+      setIsEditing(false)
+      setIsMobileEditBlocked(true)
+    }
   }, [])
 
   // Track if nodes have been built to prevent double-building on isEditing transitions
