@@ -881,23 +881,14 @@ export async function POST(request: Request) {
       }
     }
 
+    // hero-logo: src comes from Sanity, not from editor. Only styles are persistible.
+    // Explicitly skip src persistence for hero-logo to avoid non-sanity-cdn url mismatch.
     const heroLogoNode = payload.nodes.find((node) => node.id === "hero-logo")
     if (heroLogoNode?.explicitContent) {
-      const src = typeof heroLogoNode.content?.src === "string" ? heroLogoNode.content.src.trim() : ""
-      if (!src) {
-        skippedNodes.push("hero-logo:missing-content-src")
-      } else if (!isImageSrcPersistable(src)) {
-        skippedNodes.push("hero-logo:src(blob/data url)")
-      } else {
-        const imageField = buildSanityImageFieldFromSrc(src, projectId, dataset)
-        if (!imageField) {
-          skippedNodes.push("hero-logo:src(non-sanity-cdn url)")
-        } else {
-          heroPatch.logo = imageField
-          if (!persistedFields.includes("logo")) persistedFields.push("logo")
-          if (!persistedNodes.includes("hero-logo")) persistedNodes.push("hero-logo")
-        }
-      }
+      // Skip src: logo URL must come from Sanity doc, not from editor
+      // Only geometry/styles for logo are persistible (filters, scale, position)
+      skippedNodes.push("hero-logo:src(editor-not-allowed-source)")
+      if (!persistedNodes.includes("hero-logo")) persistedNodes.push("hero-logo")
     }
 
     /** Persist layout (translate/scale/size) for every hero block the visual editor can move — same as logo/title. */
