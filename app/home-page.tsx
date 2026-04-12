@@ -16,71 +16,30 @@ import { loadIntroBannerData } from "@/lib/sanity/intro-banner-loader"
 import { loadBandMembersData } from "@/lib/sanity/band-members-loader"
 import { loadLiveConcerts } from "@/lib/live-concerts-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
-import { HomeEditorStateApplier } from "@/components/home-editor-state-applier"
 import { HomeEditorOverridesProvider } from "@/components/home-editor-overrides-provider"
 import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
-import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 import { getTraceNodeId } from "@/lib/sanity/env"
 
 export const dynamic = "force-dynamic"
 
 export default async function HomePage({ perspective = "published", isEditorRoute = false }: { perspective?: "published" | "previewDrafts"; isEditorRoute?: boolean } = {}) {
   const traceNodeId = getTraceNodeId()
-  const [heroData, navigationData, introBannerData, bandMembersData, liveConcerts, homeEditorNodes] = await Promise.all([
+  const [heroData, navigationData, introBannerData, bandMembersData, liveConcerts] = await Promise.all([
     loadHeroData(),
     loadNavigationData(),
     loadIntroBannerData(),
     loadBandMembersData(),
     loadLiveConcerts(),
-    loadHomeEditorState(perspective),
   ])
-  const latestReleaseNodeOverrides = homeEditorNodes
-    .filter((node) => node.nodeId.startsWith("latest-release-"))
-    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
-      acc[node.nodeId] = node
-      return acc
-    }, {})
-  const bandMembersNodeOverrides = homeEditorNodes
-    .filter((node) => node.nodeId.startsWith("band-members-") || node.nodeId.startsWith("member-item-"))
-    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
-      acc[node.nodeId] = node
-      return acc
-    }, {})
-  const liveNodeOverrides = homeEditorNodes
-    .filter((node) => node.nodeId.startsWith("live-"))
-    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
-      acc[node.nodeId] = node
-      return acc
-    }, {})
-  const aboutNodeOverrides = homeEditorNodes
-    .filter((node) => node.nodeId.startsWith("about-"))
-    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
-      acc[node.nodeId] = node
-      return acc
-    }, {})
-  const pressKitNodeOverrides = homeEditorNodes
-    .filter((node) => node.nodeId.startsWith("press-kit-"))
-    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
-      acc[node.nodeId] = node
-      return acc
-    }, {})
-  const contactNodeOverrides = homeEditorNodes
-    .filter((node) => node.nodeId.startsWith("contact-"))
-    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
-      acc[node.nodeId] = node
-      return acc
-    }, {})
-  const footerNodeOverrides = homeEditorNodes
-    .filter((node) => node.nodeId.startsWith("footer-"))
-    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
-      acc[node.nodeId] = node
-      return acc
-    }, {})
+  // Load homeEditorNodes only for editor mode (for visual-editor state), but don't pass to sections
+  // Sections render from Sanity data only, without client-side override mixing
+  const homeEditorNodes = isEditorRoute
+    ? await loadHomeEditorState(perspective)
+    : []
 
   return (
     <main className="relative overflow-x-clip bg-black">
       <HomeEditorOverridesProvider nodes={homeEditorNodes}>
-        <HomeEditorStateApplier nodes={homeEditorNodes} />
         <RibbonsBlock />
         <Navigation data={navigationData} />
 
@@ -92,41 +51,41 @@ export default async function HomePage({ perspective = "published", isEditorRout
 
         <SectionDivider editorId="section-divider-intro-release" />
 
-        <LatestReleaseSection overrides={latestReleaseNodeOverrides} />
+        <LatestReleaseSection />
 
         <SectionDivider editorId="section-divider-release-about" />
 
         <SceneSection id="about">
-          <AboutSection overrides={aboutNodeOverrides} />
+          <AboutSection />
         </SceneSection>
 
         <SectionDivider editorId="section-divider-about-press" />
 
         <SceneSection id="press-kit">
-          <PressKitSection overrides={pressKitNodeOverrides} />
+          <PressKitSection />
         </SceneSection>
 
         <SectionDivider editorId="section-divider-press-band" />
 
         <SceneSection id="band">
-          <BandMembersSection initialMembers={bandMembersData} overrides={bandMembersNodeOverrides} />
+          <BandMembersSection initialMembers={bandMembersData} />
         </SceneSection>
 
         <SectionDivider editorId="section-divider-band-live" />
 
         <SceneSection id="live">
-          <LiveSection initialConcerts={liveConcerts} overrides={liveNodeOverrides} />
+          <LiveSection initialConcerts={liveConcerts} />
         </SceneSection>
 
         <SectionDivider editorId="section-divider-live-contact" />
 
         <SceneSection id="contact">
-          <ContactSection overrides={contactNodeOverrides} />
+          <ContactSection />
         </SceneSection>
 
         <SectionDivider editorId="section-divider-contact-footer" />
 
-        <Footer overrides={footerNodeOverrides} />
+        <Footer />
       </HomeEditorOverridesProvider>
     </main>
   )
