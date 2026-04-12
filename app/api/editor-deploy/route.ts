@@ -806,6 +806,35 @@ export async function POST(request: Request) {
       }
     }
 
+    const heroButtonsNode = payload.nodes.find((node) => node.id === "hero-buttons")
+    if (heroButtonsNode?.explicitContent) {
+      const buttons: Array<{ label: string; href: string; variant: string }> = []
+      for (let i = 0; i < 2; i++) {
+        const btnTextNode = payload.nodes.find((n) => n.id === `hero-button-${i + 1}`)
+        const btnHrefNode = payload.nodes.find((n) => n.id === `hero-button-${i + 1}-href`)
+        const btnText = btnTextNode?.explicitContent ? (typeof btnTextNode.content?.text === "string" ? btnTextNode.content.text.trim() : "") : ""
+        const btnHref = btnHrefNode?.explicitContent ? (typeof btnHrefNode.content?.href === "string" ? btnHrefNode.content.href.trim() : "") : ""
+        if (btnText) {
+          buttons.push({ label: btnText, href: btnHref, variant: i === 0 ? "primary" : "secondary" })
+        }
+      }
+      if (buttons.length > 0) {
+        heroPatch.ctaButtons = buttons
+        if (!persistedFields.includes("ctaButtons")) persistedFields.push("ctaButtons")
+        if (!persistedNodes.includes("hero-buttons")) persistedNodes.push("hero-buttons")
+      }
+    }
+
+    const heroScrollNode = payload.nodes.find((node) => node.id === "hero-scroll-indicator")
+    if (heroScrollNode?.explicitContent) {
+      const scrollText = typeof heroScrollNode.content?.text === "string" ? heroScrollNode.content.text.trim() : ""
+      if (scrollText) {
+        heroPatch.scrollLabel = scrollText
+        if (!persistedFields.includes("scrollLabel")) persistedFields.push("scrollLabel")
+        if (!persistedNodes.includes("hero-scroll-indicator")) persistedNodes.push("hero-scroll-indicator")
+      }
+    }
+
     // Doc-driven image writers: keep these nodes out of homeEditorState and persist directly
     // into the same Sanity docs consumed by loaders.
     const heroBgImageNode = payload.nodes.find((node) => node.id === "hero-bg-image")
@@ -862,7 +891,7 @@ export async function POST(request: Request) {
       if (!HERO_LAYOUT_IDS.has(node.id)) continue
       const scaleVal = (node.style as { scale?: number })?.scale
       const hasScale = node.explicitStyle && typeof scaleVal === "number"
-      if (!node.explicitPosition && !node.explicitSize && !hasScale) continue
+      if (!node.explicitPosition && !node.explicitSize && !hasScale && !node.explicitStyle) continue
 
       elementStylesInPayload[node.id] = { ...(elementStylesInPayload[node.id] || {}) }
       const s = elementStylesInPayload[node.id] as Record<string, unknown>
@@ -875,6 +904,37 @@ export async function POST(request: Request) {
         s.height = roundLayoutPx(node.geometry.height)
       }
       if (hasScale) s.scale = Math.round(scaleVal * 1000) / 1000
+      
+      if (node.explicitStyle) {
+        const st = node.style as Record<string, unknown>
+        // Image/background effects
+        if (node.id === "hero-bg-image" || node.id === "hero-logo") {
+          if (typeof st.contrast === "number") s.contrast = Math.round(st.contrast * 100) / 100
+          if (typeof st.saturation === "number") s.saturation = Math.round(st.saturation * 100) / 100
+          if (typeof st.brightness === "number") s.brightness = Math.round(st.brightness * 100) / 100
+          if (st.negative === true) s.negative = true
+          if (typeof st.opacity === "number") s.opacity = Math.round(st.opacity * 100) / 100
+        }
+        // Text styles
+        if (node.id === "hero-title-main" || node.id === "hero-title-accent") {
+          if (typeof st.color === "string") s.color = st.color
+          if (typeof st.fontSize === "string") s.fontSize = st.fontSize
+          if (typeof st.fontWeight === "string" || typeof st.fontWeight === "number") s.fontWeight = st.fontWeight
+          if (st.bold === true) s.bold = true
+          if (st.italic === true) s.italic = true
+          if (st.underline === true) s.underline = true
+          if (typeof st.opacity === "number") s.opacity = Math.round(st.opacity * 100) / 100
+          // Gradient properties
+          if (st.gradientEnabled === true) s.gradientEnabled = true
+          if (typeof st.gradientStart === "string") s.gradientStart = st.gradientStart
+          if (typeof st.gradientEnd === "string") s.gradientEnd = st.gradientEnd
+        }
+        // Navigation card opacity
+        if (node.id === "navigation-inner") {
+          if (typeof st.opacity === "number") s.opacity = Math.round(st.opacity * 100) / 100
+        }
+      }
+      
       log("hero layout captured", { id: node.id, x: s.x, y: s.y, w: s.width, h: s.height, scale: s.scale })
       if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
     }
