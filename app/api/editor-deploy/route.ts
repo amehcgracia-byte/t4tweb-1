@@ -756,10 +756,9 @@ export async function POST(request: Request) {
     const failedNodes: string[] = []
     const heroPatch: Record<string, unknown> = {}
 
-    // Clean up legacy titleSegments field if it exists
+    // Clean up legacy titleSegments field if it exists (don't report as skipped node, it's data cleanup)
     if (Array.isArray(existingHero?.titleSegments) && existingHero.titleSegments.length > 0) {
       heroPatch.titleSegments = null
-      skippedNodes.push("legacy-titleSegments-cleanup")
     }
 
     if (heroTitleNode?.explicitContent || heroTitleGroupNode?.explicitContent || heroTitleMainNode?.explicitContent || heroTitleAccentNode?.explicitContent || hasSegments) {
@@ -767,17 +766,19 @@ export async function POST(request: Request) {
         // New grouped editor structure: hero-title group node with text and accentText
         const groupMainText = typeof heroTitleGroupNode?.content?.text === "string" ? heroTitleGroupNode.content.text.trim() : ""
         const groupAccentText = typeof heroTitleGroupNode?.content?.accentText === "string" ? heroTitleGroupNode.content.accentText.trim() : ""
-        if (groupMainText) {
-          heroPatch.title = groupMainText
-          if (!persistedFields.includes("title")) persistedFields.push("title")
-          if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
-        }
-        if (groupAccentText) {
+
+        // Both title and titleHighlight must be persisted together for the modern model
+        if (groupMainText || groupAccentText) {
+          if (groupMainText) {
+            heroPatch.title = groupMainText
+            if (!persistedFields.includes("title")) persistedFields.push("title")
+            if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
+          }
+          // Always persist titleHighlight when there's grouped content, even if empty
           heroPatch.titleHighlight = groupAccentText
           if (!persistedFields.includes("titleHighlight")) persistedFields.push("titleHighlight")
           if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
-        }
-        if (!groupMainText && !groupAccentText) {
+        } else {
           skippedFields.push("title")
           failedNodes.push("hero-title-empty")
           skippedNodes.push("hero-title")
@@ -790,24 +791,22 @@ export async function POST(request: Request) {
         heroPatch.titleHighlight = validSegments[1].text.trim()
         if (!persistedFields.includes("titleHighlight")) persistedFields.push("titleHighlight")
         persistedNodes.push("hero-title-accent")
-      } else if (hasPlainText) {
-        heroPatch.title = (heroTitleNode!.content.text as string).trim()
-        persistedFields.push("title")
-        persistedNodes.push("hero-title")
       } else {
         const mainText = typeof heroTitleMainNode?.content?.text === "string" ? heroTitleMainNode.content.text.trim() : ""
         const accentText = typeof heroTitleAccentNode?.content?.text === "string" ? heroTitleAccentNode.content.text.trim() : ""
-        if (mainText) {
-          heroPatch.title = mainText
-          if (!persistedFields.includes("title")) persistedFields.push("title")
-          if (!persistedNodes.includes("hero-title-main")) persistedNodes.push("hero-title-main")
-        }
-        if (accentText) {
+
+        // Both title and titleHighlight must be persisted together for the modern model
+        if (mainText || accentText) {
+          if (mainText) {
+            heroPatch.title = mainText
+            if (!persistedFields.includes("title")) persistedFields.push("title")
+            if (!persistedNodes.includes("hero-title-main")) persistedNodes.push("hero-title-main")
+          }
+          // Always persist titleHighlight when there are separated title nodes, even if empty
           heroPatch.titleHighlight = accentText
           if (!persistedFields.includes("titleHighlight")) persistedFields.push("titleHighlight")
           if (!persistedNodes.includes("hero-title-accent")) persistedNodes.push("hero-title-accent")
-        }
-        if (!mainText && !accentText) {
+        } else {
           skippedFields.push("title")
           failedNodes.push("hero-title-empty")
           skippedNodes.push("hero-title")
@@ -877,15 +876,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // hero-logo: src comes from Sanity, not from editor. Only styles are persistible.
-    // Explicitly skip src persistence for hero-logo to avoid non-sanity-cdn url mismatch.
-    const heroLogoNode = payload.nodes.find((node) => node.id === "hero-logo")
-    if (heroLogoNode?.explicitContent) {
-      // Skip src: logo URL must come from Sanity doc, not from editor
-      // Only geometry/styles for logo are persistible (filters, scale, position)
-      skippedNodes.push("hero-logo:src(editor-not-allowed-source)")
-      if (!persistedNodes.includes("hero-logo")) persistedNodes.push("hero-logo")
-    }
+    // hero-logo: URL is persisted via Sanity document, not from editor src.
+    // Only style/layout changes (filters, scale, position) are editable and persist to elementStyles.
 
     /** Persist layout (translate/scale/size) for every hero block the visual editor can move — same as logo/title. */
     const HERO_LAYOUT_IDS = new Set([
@@ -1510,11 +1502,6 @@ export async function POST(request: Request) {
         const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
         expected.backgroundImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
         readBack.backgroundImageRef = heroReadback?.backgroundImage?.asset?._ref ?? heroReadback?.backgroundImage?.asset?._id
-      } else if (nodeId === "hero-logo" && node.explicitContent && writeContentKeys.has("src")) {
-        storageTarget = "heroSection.fields"
-        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
-        expected.logoRef = parseSanityImageRefFromUrl(src, projectId, dataset)
-        readBack.logoRef = heroReadback?.logo?.asset?._ref ?? heroReadback?.logo?.asset?._id
       } else if (isHeroLayoutId && (node.explicitPosition || node.explicitSize || expectedScale !== undefined)) {
         storageTarget = "heroSection.elementStyles"
         const heroStyle = heroReadback?.elementStyles?.[nodeId] || {}
