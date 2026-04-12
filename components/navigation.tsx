@@ -168,35 +168,6 @@ export function Navigation({ data }: { data: NavigationData }) {
     }
   }, [isMobileMenuOpen])
 
-  // Apply persisted element styles to public render
-  useEffect(() => {
-    if (isEditing || !data.elementStyles) return
-
-    const applyStyles = (targetId: string, styles: Record<string, unknown>) => {
-      const element = document.querySelector(`[data-editor-node-id="${targetId}"]`) as HTMLElement
-      if (!element) return
-
-      // Card/container opacity
-      if (targetId === "navigation-inner") {
-        if (typeof styles.opacity === "number") {
-          const opacity = Math.max(0, Math.min(1, styles.opacity))
-          const rgbaColor = `rgba(255, 255, 255, ${opacity * 0.03})`
-          element.style.backgroundColor = rgbaColor
-        }
-      }
-
-      // Position and size
-      if (typeof styles.x === "number") element.style.transform = (element.style.transform || "") + ` translateX(${styles.x}px)`
-      if (typeof styles.y === "number") element.style.transform = (element.style.transform || "") + ` translateY(${styles.y}px)`
-      if (typeof styles.width === "number") element.style.width = `${styles.width}px`
-      if (typeof styles.height === "number") element.style.height = `${styles.height}px`
-      if (typeof styles.scale === "number") element.style.transform = (element.style.transform || "") + ` scale(${styles.scale})`
-    }
-
-    for (const [targetId, styles] of Object.entries(data.elementStyles)) {
-      applyStyles(targetId, styles as Record<string, unknown>)
-    }
-  }, [data.elementStyles, isEditing])
 
   const navLinkClass =
     "inline-flex items-center rounded-lg px-3 py-2 text-[0.8125rem] font-medium tracking-wide !text-white/65 transition-colors duration-200 hover:!text-white lg:px-3.5 lg:text-[0.875rem]"

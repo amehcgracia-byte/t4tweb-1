@@ -29,61 +29,6 @@ export function HeroSection({ data }: { data: HeroData }) {
     setIsDebugMode(params.get("heroDebug") === "1")
   }, [isEditing])
 
-  // Apply persisted element styles to public render
-  useEffect(() => {
-    if (isEditing || !data.elementStyles) return
-
-    const applyStyles = (targetId: string, styles: Record<string, unknown>) => {
-      // For hero-title internal spans, search by data-editor-internal-id instead
-      const isInternalSpan = targetId === "hero-title-main" || targetId === "hero-title-accent"
-      const selector = isInternalSpan
-        ? `[data-editor-internal-id="${targetId}"]`
-        : `[data-editor-node-id="${targetId}"]`
-      const element = document.querySelector(selector) as HTMLElement
-      if (!element) return
-
-      // Text styles
-      if (targetId === "hero-title-main" || targetId === "hero-title-accent") {
-        if (typeof styles.color === "string") element.style.color = styles.color
-        if (typeof styles.fontSize === "string") element.style.fontSize = styles.fontSize
-        if (typeof styles.fontWeight === "string" || typeof styles.fontWeight === "number") element.style.fontWeight = String(styles.fontWeight)
-        if (styles.bold === true) element.style.fontWeight = "700"
-        if (styles.italic === true) element.style.fontStyle = "italic"
-        if (styles.underline === true) element.style.textDecoration = "underline"
-        if (typeof styles.opacity === "number") element.style.opacity = String(styles.opacity)
-        // Gradient override
-        if (styles.gradientEnabled === true && typeof styles.gradientStart === "string" && typeof styles.gradientEnd === "string") {
-          element.style.background = `linear-gradient(to right, ${styles.gradientStart}, ${styles.gradientEnd})`
-          element.style.backgroundClip = "text"
-          element.style.webkitBackgroundClip = "text"
-          element.style.color = "transparent"
-          element.style.webkitTextFillColor = "transparent"
-        }
-      }
-
-      // Position and size
-      if (typeof styles.x === "number") element.style.transform = (element.style.transform || "") + ` translateX(${styles.x}px)`
-      if (typeof styles.y === "number") element.style.transform = (element.style.transform || "") + ` translateY(${styles.y}px)`
-      if (typeof styles.width === "number") element.style.width = `${styles.width}px`
-      if (typeof styles.height === "number") element.style.height = `${styles.height}px`
-      if (typeof styles.scale === "number") element.style.transform = (element.style.transform || "") + ` scale(${styles.scale})`
-
-      // Image effects
-      if (targetId === "hero-bg-image" || targetId === "hero-logo") {
-        let filter = ""
-        if (typeof styles.contrast === "number") filter += ` contrast(${styles.contrast})`
-        if (typeof styles.saturation === "number") filter += ` saturate(${styles.saturation})`
-        if (typeof styles.brightness === "number") filter += ` brightness(${styles.brightness})`
-        if (styles.negative === true) filter += " invert(1)"
-        if (filter) element.style.filter = filter.trim()
-        if (typeof styles.opacity === "number") element.style.opacity = String(styles.opacity)
-      }
-    }
-
-    for (const [targetId, styles] of Object.entries(data.elementStyles)) {
-      applyStyles(targetId, styles as Record<string, unknown>)
-    }
-  }, [data.elementStyles, isEditing])
 
   // Register editable elements - only on isEditing change
   useEffect(() => {
