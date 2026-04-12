@@ -264,6 +264,7 @@ export function HeroSection({ data }: { data: HeroData }) {
             {content.subtitle}
           </p>
 
+          {/* DISABLED: Hero buttons temporarily disabled until Sanity is cleaned of residual data
           {content.ctaButtons && content.ctaButtons.length > 0 && (
             <div
               ref={heroButtonsRef}
@@ -287,6 +288,7 @@ export function HeroSection({ data }: { data: HeroData }) {
               ))}
             </div>
           )}
+          */}
         </div>
       </div>
 
