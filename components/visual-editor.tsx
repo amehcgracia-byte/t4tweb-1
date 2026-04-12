@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
 
-type NodeType = "section" | "background" | "card" | "text" | "button" | "image"
+type NodeType = "section" | "background" | "card" | "text" | "button" | "image" | "group"
 
 type Point = { x: number; y: number }
 
@@ -71,6 +71,10 @@ interface EditorNode {
     gradientEnabled?: boolean
     gradientStart?: string
     gradientEnd?: string
+    accentText?: string
+    accentGradientEnabled?: boolean
+    accentGradientStart?: string
+    accentGradientEnd?: string
   }
   explicitContent: boolean
   explicitStyle: boolean
@@ -198,6 +202,7 @@ type Command =
   | { type: "UPDATE_CARD"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_BACKGROUND"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_SECTION"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
+  | { type: "UPDATE_GROUP"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "DELETE_NODE"; nodeId: string }
   | { type: "COPY_NODE"; nodeId: string }
   | { type: "CUT_NODE"; nodeId: string }
@@ -212,6 +217,7 @@ const typePriority: Record<NodeType, number> = {
   background: 4,
   section: 5,
   image: 3,
+  group: 2,
 }
 
 const RELEASE_TRACE_IDS = new Set([
@@ -967,14 +973,15 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         case "UPDATE_IMAGE":
         case "UPDATE_CARD":
         case "UPDATE_BACKGROUND":
-        case "UPDATE_SECTION": {
+        case "UPDATE_SECTION":
+        case "UPDATE_GROUP": {
           patchNode(command.nodeId, (n) => {
             const content: EditorNode["content"] = { ...n.content }
             const style = { ...n.style }
             let isContentEdit = !!n.explicitContent
             let isStyleEdit = !!n.explicitStyle
             Object.entries(command.patch).forEach(([k, v]) => {
-              if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl", "gradientEnabled", "gradientStart", "gradientEnd"].includes(k)) {
+              if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl", "gradientEnabled", "gradientStart", "gradientEnd", "accentText", "accentGradientEnabled", "accentGradientStart", "accentGradientEnd"].includes(k)) {
                 isContentEdit = true;
                 (content as Record<string, unknown>)[k] = v
               }
@@ -2152,9 +2159,106 @@ export function VisualEditorOverlay() {
               </div>
             )}
 
-            {/* DISABLED: Legacy hero-title segment UI. Use hero-title-main and hero-title-accent as separate nodes instead. */}
+            {/* Hero Title Group Editor - edit two phrases internally */}
+            {selectedNode.type === "group" && selectedNode.id === "hero-title" && (
+              <div className="space-y-3 rounded border border-orange-200 bg-orange-50 p-3">
+                <div className="font-semibold text-xs text-orange-900">Hero Title (Group Editor)</div>
 
-            {/* DISABLED: Legacy hero-subtitle segment UI. Use hero-subtitle as a single node or split into separate nodes instead. */}
+                {/* Main Title */}
+                <div className="space-y-2">
+                  <div className="text-[10px] font-semibold text-slate-700">Phrase 1: Main</div>
+                  <textarea
+                    className="w-full rounded border p-1 text-xs"
+                    value={selectedNode.content.text || ""}
+                    onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { text: e.target.value } })}
+                    placeholder="Main title text"
+                    rows={2}
+                  />
+                  <div className="mt-2 rounded border border-orange-200 bg-white p-2">
+                    <label className="text-[10px] font-semibold">Gradient</label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="main-gradient"
+                        checked={selectedNode.content.gradientEnabled || false}
+                        onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { gradientEnabled: e.target.checked } })}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-[10px]">Enable</span>
+                    </div>
+                    {selectedNode.content.gradientEnabled && (
+                      <div className="mt-1 grid grid-cols-2 gap-1">
+                        <div>
+                          <label className="text-[9px]">Start</label>
+                          <input
+                            type="color"
+                            className="h-6 w-full rounded border p-0.5"
+                            value={selectedNode.content.gradientStart || "#FFB15A"}
+                            onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { gradientStart: e.target.value } })}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px]">End</label>
+                          <input
+                            type="color"
+                            className="h-6 w-full rounded border p-0.5"
+                            value={selectedNode.content.gradientEnd || "#FF6C00"}
+                            onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { gradientEnd: e.target.value } })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Accent Title */}
+                <div className="space-y-2 border-t pt-2">
+                  <div className="text-[10px] font-semibold text-slate-700">Phrase 2: Accent</div>
+                  <textarea
+                    className="w-full rounded border p-1 text-xs"
+                    value={selectedNode.content.accentText || ""}
+                    onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { accentText: e.target.value } })}
+                    placeholder="Accent title text"
+                    rows={2}
+                  />
+                  <div className="mt-2 rounded border border-orange-200 bg-white p-2">
+                    <label className="text-[10px] font-semibold">Gradient</label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="accent-gradient"
+                        checked={selectedNode.content.accentGradientEnabled || false}
+                        onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { accentGradientEnabled: e.target.checked } })}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-[10px]">Enable</span>
+                    </div>
+                    {selectedNode.content.accentGradientEnabled && (
+                      <div className="mt-1 grid grid-cols-2 gap-1">
+                        <div>
+                          <label className="text-[9px]">Start</label>
+                          <input
+                            type="color"
+                            className="h-6 w-full rounded border p-0.5"
+                            value={selectedNode.content.accentGradientStart || "#FFB15A"}
+                            onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { accentGradientStart: e.target.value } })}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px]">End</label>
+                          <input
+                            type="color"
+                            className="h-6 w-full rounded border p-0.5"
+                            value={selectedNode.content.accentGradientEnd || "#FF6C00"}
+                            onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { accentGradientEnd: e.target.value } })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {(selectedNode.type === "text" || selectedNode.type === "button") &&
               !(selectedNode.type === "text" && selectedNode.id === "hero-title" && heroTitleSegments.length > 0) &&

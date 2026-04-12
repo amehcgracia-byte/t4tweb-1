@@ -42,6 +42,10 @@ interface DeployNodePayload {
     gradientEnabled?: boolean
     gradientStart?: string
     gradientEnd?: string
+    accentText?: string
+    accentGradientEnabled?: boolean
+    accentGradientStart?: string
+    accentGradientEnd?: string
     date?: string
     venue?: string
     city?: string
@@ -581,6 +585,7 @@ export async function POST(request: Request) {
     log("environment", { projectId: projectId ? "set" : "missing", dataset, writeToken: sanityToken ? "set" : "missing" })
 
     const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text") // legacy alias
+    const heroTitleGroupNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "group") // new grouped node
     const heroTitleMainNode = payload.nodes.find((node) => node.id === "hero-title-main" && node.type === "text")
     const heroTitleAccentNode = payload.nodes.find((node) => node.id === "hero-title-accent" && node.type === "text")
     const heroSubtitleNode = payload.nodes.find((node) => node.id === "hero-subtitle" && node.type === "text")
@@ -590,6 +595,7 @@ export async function POST(request: Request) {
     const validSegments = incomingSegments.filter((segment) => typeof segment?.text === "string" && segment.text.length > 0)
     const hasSegments = validSegments.length >= 2
     const hasPlainText = typeof heroTitleNode?.content?.text === "string" && heroTitleNode.content.text.trim().length > 0
+    const hasGroupedText = heroTitleGroupNode?.explicitContent && (typeof heroTitleGroupNode?.content?.text === "string" || typeof heroTitleGroupNode?.content?.accentText === "string")
 
     const steps: DeployStepResult[] = [{
       step: "checking",
@@ -751,8 +757,27 @@ export async function POST(request: Request) {
     const failedNodes: string[] = []
     const heroPatch: Record<string, unknown> = {}
 
-    if (heroTitleNode?.explicitContent || heroTitleMainNode?.explicitContent || heroTitleAccentNode?.explicitContent || hasSegments) {
-      if (hasSegments && heroTitleMode === "segmented") {
+    if (heroTitleNode?.explicitContent || heroTitleGroupNode?.explicitContent || heroTitleMainNode?.explicitContent || heroTitleAccentNode?.explicitContent || hasSegments) {
+      if (hasGroupedText) {
+        // New grouped editor structure: hero-title group node with text and accentText
+        const groupMainText = typeof heroTitleGroupNode?.content?.text === "string" ? heroTitleGroupNode.content.text.trim() : ""
+        const groupAccentText = typeof heroTitleGroupNode?.content?.accentText === "string" ? heroTitleGroupNode.content.accentText.trim() : ""
+        if (groupMainText) {
+          heroPatch.title = groupMainText
+          if (!persistedFields.includes("title")) persistedFields.push("title")
+          if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
+        }
+        if (groupAccentText) {
+          heroPatch.titleHighlight = groupAccentText
+          if (!persistedFields.includes("titleHighlight")) persistedFields.push("titleHighlight")
+          if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
+        }
+        if (!groupMainText && !groupAccentText) {
+          skippedFields.push("title")
+          failedNodes.push("hero-title-empty")
+          skippedNodes.push("hero-title")
+        }
+      } else if (hasSegments && heroTitleMode === "segmented") {
         heroPatch.titleSegments = validSegments
         persistedFields.push("titleSegments")
         persistedNodes.push("hero-title")
