@@ -1,5 +1,5 @@
-import HomePage from "./home-page"
+import HomePagePublic from "./home-page-public"
 
 export default async function Home() {
-  return <HomePage />
+  return <HomePagePublic />
 }
