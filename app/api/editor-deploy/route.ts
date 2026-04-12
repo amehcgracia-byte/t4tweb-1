@@ -735,21 +735,13 @@ export async function POST(request: Request) {
       const groupMainText = typeof heroTitleGroupNode?.content?.text === "string" ? heroTitleGroupNode.content.text.trim() : ""
       const groupAccentText = typeof heroTitleGroupNode?.content?.accentText === "string" ? heroTitleGroupNode.content.accentText.trim() : ""
 
-      // Both title and titleHighlight must be persisted together
-      if (groupMainText || groupAccentText) {
-        if (groupMainText) {
-          heroPatch.title = groupMainText
-          if (!persistedFields.includes("title")) persistedFields.push("title")
-          if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
-        }
-        // Always persist titleHighlight when there's grouped content, even if empty
-        heroPatch.titleHighlight = groupAccentText
-        if (!persistedFields.includes("titleHighlight")) persistedFields.push("titleHighlight")
-        if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
-      } else {
-        skippedFields.push("title")
-        skippedNodes.push("hero-title")
-      }
+      // Always persist both fields, even if empty (allows cleanup from editor)
+      heroPatch.title = groupMainText
+      heroPatch.titleHighlight = groupAccentText
+
+      if (!persistedFields.includes("title")) persistedFields.push("title")
+      if (!persistedFields.includes("titleHighlight")) persistedFields.push("titleHighlight")
+      if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
     }
 
     if (heroSubtitleNode?.explicitContent) {
