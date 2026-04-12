@@ -7,44 +7,10 @@ import { useVisualEditor } from "@/components/visual-editor"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 
-interface HeroDebug {
-  sourceUsed: "server"
-  hasTitleSegments: boolean
-  titleSegmentsCount: number
-  titleValue: string
-  titleHighlightValue: string
-  segmentTexts: string[]
-  hasGradientFields: boolean
-}
-
-interface HeroTitleSegment {
-  text: string
-  color?: string
-  bold?: boolean
-  italic?: boolean
-  underline?: boolean
-  opacity?: number
-  fontSize?: string
-  fontFamily?: string
-  gradientEnabled?: boolean
-  gradientStart?: string
-  gradientEnd?: string
-}
 
 export function HeroSection({ data }: { data: HeroData }) {
   const sectionRef = useRef<HTMLElement>(null)
   const [isDebugMode, setIsDebugMode] = useState(false)
-
-  // Build debug info from server-passed data
-  const debug = useMemo<HeroDebug>(() => ({
-    sourceUsed: "server",
-    hasTitleSegments: Array.isArray(data.titleSegments) && data.titleSegments.length > 0,
-    titleSegmentsCount: Array.isArray(data.titleSegments) ? data.titleSegments.length : 0,
-    titleValue: data.title || "",
-    titleHighlightValue: data.titleHighlight || "",
-    segmentTexts: Array.isArray(data.titleSegments) ? data.titleSegments.map((s) => s.text || "") : [],
-    hasGradientFields: Array.isArray(data.titleSegments) && data.titleSegments.some((s) => s.gradientEnabled === true),
-  }), [data])
 
   // Editable refs
   const heroSectionRef = useRef<HTMLElement>(null)
@@ -384,14 +350,8 @@ export function HeroSection({ data }: { data: HeroData }) {
       {isDebugMode && (
         <div className="absolute top-4 right-4 z-[9999] rounded-lg bg-black/80 px-3 py-2 text-left text-[10px] font-mono text-white/80 backdrop-blur-sm border border-white/10">
           <div className="font-bold text-white/90 mb-1">Hero Debug</div>
-          <div>source: <span className="text-green-400">{debug.sourceUsed}</span></div>
-          <div>title: <span className="text-yellow-300">{debug.titleValue || "(empty)"}</span></div>
-          <div>titleHighlight: <span className="text-orange-400">{debug.titleHighlightValue || "(empty)"}</span></div>
-          <div>segments: {debug.titleSegmentsCount}</div>
-          {debug.segmentTexts.map((t, i) => (
-            <div key={i} className="text-white/60 ml-2">  [{i}]: {t}</div>
-          ))}
-          <div>gradient fields: {debug.hasGradientFields ? "yes" : "no"}</div>
+          <div>title: <span className="text-yellow-300">{mainTitleText || "(empty)"}</span></div>
+          <div>titleHighlight: <span className="text-orange-400">{accentTitleText || "(empty)"}</span></div>
           <div className="mt-1 border-t border-white/10 pt-1">
             elementStyles keys:{" "}
             {data.elementStyles && Object.keys(data.elementStyles).length > 0
