@@ -220,6 +220,14 @@ export function ContactSection({}: ContactSectionProps) {
   const contactBgSrc = "/images/sections/contact-bg.jpg"
   const emailHref = contactMethods[0].href
   const telegramHref = contactMethods[1].href
+  const contactHeaderTitle = "Get in Touch"
+  const emailTitle = contactMethods[0].title
+  const emailDescription = contactMethods[0].description
+  const emailAddress = contactMethods[0].label
+  const middleText = "or"
+  const telegramTitle = contactMethods[1].title
+  const telegramDescription = contactMethods[1].description
+  const telegramHandle = contactMethods[1].label
   return (
     <section
       ref={sectionRef}
