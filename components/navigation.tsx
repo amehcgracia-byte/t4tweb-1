@@ -211,8 +211,11 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-label="Logo Image"
                 className="relative h-full w-auto rounded-full shadow-lg shadow-black/30 overflow-hidden"
                 style={{
-                  width: "clamp(2.75rem, 9vw, 3.5rem)",
-                  height: "clamp(2.75rem, 9vw, 3.5rem)",
+                  ...{
+                    width: "clamp(2.75rem, 9vw, 3.5rem)",
+                    height: "clamp(2.75rem, 9vw, 3.5rem)",
+                  },
+                  ...(data.elementStyles["nav-logo"] as any),
                 }}
               >
                 <Image
@@ -222,12 +225,13 @@ export function Navigation({ data }: { data: NavigationData }) {
                   className="object-cover"
                 />
               </div>
-              <span 
+              <span
                 ref={brandNameRef}
                 className="hidden font-serif text-lg font-medium tracking-wide text-white sm:text-xl md:block lg:text-2xl"
                 data-editor-node-id="nav-brand-name"
                 data-editor-node-type="text"
                 data-editor-node-label="Brand Name"
+                style={data.elementStyles["nav-brand-name"] as any}
               >
                 {data.brandName}
               </span>
