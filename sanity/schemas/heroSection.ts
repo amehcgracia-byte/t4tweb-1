@@ -86,8 +86,6 @@ export default defineType({
         elementStyleTargetField('Hero section (root)', 'hero-section'),
         elementStyleTargetField('Hero background image', 'hero-bg-image'),
         elementStyleTargetField('Hero title (block)', 'hero-title'),
-        elementStyleTargetField('Hero title — main line', 'hero-title-main'),
-        elementStyleTargetField('Hero title — accent line', 'hero-title-accent'),
         elementStyleTargetField('Hero subtitle', 'hero-subtitle'),
         elementStyleTargetField('Hero logo', 'hero-logo'),
         elementStyleTargetField('Hero buttons row', 'hero-buttons'),

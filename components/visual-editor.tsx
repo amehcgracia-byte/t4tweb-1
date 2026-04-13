@@ -798,6 +798,29 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const hasManagedTransform = el.dataset.editorManagedTransform === "true"
     const hasManagedSize = el.dataset.editorManagedSize === "true"
     const nodeScale = Math.max(0.1, node.style.scale ?? 1)
+
+    // Log hero-scroll-indicator layout application
+    if (node.id === "hero-scroll-indicator") {
+      console.log("[HERO-SCROLL][applyNodeToDom-layout]", {
+        nodeId: node.id,
+        x: g.x,
+        y: g.y,
+        width: g.width,
+        height: g.height,
+        scale: nodeScale,
+        explicitPosition: node.explicitPosition,
+        explicitSize: node.explicitSize,
+        explicitStyle: node.explicitStyle,
+        willApplyTransform: node.explicitPosition || (node.explicitStyle && nodeScale !== 1),
+        appliedTransform: node.explicitPosition || (node.explicitStyle && nodeScale !== 1)
+          ? (nodeScale !== 1 ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})` : `translate(${g.x}px, ${g.y}px)`)
+          : "none",
+        currentTransform: el.style.transform,
+        currentWidth: el.style.width,
+        currentHeight: el.style.height
+      })
+    }
+
     if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
       el.style.transform = nodeScale !== 1
         ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})`
@@ -837,15 +860,30 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       }
       if (node.explicitStyle) {
         // Apply gradient first if enabled, BEFORE applying color
-        if ((node.type === "text" || node.type === "button") && node.content.gradientEnabled) {
-          el.style.background = `linear-gradient(90deg, ${node.content.gradientStart || "#FFB15A"}, ${node.content.gradientEnd || "#FF6C00"})`
+        if ((node.type === "text" || node.type === "button") && node.style.gradientEnabled) {
+          el.style.background = `linear-gradient(90deg, ${node.style.gradientStart || "#FFB15A"}, ${node.style.gradientEnd || "#FF6C00"})`
           el.style.backgroundClip = "text"
           el.style.webkitBackgroundClip = "text"
           el.style.webkitTextFillColor = "transparent"
           el.style.color = "transparent"
+          if (node.id === "hero-title" || node.id === "hero-subtitle") {
+            console.log(`[HERO-GRADIENT][applyNodeToDom-${node.id}]`, {
+              gradientEnabled: node.style.gradientEnabled,
+              gradientStart: node.style.gradientStart,
+              gradientEnd: node.style.gradientEnd,
+              applied: true
+            })
+          }
         } else {
           // Only apply color if gradient is NOT enabled
           if (node.style.color) el.style.color = node.style.color
+          if (node.id === "hero-title" || node.id === "hero-subtitle") {
+            console.log(`[HERO-GRADIENT][applyNodeToDom-${node.id}]`, {
+              gradientEnabled: node.style.gradientEnabled,
+              fallbackColor: node.style.color,
+              applied: false
+            })
+          }
         }
         if (node.style.fontSize) el.style.fontSize = node.style.fontSize
         if (node.style.fontFamily) el.style.fontFamily = node.style.fontFamily
@@ -2429,12 +2467,60 @@ export function VisualEditorOverlay() {
                   onChange={async (e) => {
                     const file = e.target.files?.[0]
                     if (!file) return
+
+                    // For hero-logo, try to upload to Sanity first
+                    const isHeroLogo = selectedNode.id === "hero-logo"
+                    if (isHeroLogo) {
+                      try {
+                        const formData = new FormData()
+                        formData.append("file", file)
+                        formData.append("nodeId", selectedNode.id)
+                        console.log(`[HERO-LOGO][upload-start]`, {
+                          nodeId: selectedNode.id,
+                          filename: file.name,
+                          size: file.size
+                        })
+                        const uploadRes = await fetch("/api/editor-upload-asset", {
+                          method: "POST",
+                          body: formData
+                        })
+                        if (uploadRes.ok) {
+                          const data = await uploadRes.json() as { url?: string }
+                          if (data.url) {
+                            console.log(`[HERO-LOGO][upload-success]`, {
+                              nodeId: selectedNode.id,
+                              url: data.url.substring(0, 100)
+                            })
+                            dispatch({
+                              type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
+                              nodeId: selectedNode.id,
+                              patch: { src: data.url, mediaKind: "image" },
+                            })
+                            return
+                          }
+                        } else {
+                          const error = await uploadRes.json() as { error?: string }
+                          console.error(`[HERO-LOGO][upload-failed]`, { error: error.error })
+                        }
+                      } catch (err) {
+                        console.error(`[HERO-LOGO][upload-exception]`, {
+                          error: err instanceof Error ? err.message : String(err)
+                        })
+                      }
+                    }
+
+                    // Fallback: use blob URL (for non-hero-logo or if upload fails)
                     const url = URL.createObjectURL(file)
                     setHasNonPersistableUpload(true)
                     dispatch({
                       type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
                       nodeId: selectedNode.id,
                       patch: { src: url, mediaKind: "image" },
+                    })
+                    console.log(`[IMAGE-FILE][blob-fallback]`, {
+                      nodeId: selectedNode.id,
+                      isHeroLogo,
+                      fallback: "blob"
                     })
                   }}
                 />

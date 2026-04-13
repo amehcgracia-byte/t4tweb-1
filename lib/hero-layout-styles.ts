@@ -104,6 +104,20 @@ export function getElementLayoutStyle(
   const needScale = typeof styles.scale === "number" && scaleVal !== 1
   const shouldApplyGeometry = includeGeometry && (needTranslate || needScale)
 
+  // Special layout for scroll indicator (uses left: 50% + calc-based translate)
+  if (targetId === "hero-scroll-indicator" && shouldApplyGeometry) {
+    const layout = buildHeroScrollIndicatorLayoutStyle({
+      x: tx,
+      y: ty,
+      scale: needScale ? scaleVal : undefined,
+      width: includeGeometry && typeof styles.width === "number" ? roundLayoutPx(styles.width as number) : undefined,
+      height: includeGeometry && typeof styles.height === "number" ? roundLayoutPx(styles.height as number) : undefined,
+    })
+    const result: CSSProperties = { ...layout }
+    if (typeof styles.opacity === "number") result.opacity = styles.opacity
+    return result
+  }
+
   const layout =
     shouldApplyGeometry
       ? buildHeroStandardLayoutStyle({
@@ -156,6 +170,32 @@ export function getElementLayoutStyle(
     result.backgroundClip = "text"
     result.WebkitBackgroundClip = "text"
     result.color = "transparent"
+    // Debug: log gradient application
+    if (typeof window !== "undefined") {
+      console.log(`[HERO-GRADIENT][public-render] ${targetId}:`, {
+        enabled: styles.gradientEnabled,
+        start: styles.gradientStart,
+        end: styles.gradientEnd,
+        applied: true
+      })
+    }
+  }
+
+  // Log scroll indicator style application
+  if (targetId === "hero-scroll-indicator" && typeof window !== "undefined") {
+    console.log(`[HERO-SCROLL][public-render-style]`, {
+      id: targetId,
+      x: styles.x,
+      y: styles.y,
+      width: styles.width,
+      height: styles.height,
+      appliedGeometry: !!(styles.x !== undefined || styles.y !== undefined),
+      appliedCss: {
+        left: result.left,
+        bottom: result.bottom,
+        transform: result.transform,
+      }
+    })
   }
 
   return result

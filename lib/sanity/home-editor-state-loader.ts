@@ -32,12 +32,23 @@ export async function loadHomeEditorState(perspective: "published" | "drafts" = 
     const raw = JSON.parse(doc?.nodesJson || "[]")
     if (!Array.isArray(raw)) return []
 
+    // Legacy node IDs to filter out (removed from active editor)
+    const LEGACY_NODE_IDS = new Set([
+      "hero-title-main",
+      "hero-title-accent",
+    ])
+
     return raw
       .map((raw): HomeEditorNodeOverride | null => {
         if (!raw || typeof raw !== "object") return null
         const n = raw as Record<string, unknown>
         const nodeId = typeof n.nodeId === "string" ? n.nodeId : typeof n.id === "string" ? n.id : null
         if (!nodeId) return null
+        // Filter out legacy nodes
+        if (LEGACY_NODE_IDS.has(nodeId)) {
+          console.log(`[home-editor-state-loader] Filtering legacy node: ${nodeId}`)
+          return null
+        }
         const nodeType = typeof n.nodeType === "string" ? n.nodeType : typeof n.type === "string" ? n.type : "text"
         const geometry = (n.geometry && typeof n.geometry === "object" ? n.geometry : {}) as Record<string, unknown>
         const style = (n.style && typeof n.style === "object" ? n.style : {}) as Record<string, unknown>
