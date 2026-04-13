@@ -176,6 +176,30 @@ export function HeroSection({ data }: { data: HeroData }) {
   const accentTitleText = content.titleHighlight || ""
   const scrollLabelText = content.scrollLabel || "SCROLL"
 
+  // Build filter effects for hero-bg-image from elementStyles
+  const bgImageFilters = (() => {
+    const styles = data.elementStyles?.["hero-bg-image"]
+    if (!styles) return {}
+
+    const filterParts: string[] = []
+    const st = styles as Record<string, unknown>
+
+    if (typeof st.contrast === "number" && st.contrast !== 1) {
+      filterParts.push(`contrast(${st.contrast})`)
+    }
+    if (typeof st.saturation === "number" && st.saturation !== 1) {
+      filterParts.push(`saturate(${st.saturation})`)
+    }
+    if (typeof st.brightness === "number" && st.brightness !== 1) {
+      filterParts.push(`brightness(${st.brightness})`)
+    }
+    if (st.negative === true) {
+      filterParts.push("invert(1)")
+    }
+
+    return filterParts.length > 0 ? { filter: filterParts.join(" ") } : {}
+  })()
+
   return (
     <section
       ref={(el) => {
@@ -200,7 +224,10 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-media-kind="image"
             data-editor-node-label="Hero Background"
             className="absolute inset-0"
-            style={getElementLayoutStyle(data.elementStyles, "hero-bg-image")}
+            style={{
+              ...getElementLayoutStyle(data.elementStyles, "hero-bg-image"),
+              ...bgImageFilters,
+            }}
           >
             <Image
               src={resolvedHeroBgSrc}
