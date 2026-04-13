@@ -702,8 +702,9 @@ export async function POST(request: Request) {
       ),
     ])
     log("document fetch", { hero: !!existingHero?._id, navigation: !!existingNavigation?._id, intro: !!existingIntro?._id })
-    // Always use "legacy" mode: title + titleHighlight only. No titleSegments.
-    const heroTitleMode: "legacy" | "segmented" = "legacy"
+    // Determine mode: "segmented" if hero-title node exists and is editable, else "legacy"
+    const heroTitleMode: "legacy" | "segmented" = heroTitleNode?.explicitContent ? "segmented" : "legacy"
+    log("[HERO-TITLE-MODE]", { mode: heroTitleMode, hasNode: !!heroTitleNode, hasExplicitContent: heroTitleNode?.explicitContent })
 
     if (!existingHero?._id) {
       steps.push({ step: "saving", ok: false, message: "Hero section document not found; refusing to create implicit duplicate." })
