@@ -21,7 +21,7 @@ import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
 
 export const dynamic = "force-dynamic"
 
-export default async function HomePage({ perspective = "published", isEditorRoute = false }: { perspective?: "published" | "previewDrafts"; isEditorRoute?: boolean } = {}) {
+export default async function HomePage({ perspective = "published", isEditorRoute = false }: { perspective?: "published" | "drafts"; isEditorRoute?: boolean } = {}) {
   const [heroData, navigationData, introBannerData, bandMembersData, liveConcerts] = await Promise.all([
     loadHeroData(perspective),
     loadNavigationData(perspective),

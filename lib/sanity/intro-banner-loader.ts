@@ -25,7 +25,7 @@ const FALLBACK: IntroBannerData = {
   elementStyles: {},
 }
 
-export async function loadIntroBannerData(perspective: "published" | "previewDrafts" = "published"): Promise<IntroBannerData> {
+export async function loadIntroBannerData(perspective: "published" | "drafts" = "published"): Promise<IntroBannerData> {
   try {
     const client = createClient({
       projectId: resolveSanityProjectId(),

@@ -30,7 +30,7 @@ const FALLBACK: NavigationData = {
   elementStyles: {},
 }
 
-export async function loadNavigationData(perspective: "published" | "previewDrafts" = "published"): Promise<NavigationData> {
+export async function loadNavigationData(perspective: "published" | "drafts" = "published"): Promise<NavigationData> {
   try {
     const client = createClient({
       projectId: resolveSanityProjectId(),

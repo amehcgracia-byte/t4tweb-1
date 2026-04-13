@@ -31,7 +31,7 @@ const FALLBACK: HeroData = {
   elementStyles: {},
 }
 
-export async function loadHeroData(perspective: "published" | "previewDrafts" = "published"): Promise<HeroData> {
+export async function loadHeroData(perspective: "published" | "drafts" = "published"): Promise<HeroData> {
   try {
     const client = createClient({
       projectId: resolveSanityProjectId(),

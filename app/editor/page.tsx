@@ -9,13 +9,13 @@ export default async function EditorPage() {
   const timestamp = new Date().toISOString()
   console.log(`[RUNTIME] EditorPage mounted at ${timestamp}`)
 
-  // Render editor with previewDrafts perspective
+  // Render editor with drafts perspective
   // VisualEditorProvider on client will detect /editor route and activate editing mode
   // The client will load editor state separately after hydration
   return (
     <>
       <script dangerouslySetInnerHTML={{__html: `console.log('[RUNTIME] EditorPage HTML received at', new Date().toISOString())`}} />
-      <HomePage perspective="previewDrafts" isEditorRoute={true} />
+      <HomePage perspective="drafts" isEditorRoute={true} />
     </>
   )
 }

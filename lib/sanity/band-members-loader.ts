@@ -22,7 +22,7 @@ const FALLBACK_MEMBERS: BandMemberData[] = [
 ]
 
 export async function loadBandMembersData(
-  perspective: "published" | "previewDrafts" = "published"
+  perspective: "published" | "drafts" = "published"
 ): Promise<BandMembersLoadResult> {
   try {
     const client = createClient({

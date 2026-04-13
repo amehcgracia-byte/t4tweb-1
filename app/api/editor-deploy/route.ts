@@ -751,7 +751,10 @@ export async function POST(request: Request) {
       const heroTitleText = typeof heroTitleNode?.content?.text === "string" ? heroTitleNode.content.text.trim() : ""
       if (heroTitleText) {
         heroPatch.title = heroTitleText
+        // Clear titleHighlight residual from old Group Editor (prevent confusion from stale data)
+        heroPatch.titleHighlight = ""
         if (!persistedFields.includes("title")) persistedFields.push("title")
+        if (!persistedFields.includes("titleHighlight")) persistedFields.push("titleHighlight")
         if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
       }
     }
@@ -1556,7 +1559,10 @@ export async function POST(request: Request) {
         storageTarget = "heroSection.fields"
         const titleText = typeof node.content?.text === "string" ? node.content.text.trim() : ""
         if (titleText) expected.title = titleText
+        // When hero-title is single text node, titleHighlight should be cleared
+        expected.titleHighlight = ""
         readBack.title = heroReadback?.title
+        readBack.titleHighlight = heroReadback?.titleHighlight
       } else if (nodeId === "hero-subtitle" && node.explicitContent) {
         storageTarget = "heroSection.fields"
         const expectedText = typeof node.content.text === "string" ? node.content.text.trim() : ""
@@ -1686,7 +1692,11 @@ export async function POST(request: Request) {
         readBack.bannerText = introReadback?.bannerText
       } else if (nodeId === "intro-banner-gif" && node.explicitContent && writeContentKeys.has("src")) {
         storageTarget = "introBanner.fields"
-        expected.gifUrl = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        const gifSrc = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        // Only expect persistence if source is valid (not blob/data URL)
+        if (gifSrc && isImageSrcPersistable(gifSrc)) {
+          expected.gifUrl = gifSrc
+        }
         readBack.gifUrl = introReadback?.gifUrl
       } else if (nodeId === "intro-book-button" && node.explicitContent) {
         storageTarget = "introBanner.fields"
