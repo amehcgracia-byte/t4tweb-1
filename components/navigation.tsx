@@ -11,6 +11,15 @@ export function Navigation({ data }: { data: NavigationData }) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
+  // Log on client side
+  if (typeof window !== "undefined") {
+    console.log("[NAVBAR-TRACE] Navigation component received:", {
+      elementStyles: Object.keys(data.elementStyles),
+      "nav-logo": data.elementStyles["nav-logo"],
+      "nav-brand-name": data.elementStyles["nav-brand-name"],
+    })
+  }
+
   // Refs for editable elements
   const navRef = useRef<HTMLDivElement>(null)
   const navInnerRef = useRef<HTMLDivElement>(null)
@@ -216,6 +225,8 @@ export function Navigation({ data }: { data: NavigationData }) {
                     height: "clamp(2.75rem, 9vw, 3.5rem)",
                   },
                   ...(data.elementStyles["nav-logo"] as any),
+                  // TEMPORARY DEBUG: Red border to verify elementStyles are applied
+                  ...(Object.keys(data.elementStyles).length > 0 ? { border: "3px solid red" } : {}),
                 }}
               >
                 <Image

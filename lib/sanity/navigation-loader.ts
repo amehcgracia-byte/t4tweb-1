@@ -61,7 +61,7 @@ export async function loadNavigationData(perspective: "published" | "previewDraf
         ? (fetched.elementStyles as NavigationData["elementStyles"])
         : {}
 
-    return {
+    const result = {
       brandName: fetched.brandName || FALLBACK.brandName,
       brandLogoUrl: fetched.brandLogoUrl ?? FALLBACK.brandLogoUrl,
       links,
@@ -69,6 +69,15 @@ export async function loadNavigationData(perspective: "published" | "previewDraf
       ctaHref: fetched.ctaHref || FALLBACK.ctaHref,
       elementStyles,
     }
+
+    console.log("[NAVBAR-TRACE] loadNavigationData returning:", {
+      perspective,
+      elementStyles: Object.keys(elementStyles),
+      "nav-logo": elementStyles["nav-logo"],
+      "nav-brand-name": elementStyles["nav-brand-name"],
+    })
+
+    return result
   } catch (e) {
     console.error("[loadNavigationData]", e)
     return FALLBACK

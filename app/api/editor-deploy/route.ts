@@ -1011,7 +1011,7 @@ export async function POST(request: Request) {
       Object.assign(setPayload, navImagePatch)
       const navPatchResponse = await writeClient.patch(toPublishedDocumentId(existingNavigation._id)).set(setPayload).commit()
       navigationDocumentId = navPatchResponse._id
-      log("navigation patch committed", { docId: navigationDocumentId, hasNavLayout, hasNavContent })
+      log("navigation patch committed", { docId: navigationDocumentId, hasNavLayout, hasNavContent, setPayload })
       const navParts: string[] = []
       if (hasNavLayout) navParts.push("layout")
       if (hasNavContent) navParts.push("content")
@@ -1020,6 +1020,12 @@ export async function POST(request: Request) {
         ok: true,
         message: `Navigation ${navParts.join(" + ")} saved: ${existingNavigation._id}`,
       })
+      if (hasNavLayout) {
+        persistedFields.push("navigation.elementStyles")
+        for (const nodeId of Object.keys(mergedNavigationElementStyles || {})) {
+          if (!persistedNodes.includes(nodeId)) persistedNodes.push(nodeId)
+        }
+      }
       if (hasNavContent) {
         for (const node of payload.nodes) {
           if (!node.explicitContent) continue

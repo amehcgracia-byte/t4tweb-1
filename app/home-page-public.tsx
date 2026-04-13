@@ -28,6 +28,12 @@ export default async function HomePagePublic() {
     loadLiveConcerts(),
   ])
 
+  console.log("[NAVBAR-TRACE] home-page-public received navigationData:", {
+    elementStyles: Object.keys(navigationData.elementStyles),
+    "nav-logo": navigationData.elementStyles["nav-logo"],
+    "nav-brand-name": navigationData.elementStyles["nav-brand-name"],
+  })
+
   return (
     <main className="relative overflow-x-clip bg-black">
       <RibbonsBlock />
