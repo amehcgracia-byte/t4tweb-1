@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
-import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { NavigationData } from "@/lib/sanity/navigation-loader"
 
@@ -33,7 +32,8 @@ export function Navigation({ data }: { data: NavigationData }) {
   const mobileBookButtonRef = useRef<HTMLAnchorElement>(null)
 
   const navLinks = data.links
-  const resolvedNavLogoSrc = useHomeEditorImageSrc("nav-logo", data.brandLogoUrl || "/images/logo-qr.png")
+  // Component renders from Sanity data directly - no override hooks
+  const resolvedNavLogoSrc = data.brandLogoUrl || "/images/logo-qr.png"
 
   // Register editable elements when editing
   useEffect(() => {

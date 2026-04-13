@@ -4,7 +4,6 @@ import { useRef, useEffect, useMemo, useState } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
-import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 
@@ -169,8 +168,10 @@ export function HeroSection({ data }: { data: HeroData }) {
   const backgroundY = useTransform(scrollYProgress, [0, 1], [staticY, 35])
 
   const content = data
-  const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
-  const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
+  // Component renders from Sanity data directly - no override hooks
+  // elementStyles handle geometry/style, content.bgUrl and content.logoUrl have the image sources
+  const resolvedHeroBgSrc = content.bgUrl
+  const resolvedHeroLogoSrc = content.logoUrl
 
   const mainTitleText = content.title || ""
   const accentTitleText = content.titleHighlight || ""

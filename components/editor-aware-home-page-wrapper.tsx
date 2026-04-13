@@ -1,18 +1,27 @@
 "use client"
 
 import { useVisualEditor } from "@/components/visual-editor"
-import { ReactNode } from "react"
+import { ReactNode, useEffect, useState } from "react"
 
 /**
  * Wrapper that prevents rendering content in /editor until editor state is ready
  * This avoids the "fallback visual" where published content shows before being replaced
+ *
+ * CRITICAL: Always render children in HTML (for hydration). Use state to show/hide loader on client only.
  */
 export function EditorAwareHomePageWrapper({ children, isEditorRoute }: { children: ReactNode; isEditorRoute: boolean }) {
   const { isEditing, editorBootComplete } = useVisualEditor()
+  const [isClient, setIsClient] = useState(false)
 
-  // In editor route, wait until editor boot is complete
-  // This prevents showing published content as a fallback
-  if (isEditorRoute && (!isEditing || !editorBootComplete)) {
+  // Mark that we're on client (after hydration)
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  const shouldShowLoader = isClient && isEditorRoute && (!isEditing || !editorBootComplete)
+
+  if (shouldShowLoader) {
+    console.log('[WRAPPER] Showing loader', { isEditing, editorBootComplete })
     return (
       <div className="min-h-screen w-full bg-black flex items-center justify-center">
         <div className="text-center">
@@ -22,5 +31,8 @@ export function EditorAwareHomePageWrapper({ children, isEditorRoute }: { childr
     )
   }
 
+  if (isClient) {
+    console.log('[WRAPPER] Showing content', { isEditing, editorBootComplete })
+  }
   return <>{children}</>
 }

@@ -700,6 +700,9 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     if (nodesBuiltRef.current) return
     nodesBuiltRef.current = true
 
+    const timestamp = Date.now()
+    console.log(`[BOOT] Node scan starting at ${timestamp}`, { isEditing, isHydrated })
+
     refreshRegistry()
     const nextNodes = new Map<string, EditorNode>()
 
@@ -724,9 +727,13 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
 
     // If session restore failed, build from DOM
     if (!restoredFromSession) {
-      scanRegistry().forEach((entry, id) => {
+      const registry = scanRegistry()
+      console.log(`[BOOT] scanRegistry() found ${registry.size} nodes:`, Array.from(registry.keys()))
+      registry.forEach((entry, id) => {
         nextNodes.set(id, buildNodeFromEntry(entry))
       })
+    } else {
+      console.log(`[BOOT] Restored ${nextNodes.size} nodes from sessionStorage`)
     }
 
     // Keep persisted nodes that intentionally have no direct DOM editable target
@@ -744,6 +751,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     setNodes(nextNodes)
     snapshot(nextNodes)
     // Mark editor boot as complete after initial node scan
+    console.log(`[BOOT] Boot complete. Nodes: ${nextNodes.size}`, {
+      ids: Array.from(nextNodes.keys()),
+      heroNodes: Array.from(nextNodes.keys()).filter(id => id.startsWith('hero-') || id.startsWith('nav-')),
+    })
     setEditorBootComplete(true)
   }, [isEditing, isHydrated, snapshot, refreshRegistry])
 

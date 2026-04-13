@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react"
 import { useVisualEditor } from "@/components/visual-editor"
-import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import type { IntroBannerData } from "@/lib/sanity/intro-banner-loader"
 
 export function IntroBannerSection({ data }: { data: IntroBannerData }) {
@@ -14,7 +13,8 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
   const bookButtonRef = useRef<HTMLAnchorElement>(null)
   const pressButtonRef = useRef<HTMLAnchorElement>(null)
 
-  const resolvedIntroGifSrc = useHomeEditorImageSrc("intro-banner-gif", data.gifUrl)
+  // Component renders from Sanity data directly - no override hooks
+  const resolvedIntroGifSrc = data.gifUrl
 
   useEffect(() => {
     if (!isEditing) return

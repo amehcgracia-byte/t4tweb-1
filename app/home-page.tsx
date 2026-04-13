@@ -16,8 +16,6 @@ import { loadIntroBannerData } from "@/lib/sanity/intro-banner-loader"
 import { loadBandMembersData } from "@/lib/sanity/band-members-loader"
 import { loadLiveConcerts } from "@/lib/live-concerts-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
-import { HomeEditorOverridesProvider } from "@/components/home-editor-overrides-provider"
-import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
 import { EditorAwareHomePageWrapper } from "@/components/editor-aware-home-page-wrapper"
 
 export const dynamic = "force-dynamic"
@@ -30,15 +28,12 @@ export default async function HomePage({ perspective = "published", isEditorRout
     loadBandMembersData(perspective),
     loadLiveConcerts(),
   ])
-  // Load homeEditorNodes only for editor mode (for visual-editor state), but don't pass to sections
-  // Sections render from Sanity data only, without client-side override mixing
-  const homeEditorNodes = isEditorRoute
-    ? await loadHomeEditorState(perspective)
-    : []
+  // Editor state is loaded live from DOM during client-side boot
+  // Components render directly from Sanity data (perspective handles published vs draft)
+  // No homeEditorNodes: Sanity contains the persisted elementStyles
 
   const mainContent = (
     <main className="relative overflow-x-clip bg-black">
-      <HomeEditorOverridesProvider nodes={homeEditorNodes}>
         <RibbonsBlock />
         <Navigation data={navigationData} />
 
@@ -85,8 +80,7 @@ export default async function HomePage({ perspective = "published", isEditorRout
         <SectionDivider editorId="section-divider-contact-footer" />
 
         <Footer />
-      </HomeEditorOverridesProvider>
-    </main>
+      </main>
   )
 
   // In /editor, prevent fallback visual by not rendering until editor state is ready
