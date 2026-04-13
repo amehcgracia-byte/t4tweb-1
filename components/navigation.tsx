@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
+import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { NavigationData } from "@/lib/sanity/navigation-loader"
 
 export function Navigation({ data }: { data: NavigationData }) {
@@ -224,9 +225,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                     width: "clamp(2.75rem, 9vw, 3.5rem)",
                     height: "clamp(2.75rem, 9vw, 3.5rem)",
                   },
-                  ...(data.elementStyles["nav-logo"] as any),
-                  // TEMPORARY DEBUG: Red border to verify elementStyles are applied
-                  ...(Object.keys(data.elementStyles).length > 0 ? { border: "3px solid red" } : {}),
+                  ...getElementLayoutStyle(data.elementStyles, "nav-logo"),
                 }}
               >
                 <Image
@@ -242,7 +241,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-id="nav-brand-name"
                 data-editor-node-type="text"
                 data-editor-node-label="Brand Name"
-                style={data.elementStyles["nav-brand-name"] as any}
+                style={getElementLayoutStyle(data.elementStyles, "nav-brand-name")}
               >
                 {data.brandName}
               </span>
