@@ -134,5 +134,29 @@ export function getElementLayoutStyle(
   if (typeof styles.color === "string") result.color = styles.color
   if (includeGeometry && typeof styles.maxWidth === "number") result.maxWidth = `${styles.maxWidth}px`
 
+  // Text styling
+  if (styles.bold === true) result.fontWeight = "bold"
+  if (styles.italic === true) result.fontStyle = "italic"
+  if (styles.underline === true) result.textDecoration = "underline"
+
+  // Opacity and effects
+  if (typeof styles.opacity === "number") result.opacity = styles.opacity
+
+  // Image filters (contrast, saturation, brightness, negative)
+  const filterParts: string[] = []
+  if (typeof styles.contrast === "number") filterParts.push(`contrast(${styles.contrast})`)
+  if (typeof styles.saturation === "number") filterParts.push(`saturate(${styles.saturation})`)
+  if (typeof styles.brightness === "number") filterParts.push(`brightness(${styles.brightness})`)
+  if (styles.negative === true) filterParts.push("invert(1)")
+  if (filterParts.length > 0) result.filter = filterParts.join(" ")
+
+  // Gradient text
+  if (styles.gradientEnabled === true && typeof styles.gradientStart === "string" && typeof styles.gradientEnd === "string") {
+    result.backgroundImage = `linear-gradient(to right, ${styles.gradientStart}, ${styles.gradientEnd})`
+    result.backgroundClip = "text"
+    result.WebkitBackgroundClip = "text"
+    result.color = "transparent"
+  }
+
   return result
 }
