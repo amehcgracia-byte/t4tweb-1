@@ -1,5 +1,4 @@
 import { defineField, defineType } from 'sanity'
-import { elementStylesFieldConfig } from './elementStyleOverrides'
 
 export default defineType({
   name: 'navigation',

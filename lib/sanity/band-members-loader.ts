@@ -55,11 +55,25 @@ export async function loadBandMembersData(
     const settingsQuery = `*[_type == "bandMembersSettings"][0]{
       elementStyles
     }`
-    const settings = await client.fetch<{ elementStyles?: Record<string, Record<string, unknown>> } | null>(settingsQuery)
+    const settings = await client.fetch<{ elementStyles?: any } | null>(settingsQuery)
+    
+    let elementStyles = {}
+    if (settings?.elementStyles) {
+      if (typeof settings.elementStyles === 'string') {
+        try {
+          elementStyles = JSON.parse(settings.elementStyles)
+        } catch (e) {
+          console.error("[loadBandMembersData] Failed to parse elementStyles JSON string:", e)
+        }
+      } else if (typeof settings.elementStyles === 'object' && settings.elementStyles !== null) {
+        // Already an object (legacy data or schema mismatch)
+        elementStyles = settings.elementStyles
+      }
+    }
 
     return {
       members,
-      elementStyles: settings?.elementStyles || {},
+      elementStyles,
     }
   } catch (error) {
     console.error("[loadBandMembersData]", error)

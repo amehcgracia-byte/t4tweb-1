@@ -1,4 +1,4 @@
-import { defineType } from 'sanity'
+import { defineField, defineType } from 'sanity'
 
 /**
  * Band Members Section Settings
@@ -9,18 +9,18 @@ import { defineType } from 'sanity'
  * This document is read by bandMembersLoader and applied to BandMembersSection.
  */
 
-export const bandMembersSettings = defineType({
+const bandMembersSettings = defineType({
   name: 'bandMembersSettings',
   title: 'Band Members Section Settings',
   type: 'document',
   fields: [
-    {
+    defineField({
       name: 'elementStyles',
       title: 'Element Styles',
-      type: 'json',
-      description: 'Styling and layout overrides for band section elements (position, size, colors, typography)',
+      type: 'text',
+      description: 'Styling and layout overrides for band section elements (position, size, colors, typography) stored as JSON',
       hidden: true,
-    },
+    }),
   ],
   preview: {
     prepare() {
@@ -31,3 +31,5 @@ export const bandMembersSettings = defineType({
     },
   },
 })
+
+export default bandMembersSettings

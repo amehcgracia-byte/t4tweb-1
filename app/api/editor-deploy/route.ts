@@ -1320,7 +1320,7 @@ export async function POST(request: Request) {
           mergedBandStyles[nodeId] = { ...(mergedBandStyles[nodeId] || {}), ...styles }
         }
 
-        const bandPatch = { elementStyles: mergedBandStyles }
+        const bandPatch = { elementStyles: JSON.stringify(mergedBandStyles) }
         await writeClient.patch(toPublishedDocumentId(existingBandSettings._id)).set(bandPatch).commit()
 
         bandMembersDocumentId = existingBandSettings._id
@@ -1334,7 +1334,7 @@ export async function POST(request: Request) {
         // Create new band members settings document
         const bandCreatePayload: Record<string, unknown> & { _type: string } = {
           _type: SANITY_DOC_BAND_MEMBERS,
-          elementStyles: bandMembersElementStyles,
+          elementStyles: JSON.stringify(bandMembersElementStyles),
         }
         const bandResponse = await writeClient.create(bandCreatePayload)
         bandMembersDocumentId = bandResponse._id

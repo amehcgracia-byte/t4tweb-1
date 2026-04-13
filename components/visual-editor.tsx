@@ -813,6 +813,14 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
 
     // Log hero-scroll-indicator layout application
     if (node.id === "hero-scroll-indicator") {
+      const willApplyTransform = node.explicitPosition || (node.explicitStyle && nodeScale !== 1)
+      let appliedTransform = "none"
+      if (willApplyTransform) {
+        const parts: string[] = [`translate(calc(-50% + ${g.x}px), ${g.y}px)`]
+        if (nodeScale !== 1) parts.push(`scale(${nodeScale})`)
+        appliedTransform = parts.join(" ")
+      }
+      
       console.log("[HERO-SCROLL][applyNodeToDom-layout]", {
         nodeId: node.id,
         x: g.x,
@@ -823,17 +831,35 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         explicitPosition: node.explicitPosition,
         explicitSize: node.explicitSize,
         explicitStyle: node.explicitStyle,
-        willApplyTransform: node.explicitPosition || (node.explicitStyle && nodeScale !== 1),
-        appliedTransform: node.explicitPosition || (node.explicitStyle && nodeScale !== 1)
-          ? (nodeScale !== 1 ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})` : `translate(${g.x}px, ${g.y}px)`)
-          : "none",
+        willApplyTransform,
+        appliedTransform,
         currentTransform: el.style.transform,
         currentWidth: el.style.width,
-        currentHeight: el.style.height
+        currentHeight: el.style.height,
+        specialHandling: "scroll-indicator"
       })
     }
 
-    if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
+    // Special handling for hero-scroll-indicator to match public page layout
+    if (node.id === "hero-scroll-indicator") {
+      if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
+        const parts: string[] = [`translate(calc(-50% + ${g.x}px), ${g.y}px)`]
+        if (nodeScale !== 1) parts.push(`scale(${nodeScale})`)
+        el.style.left = "50%"
+        el.style.bottom = "2rem"
+        el.style.transform = parts.join(" ")
+        el.style.transformOrigin = "center bottom"
+        el.dataset.editorManagedTransform = "true"
+      } else {
+        if (hasManagedTransform) {
+          el.style.removeProperty("left")
+          el.style.removeProperty("bottom")
+          el.style.removeProperty("transform")
+          el.style.removeProperty("transform-origin")
+          delete el.dataset.editorManagedTransform
+        }
+      }
+    } else if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
       el.style.transform = nodeScale !== 1
         ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})`
         : `translate(${g.x}px, ${g.y}px)`

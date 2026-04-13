@@ -1,6 +1,5 @@
 import { defineField, defineType } from 'sanity'
 import { ImageIcon } from '@sanity/icons'
-import { elementStylesFieldConfig } from './elementStyleOverrides'
 
 export default defineType({
   name: 'introBanner',

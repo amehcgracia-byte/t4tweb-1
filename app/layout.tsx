@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { VisualEditorProvider } from "@/components/visual-editor"
 import { EditorOverlayWrapper } from "@/components/editor-overlay-wrapper"
+import { draftMode } from 'next/headers'
+import { SanityVisualEditing } from "@/components/sanity-visual-editing"
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://talesforthetillerman.com"),
@@ -74,11 +76,14 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const draft = await draftMode()
+  const isDraft = draft.isEnabled
+
   return (
     <html lang="en">
       <head>
@@ -151,6 +156,7 @@ export default function RootLayout({
           <EditorOverlayWrapper />
           {children}
         </VisualEditorProvider>
+        {isDraft && <SanityVisualEditing />}
       </body>
     </html>
   )

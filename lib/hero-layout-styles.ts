@@ -46,12 +46,14 @@ export function buildHeroScrollIndicatorLayoutStyle(opts: {
   const ty = roundLayoutPx(opts.y)
   const scaleVal = opts.scale ?? 1
   const needScale = typeof opts.scale === "number" && scaleVal !== 1
-  const parts: string[] = [`translate(${tx}px, ${ty}px)`]
+  const parts: string[] = [`translate(calc(-50% + ${tx}px), ${ty}px)`]
   if (needScale) parts.push(`scale(${scaleVal})`)
   const result: CSSProperties = {
     position: "absolute",
+    left: "50%",
+    bottom: "2rem",
     transform: parts.join(" "),
-    transformOrigin: "top left",
+    transformOrigin: "center bottom",
   }
   if (typeof opts.width === "number") result.width = `${roundLayoutPx(opts.width)}px`
   if (typeof opts.height === "number") result.height = `${roundLayoutPx(opts.height)}px`
