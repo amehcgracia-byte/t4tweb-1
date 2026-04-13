@@ -1057,6 +1057,17 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
               }
             })
             const updated = { ...n, content, style, explicitContent: isContentEdit, explicitStyle: isStyleEdit }
+            // Log hero-logo edits
+            if (command.nodeId === "hero-logo") {
+              console.log("[HERO-LOGO][reducer-update]", {
+                nodeId: command.nodeId,
+                patch: command.patch,
+                priorSrc: n.content.src?.substring(0, 100),
+                newSrc: content.src?.substring(0, 100),
+                explicitContent: updated.explicitContent,
+                willBeDirty: getNodeSignature(n) !== getNodeSignature(updated)
+              })
+            }
             // Log hero-scroll-indicator edits
             if (command.nodeId === "hero-scroll-indicator") {
               console.log("[HERO-SCROLL][update-card]", {
@@ -2502,11 +2513,24 @@ export function VisualEditorOverlay() {
                           statusText: uploadRes.statusText
                         })
                         if (uploadRes.ok) {
-                          const data = await uploadRes.json() as { url?: string }
+                          const data = await uploadRes.json() as { url?: string; error?: string }
+                          console.log(`[HERO-LOGO][upload-response-parsed]`, {
+                            hasUrl: !!data.url,
+                            url: data.url?.substring(0, 150) || null,
+                            error: data.error || null,
+                            fullData: JSON.stringify(data).substring(0, 300)
+                          })
                           if (data.url) {
                             console.log(`[HERO-LOGO][upload-success]`, {
                               nodeId: selectedNode.id,
-                              url: data.url.substring(0, 100)
+                              url: data.url.substring(0, 100),
+                              about_to_dispatch: true
+                            })
+                            console.log(`[HERO-LOGO][dispatch-update]`, {
+                              type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
+                              nodeId: selectedNode.id,
+                              patchSrc: data.url.substring(0, 100),
+                              patchMediaKind: "image"
                             })
                             dispatch({
                               type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",

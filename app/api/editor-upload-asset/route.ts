@@ -70,20 +70,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const uploadedAsset = await uploadResponse.json() as {
-      document?: {
-        _id?: string
-        url?: string
-      }
-    }
+    const uploadedAsset = await uploadResponse.json()
+    console.log("[editor-upload-asset] Sanity response:", {
+      full: JSON.stringify(uploadedAsset).substring(0, 500),
+      hasDocument: !!uploadedAsset.document,
+      documentKeys: uploadedAsset.document ? Object.keys(uploadedAsset.document) : null,
+      hasUrl: !!uploadedAsset.document?.url,
+      url: uploadedAsset.document?.url?.substring(0, 100)
+    })
+
     const assetUrl = uploadedAsset.document?.url
 
     if (!assetUrl) {
       console.error(
-        `[editor-upload-asset] No URL in Sanity response for ${nodeId}`
+        `[editor-upload-asset] No URL in Sanity response for ${nodeId}`,
+        { uploadedAsset: JSON.stringify(uploadedAsset).substring(0, 200) }
       )
       return NextResponse.json(
-        { error: "No asset URL in response" },
+        { error: "No asset URL in response", received: uploadedAsset },
         { status: 500 }
       )
     }

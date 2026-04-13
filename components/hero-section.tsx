@@ -322,6 +322,21 @@ export function HeroSection({ data }: { data: HeroData }) {
         </div>
       </div>
 
+      {(() => {
+        const scrollStyle = getElementLayoutStyle(data.elementStyles, "hero-scroll-indicator");
+        if (typeof window !== "undefined") {
+          console.log("[HERO-SCROLL][render-public]", {
+            hasElementStyles: !!data.elementStyles,
+            hasScrollInStyles: data.elementStyles && "hero-scroll-indicator" in data.elementStyles,
+            appliedStyle: scrollStyle,
+            styleKeys: Object.keys(scrollStyle),
+            transform: scrollStyle.transform,
+            left: scrollStyle.left,
+            bottom: scrollStyle.bottom
+          });
+        }
+        return null;
+      })()}
       <div
         ref={heroScrollRef}
         data-editor-node-id="hero-scroll-indicator"

@@ -183,17 +183,25 @@ export function getElementLayoutStyle(
 
   // Log scroll indicator style application
   if (targetId === "hero-scroll-indicator" && typeof window !== "undefined") {
-    console.log(`[HERO-SCROLL][public-render-style]`, {
-      id: targetId,
-      x: styles.x,
-      y: styles.y,
-      width: styles.width,
-      height: styles.height,
-      appliedGeometry: !!(styles.x !== undefined || styles.y !== undefined),
+    console.log(`[HERO-SCROLL][getElementLayoutStyle]`, {
+      targetId,
+      inputStyles: {
+        x: styles.x,
+        y: styles.y,
+        width: styles.width,
+        height: styles.height,
+        scale: styles.scale
+      },
+      includeGeometry: options?.includeGeometry ?? true,
+      hasX: typeof styles.x === "number",
+      hasY: typeof styles.y === "number",
+      shouldApplyGeometry: !!(typeof styles.x === "number" || typeof styles.y === "number"),
       appliedCss: {
         left: result.left,
         bottom: result.bottom,
         transform: result.transform,
+        width: result.width,
+        height: result.height
       }
     })
   }
