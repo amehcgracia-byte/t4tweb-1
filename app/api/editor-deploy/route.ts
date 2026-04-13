@@ -585,7 +585,7 @@ export async function POST(request: Request) {
 
     log("environment", { projectId: projectId ? "set" : "missing", dataset, writeToken: sanityToken ? "set" : "missing" })
 
-    const heroTitleGroupNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "group")
+    const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text")
     const heroSubtitleNode = payload.nodes.find((node) => node.id === "hero-subtitle" && node.type === "text")
 
     const steps: DeployStepResult[] = [{
@@ -746,18 +746,14 @@ export async function POST(request: Request) {
     const failedNodes: string[] = []
     const heroPatch: Record<string, unknown> = {}
 
-    if (heroTitleGroupNode?.explicitContent) {
-      // Grouped editor structure: hero-title group node with text and accentText
-      const groupMainText = typeof heroTitleGroupNode?.content?.text === "string" ? heroTitleGroupNode.content.text.trim() : ""
-      const groupAccentText = typeof heroTitleGroupNode?.content?.accentText === "string" ? heroTitleGroupNode.content.accentText.trim() : ""
-
-      // Always persist both fields, even if empty (allows cleanup from editor)
-      heroPatch.title = groupMainText
-      heroPatch.titleHighlight = groupAccentText
-
-      if (!persistedFields.includes("title")) persistedFields.push("title")
-      if (!persistedFields.includes("titleHighlight")) persistedFields.push("titleHighlight")
-      if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
+    if (heroTitleNode?.explicitContent) {
+      // New generation: hero-title is a single text node
+      const heroTitleText = typeof heroTitleNode?.content?.text === "string" ? heroTitleNode.content.text.trim() : ""
+      if (heroTitleText) {
+        heroPatch.title = heroTitleText
+        if (!persistedFields.includes("title")) persistedFields.push("title")
+        if (!persistedNodes.includes("hero-title")) persistedNodes.push("hero-title")
+      }
     }
 
     if (heroSubtitleNode?.explicitContent) {
@@ -1556,14 +1552,11 @@ export async function POST(request: Request) {
           ? Math.round(node.style.scale * 1000) / 1000
           : undefined
 
-      if (nodeId === "hero-title" && node.explicitContent && node.type === "group") {
+      if (nodeId === "hero-title" && node.explicitContent && node.type === "text") {
         storageTarget = "heroSection.fields"
-        const mainText = typeof node.content?.text === "string" ? node.content.text.trim() : ""
-        const accentText = typeof node.content?.accentText === "string" ? node.content.accentText.trim() : ""
-        if (mainText) expected.title = mainText
-        if (accentText || mainText) expected.titleHighlight = accentText
+        const titleText = typeof node.content?.text === "string" ? node.content.text.trim() : ""
+        if (titleText) expected.title = titleText
         readBack.title = heroReadback?.title
-        readBack.titleHighlight = heroReadback?.titleHighlight
       } else if (nodeId === "hero-subtitle" && node.explicitContent) {
         storageTarget = "heroSection.fields"
         const expectedText = typeof node.content.text === "string" ? node.content.text.trim() : ""
