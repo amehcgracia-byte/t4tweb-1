@@ -1262,7 +1262,7 @@ export async function POST(request: Request) {
           persistedNodes.push(targetId)
         }
       }
-      
+
       if (Object.keys(heroElementStyles).length > 0) {
         const priorRaw = existingHero?.elementStyles
         const prior =
@@ -1280,7 +1280,22 @@ export async function POST(request: Request) {
           }
         }
         heroPatch.elementStyles = merged
-        log("element styles patch", { styleCount: Object.keys(merged), mergedTargets: Object.keys(merged) })
+
+        // Track all hero nodeIds in persistedFields (geometry + styles)
+        if (!persistedFields.includes("hero.elementStyles")) {
+          persistedFields.push("hero.elementStyles")
+        }
+        for (const nodeId of Object.keys(merged)) {
+          if (!persistedNodes.includes(nodeId)) {
+            persistedNodes.push(nodeId)
+          }
+        }
+
+        log("element styles patch", {
+          styleCount: Object.keys(merged).length,
+          mergedTargets: Object.keys(merged),
+          persistedNodeCount: Object.keys(merged).length
+        })
       }
     }
 
@@ -1303,15 +1318,20 @@ export async function POST(request: Request) {
         token: sanityToken,
         perspective: "published",
       })
-      const verifyQuery = `*[_type == $type][0]{ title, titleHighlight }`
-      const verified = await readClient.fetch<{ title?: string; titleHighlight?: string } | null>(
+      const verifyQuery = `*[_type == $type][0]{ title, titleHighlight, elementStyles }`
+      const verified = await readClient.fetch<{ title?: string; titleHighlight?: string; elementStyles?: Record<string, unknown> } | null>(
         verifyQuery,
         { type: SANITY_DOC_TYPE }
       )
 
       log("post-patch verification", {
         title: { sent: heroPatch.title, read: verified?.title, match: verified?.title === heroPatch.title },
-        titleHighlight: { sent: heroPatch.titleHighlight, read: verified?.titleHighlight, match: verified?.titleHighlight === heroPatch.titleHighlight }
+        titleHighlight: { sent: heroPatch.titleHighlight, read: verified?.titleHighlight, match: verified?.titleHighlight === heroPatch.titleHighlight },
+        elementStyles: {
+          sent: Object.keys(heroPatch.elementStyles || {}).length,
+          read: Object.keys(verified?.elementStyles || {}).length,
+          nodeIds: Object.keys(verified?.elementStyles || {})
+        }
       })
 
       // Validation: check critical fields
