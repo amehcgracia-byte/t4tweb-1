@@ -1059,11 +1059,18 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             const updated = { ...n, content, style, explicitContent: isContentEdit, explicitStyle: isStyleEdit }
             // Log hero-logo edits
             if (command.nodeId === "hero-logo") {
+              console.log("[HERO-LOGO][reducer-entry]", {
+                nodeId: command.nodeId,
+                patch: command.patch,
+                patchSrc: (command.patch as Record<string, unknown>).src?.toString().substring(0, 100) || null
+              })
               console.log("[HERO-LOGO][reducer-update]", {
                 nodeId: command.nodeId,
                 patch: command.patch,
-                priorSrc: n.content.src?.substring(0, 100),
-                newSrc: content.src?.substring(0, 100),
+                priorSrc: n.content.src?.toString().substring(0, 100),
+                newSrc: content.src?.toString().substring(0, 100),
+                contentSrcAfterUpdate: content.src?.toString().substring(0, 100),
+                updatedNodeContentSrc: updated.content.src?.toString().substring(0, 100),
                 explicitContent: updated.explicitContent
               })
             }

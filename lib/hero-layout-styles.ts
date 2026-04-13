@@ -91,7 +91,23 @@ export function getElementLayoutStyle(
   targetId: string,
   options?: { includeGeometry?: boolean }
 ): CSSProperties {
-  if (!elementStyles || !elementStyles[targetId]) return {}
+  if (targetId === "hero-scroll-indicator" && typeof window !== "undefined") {
+    console.log("[HERO-SCROLL][getElementLayoutStyle-entry]", {
+      targetId,
+      hasElementStyles: !!elementStyles,
+      elementStylesKeys: elementStyles ? Object.keys(elementStyles) : null,
+      hasTargetId: elementStyles ? targetId in elementStyles : false,
+      targetData: elementStyles?.[targetId]
+    })
+  }
+  if (!elementStyles || !elementStyles[targetId]) {
+    if (targetId === "hero-scroll-indicator" && typeof window !== "undefined") {
+      console.log("[HERO-SCROLL][getElementLayoutStyle-early-return]", {
+        reason: "no elementStyles or targetId not found"
+      })
+    }
+    return {}
+  }
 
   const styles = elementStyles[targetId] as Record<string, unknown>
   const includeGeometry = options?.includeGeometry ?? true
@@ -105,17 +121,48 @@ export function getElementLayoutStyle(
   const shouldApplyGeometry = includeGeometry && (needTranslate || needScale)
 
   // Special layout for scroll indicator (uses left: 50% + calc-based translate)
-  if (targetId === "hero-scroll-indicator" && shouldApplyGeometry) {
-    const layout = buildHeroScrollIndicatorLayoutStyle({
-      x: tx,
-      y: ty,
-      scale: needScale ? scaleVal : undefined,
-      width: includeGeometry && typeof styles.width === "number" ? roundLayoutPx(styles.width as number) : undefined,
-      height: includeGeometry && typeof styles.height === "number" ? roundLayoutPx(styles.height as number) : undefined,
-    })
-    const result: CSSProperties = { ...layout }
-    if (typeof styles.opacity === "number") result.opacity = styles.opacity
-    return result
+  if (targetId === "hero-scroll-indicator") {
+    if (typeof window !== "undefined") {
+      console.log("[HERO-SCROLL][getElementLayoutStyle-conditions]", {
+        shouldApplyGeometry,
+        hasX: typeof styles.x === "number",
+        hasY: typeof styles.y === "number",
+        x: tx,
+        y: ty,
+        needTranslate,
+        needScale,
+        scaleVal,
+        includeGeometry
+      })
+    }
+    if (shouldApplyGeometry) {
+      const layout = buildHeroScrollIndicatorLayoutStyle({
+        x: tx,
+        y: ty,
+        scale: needScale ? scaleVal : undefined,
+        width: includeGeometry && typeof styles.width === "number" ? roundLayoutPx(styles.width as number) : undefined,
+        height: includeGeometry && typeof styles.height === "number" ? roundLayoutPx(styles.height as number) : undefined,
+      })
+      const result: CSSProperties = { ...layout }
+      if (typeof styles.opacity === "number") result.opacity = styles.opacity
+      if (typeof window !== "undefined") {
+        console.log("[HERO-SCROLL][getElementLayoutStyle-built]", {
+          transform: result.transform,
+          left: result.left,
+          bottom: result.bottom,
+          width: result.width,
+          height: result.height
+        })
+      }
+      return result
+    } else {
+      if (typeof window !== "undefined") {
+        console.log("[HERO-SCROLL][getElementLayoutStyle-no-geometry]", {
+          reason: "shouldApplyGeometry is false",
+          willReturnEmpty: true
+        })
+      }
+    }
   }
 
   const layout =
