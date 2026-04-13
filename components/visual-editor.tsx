@@ -167,6 +167,7 @@ interface PrecheckFinding {
 interface VisualEditorContextType {
   isEditing: boolean
   isMobileEditBlocked: boolean
+  editorBootComplete: boolean
   setIsEditing: (v: boolean) => void
   selectedId: string | null
   setSelectedId: (id: string | null) => void
@@ -382,6 +383,7 @@ function isPersistableImageSrc(value: string | undefined): boolean {
 const VisualEditorContext = createContext<VisualEditorContextType>({
   isEditing: false,
   isMobileEditBlocked: false,
+  editorBootComplete: false,
   setIsEditing: () => {},
   selectedId: null,
   setSelectedId: () => {},
@@ -622,6 +624,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const [isEditing, setIsEditing] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
   const [isMobileEditBlocked, setIsMobileEditBlocked] = useState(false)
+  const [editorBootComplete, setEditorBootComplete] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [openPanel, setOpenPanel] = useState(false)
   const [nodes, setNodes] = useState<Map<string, EditorNode>>(new Map())
@@ -740,7 +743,24 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     }
     setNodes(nextNodes)
     snapshot(nextNodes)
+    // Mark editor boot as complete after initial node scan
+    setEditorBootComplete(true)
   }, [isEditing, isHydrated, snapshot, refreshRegistry])
+
+  // Reset boot complete flag and clear session state when editor closes
+  useEffect(() => {
+    if (!isEditing) {
+      setEditorBootComplete(false)
+      // Clear stale session state to prevent staleness on next boot
+      try {
+        if (typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
+          window.sessionStorage.removeItem("__VISUAL_EDITOR_SESSION_STATE__")
+        }
+      } catch (e) {
+        // Ignore errors - sessionStorage might be unavailable
+      }
+    }
+  }, [isEditing])
 
   // Save nodes to sessionStorage whenever they change (for session persistence on refresh)
   useEffect(() => {
@@ -1182,6 +1202,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const value: VisualEditorContextType = {
     isEditing,
     isMobileEditBlocked,
+    editorBootComplete,
     setIsEditing,
     selectedId,
     setSelectedId,

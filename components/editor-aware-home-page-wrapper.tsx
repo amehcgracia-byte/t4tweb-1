@@ -8,11 +8,11 @@ import { ReactNode } from "react"
  * This avoids the "fallback visual" where published content shows before being replaced
  */
 export function EditorAwareHomePageWrapper({ children, isEditorRoute }: { children: ReactNode; isEditorRoute: boolean }) {
-  const { isEditing, nodes } = useVisualEditor()
+  const { isEditing, editorBootComplete } = useVisualEditor()
 
-  // In editor route, wait until editing is activated and nodes are loaded
+  // In editor route, wait until editor boot is complete
   // This prevents showing published content as a fallback
-  if (isEditorRoute && (!isEditing || nodes.size === 0)) {
+  if (isEditorRoute && (!isEditing || !editorBootComplete)) {
     return (
       <div className="min-h-screen w-full bg-black flex items-center justify-center">
         <div className="text-center">
