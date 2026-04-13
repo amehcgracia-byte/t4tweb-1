@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import "./globals.css"
-import { VisualEditorProvider, VisualEditorOverlay } from "@/components/visual-editor"
+import { VisualEditorProvider } from "@/components/visual-editor"
+import { EditorOverlayWrapper } from "@/components/editor-overlay-wrapper"
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://talesforthetillerman.com"),
@@ -147,7 +148,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <VisualEditorProvider>
-          <VisualEditorOverlay />
+          <EditorOverlayWrapper />
           {children}
         </VisualEditorProvider>
       </body>

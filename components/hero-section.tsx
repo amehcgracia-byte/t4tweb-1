@@ -4,6 +4,7 @@ import { useRef, useEffect, useMemo, useState } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
+import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 
@@ -75,7 +76,7 @@ export function HeroSection({ data }: { data: HeroData }) {
         const existing = getElementById('hero-title')
         registerEditable({
           id: 'hero-title',
-          type: 'group',
+          type: 'text',
           label: 'Hero Title',
           parentId: null,
           element: heroTitleRef.current,
@@ -168,10 +169,8 @@ export function HeroSection({ data }: { data: HeroData }) {
   const backgroundY = useTransform(scrollYProgress, [0, 1], [staticY, 35])
 
   const content = data
-  // Component renders from Sanity data directly - no override hooks
-  // elementStyles handle geometry/style, content.bgUrl and content.logoUrl have the image sources
-  const resolvedHeroBgSrc = content.bgUrl
-  const resolvedHeroLogoSrc = content.logoUrl
+  const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
+  const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
 
   const mainTitleText = content.title || ""
   const accentTitleText = content.titleHighlight || ""
@@ -255,25 +254,12 @@ export function HeroSection({ data }: { data: HeroData }) {
           <h1
             ref={heroTitleRef}
             data-editor-node-id="hero-title"
-            data-editor-node-type="group"
+            data-editor-node-type="text"
             data-editor-node-label="Hero Title"
             className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6"
             style={getElementLayoutStyle(data.elementStyles, "hero-title")}
           >
-            <span
-              data-editor-node-id="hero-title-main"
-              className="mr-[0.25em]"
-              style={getElementLayoutStyle(data.elementStyles, "hero-title-main")}
-            >
-              {mainTitleText}
-            </span>
-            <span
-              data-editor-node-id="hero-title-accent"
-              className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent"
-              style={getElementLayoutStyle(data.elementStyles, "hero-title-accent")}
-            >
-              {accentTitleText}
-            </span>
+            {mainTitleText}
           </h1>
           <div
             ref={heroLogoRef}

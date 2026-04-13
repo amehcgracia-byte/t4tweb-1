@@ -668,14 +668,19 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   // This runs once after the first client-side render to establish isHydrated and isEditing state
   // without setTimeout delays that cause cascading visual changes during boot
   useEffect(() => {
+    const t = new Date().toISOString()
+    console.log(`[BOOT-PHASE1] ${t} - First useEffect running (no deps)`)
+
     // Mark as hydrated after first client-side render to prevent hydration mismatches
     setIsHydrated(true)
 
     // ONLY activate editor on /editor route - ignore ?editMode=true query param completely
     const isEditorRoute = window.location.pathname === "/editor"
     const wantsEditMode = isEditorRoute
+    console.log(`[BOOT-PHASE1] ${t} - isEditorRoute=${isEditorRoute}`)
 
     if (!wantsEditMode) {
+      console.log(`[BOOT-PHASE1] ${t} - Not editor route, setting isEditing=false`)
       setIsEditing(false)
       setIsMobileEditBlocked(false)
       return
@@ -683,9 +688,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
 
     const mediaQuery = window.matchMedia("(min-width: 1024px)")
     if (mediaQuery.matches) {
+      console.log(`[BOOT-PHASE1] ${t} - Desktop detected, setting isEditing=true`)
       setIsEditing(true)
       setIsMobileEditBlocked(false)
     } else {
+      console.log(`[BOOT-PHASE1] ${t} - Mobile detected, setting isEditing=false`)
       setIsEditing(false)
       setIsMobileEditBlocked(true)
     }
@@ -695,13 +702,19 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const nodesBuiltRef = useRef(false)
 
   useEffect(() => {
-    if (!isEditing || !isHydrated) return
+    const t = new Date().toISOString()
+    if (!isEditing || !isHydrated) {
+      console.log(`[BOOT-PHASE2] ${t} - Condition not met. isEditing=${isEditing}, isHydrated=${isHydrated}`)
+      return
+    }
     // Skip if already built - only build once after hydration to prevent re-extracting DOM content
-    if (nodesBuiltRef.current) return
+    if (nodesBuiltRef.current) {
+      console.log(`[BOOT-PHASE2] ${t} - Already built, skipping`)
+      return
+    }
     nodesBuiltRef.current = true
 
-    const timestamp = Date.now()
-    console.log(`[BOOT] Node scan starting at ${timestamp}`, { isEditing, isHydrated })
+    console.log(`[BOOT-PHASE2] ${t} - Node scan starting`)
 
     // CRITICAL: Always scan DOM fresh, never restore from sessionStorage
     // sessionStorage is session-relative persistence only, not cross-session
@@ -710,16 +723,16 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const nextNodes = new Map<string, EditorNode>()
 
     // Always use fresh DOM scan - no sessionStorage restore
-    console.log('[BOOT] Scanning DOM for all [data-editor-node-id] elements...')
+    console.log(`[BOOT-PHASE2] ${t} - Scanning DOM for all [data-editor-node-id] elements...`)
     const registry = scanRegistry()
     const nodeIds = Array.from(registry.keys())
-    console.log(`[BOOT] scanRegistry() found ${registry.size} nodes:`, nodeIds)
+    console.log(`[BOOT-PHASE2] ${t} - scanRegistry() found ${registry.size} nodes:`, nodeIds)
 
     // Categorize found nodes for debugging
     const heroNodes = nodeIds.filter(id => id.startsWith('hero-'))
     const navNodes = nodeIds.filter(id => id.startsWith('nav-'))
     const otherNodes = nodeIds.filter(id => !id.startsWith('hero-') && !id.startsWith('nav-'))
-    console.log('[BOOT] Categories:', { heroNodes: heroNodes.length, navNodes: navNodes.length, other: otherNodes.length })
+    console.log(`[BOOT-PHASE2] ${t} - Categories:`, { heroNodes: heroNodes.length, navNodes: navNodes.length, other: otherNodes.length })
 
     registry.forEach((entry, id) => {
       nextNodes.set(id, buildNodeFromEntry(entry))
@@ -737,13 +750,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         })
       }
     }
+    console.log(`[BOOT-PHASE2] ${t} - Built nodes, calling setNodes(${nextNodes.size})`)
     setNodes(nextNodes)
     snapshot(nextNodes)
     // Mark editor boot as complete after initial node scan
-    console.log(`[BOOT] Boot complete. Nodes: ${nextNodes.size}`, {
-      ids: Array.from(nextNodes.keys()),
-      heroNodes: Array.from(nextNodes.keys()).filter(id => id.startsWith('hero-') || id.startsWith('nav-')),
-    })
+    console.log(`[BOOT-PHASE2] ${t} - Boot complete. Nodes: ${nextNodes.size}. Calling setEditorBootComplete(true)`)
     setEditorBootComplete(true)
   }, [isEditing, isHydrated, snapshot, refreshRegistry])
 
@@ -1341,7 +1352,10 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
 }
 
 export function VisualEditorOverlay() {
+  const t = new Date().toISOString()
+  console.log(`[OVERLAY-MOUNT] ${t} - VisualEditorOverlay mounting`)
   const { isEditing, isMobileEditBlocked, setIsEditing, selectedId, nodes, registry, dispatch, openPanel, setOpenPanel, undo, redo, canUndo, canRedo, assets, getEditableAtPosition } = useVisualEditor()
+  console.log(`[OVERLAY-MOUNT] ${t} - Context loaded. isEditing=${isEditing}, nodes.size=${nodes.size}`)
   const [deployStatus, setDeployStatus] = useState<string | null>(null)
   const [deployDetails, setDeployDetails] = useState<string | null>(null)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
@@ -2168,106 +2182,6 @@ export function VisualEditorOverlay() {
               </div>
             )}
 
-            {/* Hero Title Group Editor - edit two phrases internally */}
-            {selectedNode.type === "group" && selectedNode.id === "hero-title" && (
-              <div className="space-y-3 rounded border border-orange-200 bg-orange-50 p-3">
-                <div className="font-semibold text-xs text-orange-900">Hero Title (Group Editor)</div>
-
-                {/* Main Title */}
-                <div className="space-y-2">
-                  <div className="text-[10px] font-semibold text-slate-700">Phrase 1: Main</div>
-                  <textarea
-                    className="w-full rounded border p-1 text-xs"
-                    value={selectedNode.content.text || ""}
-                    onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { text: e.target.value } })}
-                    placeholder="Main title text"
-                    rows={2}
-                  />
-                  <div className="mt-2 rounded border border-orange-200 bg-white p-2">
-                    <label className="text-[10px] font-semibold">Gradient</label>
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="main-gradient"
-                        checked={selectedNode.content.gradientEnabled || false}
-                        onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { gradientEnabled: e.target.checked } })}
-                        className="h-4 w-4"
-                      />
-                      <span className="text-[10px]">Enable</span>
-                    </div>
-                    {selectedNode.content.gradientEnabled && (
-                      <div className="mt-1 grid grid-cols-2 gap-1">
-                        <div>
-                          <label className="text-[9px]">Start</label>
-                          <input
-                            type="color"
-                            className="h-6 w-full rounded border p-0.5"
-                            value={selectedNode.content.gradientStart || "#FFB15A"}
-                            onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { gradientStart: e.target.value } })}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px]">End</label>
-                          <input
-                            type="color"
-                            className="h-6 w-full rounded border p-0.5"
-                            value={selectedNode.content.gradientEnd || "#FF6C00"}
-                            onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { gradientEnd: e.target.value } })}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Accent Title */}
-                <div className="space-y-2 border-t pt-2">
-                  <div className="text-[10px] font-semibold text-slate-700">Phrase 2: Accent</div>
-                  <textarea
-                    className="w-full rounded border p-1 text-xs"
-                    value={selectedNode.content.accentText || ""}
-                    onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { accentText: e.target.value } })}
-                    placeholder="Accent title text"
-                    rows={2}
-                  />
-                  <div className="mt-2 rounded border border-orange-200 bg-white p-2">
-                    <label className="text-[10px] font-semibold">Gradient</label>
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="accent-gradient"
-                        checked={selectedNode.content.accentGradientEnabled || false}
-                        onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { accentGradientEnabled: e.target.checked } })}
-                        className="h-4 w-4"
-                      />
-                      <span className="text-[10px]">Enable</span>
-                    </div>
-                    {selectedNode.content.accentGradientEnabled && (
-                      <div className="mt-1 grid grid-cols-2 gap-1">
-                        <div>
-                          <label className="text-[9px]">Start</label>
-                          <input
-                            type="color"
-                            className="h-6 w-full rounded border p-0.5"
-                            value={selectedNode.content.accentGradientStart || "#FFB15A"}
-                            onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { accentGradientStart: e.target.value } })}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px]">End</label>
-                          <input
-                            type="color"
-                            className="h-6 w-full rounded border p-0.5"
-                            value={selectedNode.content.accentGradientEnd || "#FF6C00"}
-                            onChange={(e) => dispatch({ type: "UPDATE_GROUP", nodeId: selectedNode.id, patch: { accentGradientEnd: e.target.value } })}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {(selectedNode.type === "text" || selectedNode.type === "button") &&
               !(selectedNode.type === "text" && selectedNode.id === "hero-title" && heroTitleSegments.length > 0) &&
@@ -2598,24 +2512,6 @@ export function VisualEditorOverlay() {
                     />
                   </>
                 )}
-                <label className="text-xs font-semibold">Min Height</label>
-                <input
-                  className="w-full rounded border p-1 text-xs"
-                  value={selectedNode.style.minHeight || ""}
-                  onChange={(e) => dispatch({ type: "UPDATE_SECTION", nodeId: selectedNode.id, patch: { minHeight: e.target.value } })}
-                />
-                <label className="text-xs font-semibold">Padding Top</label>
-                <input
-                  className="w-full rounded border p-1 text-xs"
-                  value={selectedNode.style.paddingTop || ""}
-                  onChange={(e) => dispatch({ type: "UPDATE_SECTION", nodeId: selectedNode.id, patch: { paddingTop: e.target.value } })}
-                />
-                <label className="text-xs font-semibold">Padding Bottom</label>
-                <input
-                  className="w-full rounded border p-1 text-xs"
-                  value={selectedNode.style.paddingBottom || ""}
-                  onChange={(e) => dispatch({ type: "UPDATE_SECTION", nodeId: selectedNode.id, patch: { paddingBottom: e.target.value } })}
-                />
               </>
             )}
 
