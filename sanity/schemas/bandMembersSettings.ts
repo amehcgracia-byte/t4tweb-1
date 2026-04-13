@@ -15,9 +15,8 @@ export const bandMembersSettings = {
     {
       name: 'elementStyles',
       title: 'Element Styles',
-      type: 'object',
+      type: 'json',
       description: 'Styling and layout overrides for band section elements (position, size, colors, typography)',
-      of: [],
     },
   ],
   preview: {

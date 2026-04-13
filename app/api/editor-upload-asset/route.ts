@@ -70,24 +70,43 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const uploadedAsset = await uploadResponse.json()
-    console.log("[editor-upload-asset] Sanity response:", {
+    let uploadedAsset: unknown
+    try {
+      uploadedAsset = await uploadResponse.json()
+    } catch (parseErr) {
+      const text = await uploadResponse.text()
+      console.error("[editor-upload-asset] Failed to parse Sanity JSON response:", {
+        error: parseErr instanceof Error ? parseErr.message : String(parseErr),
+        responseText: text.substring(0, 200)
+      })
+      return NextResponse.json(
+        { error: "Invalid JSON in Sanity response" },
+        { status: 500 }
+      )
+    }
+
+    const uploadedAssetAny = uploadedAsset as any
+    console.log("[editor-upload-asset] Sanity response parsed:", {
       full: JSON.stringify(uploadedAsset).substring(0, 500),
-      hasDocument: !!uploadedAsset.document,
-      documentKeys: uploadedAsset.document ? Object.keys(uploadedAsset.document) : null,
-      hasUrl: !!uploadedAsset.document?.url,
-      url: uploadedAsset.document?.url?.substring(0, 100)
+      hasDocument: !!uploadedAssetAny?.document,
+      documentKeys: uploadedAssetAny?.document ? Object.keys(uploadedAssetAny.document) : null,
+      hasUrl: !!uploadedAssetAny?.document?.url,
+      url: uploadedAssetAny?.document?.url?.toString().substring(0, 100)
     })
 
-    const assetUrl = uploadedAsset.document?.url
+    const assetUrl = uploadedAssetAny?.document?.url
 
-    if (!assetUrl) {
+    if (!assetUrl || typeof assetUrl !== "string") {
       console.error(
-        `[editor-upload-asset] No URL in Sanity response for ${nodeId}`,
-        { uploadedAsset: JSON.stringify(uploadedAsset).substring(0, 200) }
+        `[editor-upload-asset] No valid URL in Sanity response for ${nodeId}`,
+        {
+          uploadedAsset: JSON.stringify(uploadedAsset).substring(0, 200),
+          assetUrl,
+          assetUrlType: typeof assetUrl
+        }
       )
       return NextResponse.json(
-        { error: "No asset URL in response", received: uploadedAsset },
+        { error: "No valid asset URL in response", received: uploadedAsset },
         { status: 500 }
       )
     }

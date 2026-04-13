@@ -1,16 +1,5 @@
 import { defineField, defineType } from 'sanity'
-import { elementStyleTargetField } from './elementStyleOverrides'
-
-const NAV_STYLE_TARGETS: Array<[string, string]> = [
-  ['Navigation bar', 'navigation'],
-  ['Inner container', 'navigation-inner'],
-  ['Logo', 'nav-logo'],
-  ['Brand name', 'nav-brand-name'],
-  ...([0, 1, 2, 3, 4].map((i) => [`Nav link ${i + 1}`, `nav-link-${i}`] as [string, string])),
-  ['Book (desktop)', 'nav-book-button'],
-  ...([0, 1, 2, 3, 4].map((i) => [`Mobile link ${i + 1}`, `nav-mobile-link-${i}`] as [string, string])),
-  ['Book (mobile)', 'nav-mobile-book-button'],
-]
+import { elementStylesFieldConfig } from './elementStyleOverrides'
 
 export default defineType({
   name: 'navigation',
@@ -35,14 +24,7 @@ export default defineType({
     }),
     defineField({ name: 'ctaLabel', title: 'CTA Label', type: 'string' }),
     defineField({ name: 'ctaHref', title: 'CTA Link', type: 'string' }),
-    defineField({
-      name: 'elementStyles',
-      title: 'Visual editor layout overrides',
-      type: 'object',
-      description: 'Position and typography from on-site editor deploy (keys match data-editor-node-id).',
-      options: { collapsible: true, collapsed: true },
-      fields: NAV_STYLE_TARGETS.map(([title, name]) => elementStyleTargetField(title, name)),
-    }),
+    defineField(elementStylesFieldConfig()),
     defineField({
       name: 'updatedAt',
       title: 'Last updated (visual editor)',

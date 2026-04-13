@@ -1,6 +1,6 @@
 import { defineField, defineType } from 'sanity'
 import { StarIcon } from '@sanity/icons'
-import { elementStyleTargetField } from './elementStyleOverrides'
+import { elementStylesFieldConfig } from './elementStyleOverrides'
 
 export default defineType({
   name: 'heroSection',
@@ -76,22 +76,7 @@ export default defineType({
         },
       ],
     }),
-    defineField({
-      name: 'elementStyles',
-      title: 'Visual editor layout overrides',
-      type: 'object',
-      description: 'Position, size, and type saved from /editor deploy. Keys match on-page data-editable ids.',
-      options: { collapsible: true, collapsed: true },
-      fields: [
-        elementStyleTargetField('Hero section (root)', 'hero-section'),
-        elementStyleTargetField('Hero background image', 'hero-bg-image'),
-        elementStyleTargetField('Hero title (block)', 'hero-title'),
-        elementStyleTargetField('Hero subtitle', 'hero-subtitle'),
-        elementStyleTargetField('Hero logo', 'hero-logo'),
-        elementStyleTargetField('Hero buttons row', 'hero-buttons'),
-        elementStyleTargetField('Scroll indicator', 'hero-scroll-indicator'),
-      ],
-    }),
+    defineField(elementStylesFieldConfig()),
     defineField({
       name: 'updatedAt',
       title: 'Last updated (visual editor)',

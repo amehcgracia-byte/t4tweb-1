@@ -343,7 +343,7 @@ export function HeroSection({ data }: { data: HeroData }) {
         data-editor-node-type="card"
         data-editor-node-label="Scroll Indicator"
         data-editor-grouped="true"
-        className="absolute bottom-12 left-1/2 z-30 -translate-x-1/2 hidden sm:flex flex-col items-center gap-1 text-white/60"
+        className="z-30 hidden sm:flex flex-col items-center gap-1 text-white/60"
         style={getElementLayoutStyle(data.elementStyles, "hero-scroll-indicator")}
       >
         <span className="text-lg uppercase tracking-[0.42em]">{scrollLabelText}</span>

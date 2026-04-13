@@ -883,7 +883,7 @@ export async function POST(request: Request) {
           explicitSize: node.explicitSize,
           explicitStyle: node.explicitStyle,
           nodeStyleKeys: Object.keys(node.style || {}),
-          styleGradient: { gradientEnabled: node.style?.gradientEnabled, gradientStart: node.style?.gradientStart, gradientEnd: node.style?.gradientEnd }
+          styleGradient: { gradientEnabled: (node.style as any)?.gradientEnabled, gradientStart: (node.style as any)?.gradientStart, gradientEnd: (node.style as any)?.gradientEnd }
         })
       }
       const scaleVal = (node.style as { scale?: number })?.scale
@@ -917,7 +917,7 @@ export async function POST(request: Request) {
           explicitStyle: node.explicitStyle,
           willSkip: willSkip,
           fullNodeStyle: node.style,
-          gradient: { gradientEnabled: node.style?.gradientEnabled, gradientStart: node.style?.gradientStart, gradientEnd: node.style?.gradientEnd }
+          gradient: { gradientEnabled: (node.style as any)?.gradientEnabled, gradientStart: (node.style as any)?.gradientStart, gradientEnd: (node.style as any)?.gradientEnd }
         })
       }
 
@@ -974,9 +974,9 @@ export async function POST(request: Request) {
         if (node.id === "hero-title") {
           log("[HERO-TITLE-GRADIENT][payload-state]", {
             explicitStyle: node.explicitStyle,
-            nodeStyleGradient: { gradientEnabled: node.style?.gradientEnabled, gradientStart: node.style?.gradientStart, gradientEnd: node.style?.gradientEnd },
-            elementStylesGradient: titleStyle ? { gradientEnabled: titleStyle.gradientEnabled, gradientStart: titleStyle.gradientStart, gradientEnd: titleStyle.gradientEnd } : null,
-            willCapture: !!(titleStyle && (titleStyle.gradientEnabled || titleStyle.gradientStart || titleStyle.gradientEnd))
+            nodeStyleGradient: { gradientEnabled: (node.style as any)?.gradientEnabled, gradientStart: (node.style as any)?.gradientStart, gradientEnd: (node.style as any)?.gradientEnd },
+            elementStylesGradient: titleStyle ? { gradientEnabled: (titleStyle as any).gradientEnabled, gradientStart: (titleStyle as any).gradientStart, gradientEnd: (titleStyle as any).gradientEnd } : null,
+            willCapture: !!(titleStyle && ((titleStyle as any).gradientEnabled || (titleStyle as any).gradientStart || (titleStyle as any).gradientEnd))
           })
         }
         if (titleStyle && (titleStyle.gradientEnabled || titleStyle.gradientStart || titleStyle.gradientEnd)) {
@@ -1497,8 +1497,9 @@ export async function POST(request: Request) {
 
       // Hero scroll indicator readback
       const heroScrollStyle = verified?.elementStyles?.["hero-scroll-indicator"] as Record<string, unknown> | undefined
+      const verifiedAny = verified as any
       log("[HERO-SCROLL][sanity-readback]", {
-        scrollLabel: verified?.scrollLabel || "(not found)",
+        scrollLabel: verifiedAny?.scrollLabel || "(not found)",
         layout: heroScrollStyle ? { x: heroScrollStyle.x, y: heroScrollStyle.y, width: heroScrollStyle.width, height: heroScrollStyle.height } : "(not found)"
       })
 

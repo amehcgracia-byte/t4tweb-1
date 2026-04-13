@@ -27,7 +27,6 @@
     "framer-motion": "^12.38.0",
     "next": "16.2.0",
     "next-sanity": "^12.2.1",
-    "presentation": "link:@sanity/@sanity/presentation",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sanity": "^5.19.0",

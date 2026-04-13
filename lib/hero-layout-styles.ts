@@ -32,8 +32,8 @@ export function buildHeroStandardLayoutStyle(opts: {
 }
 
 /**
- * Scroll block: centered with `left: 50%` + `translate(calc(-50% + x), y)` so x/y match
- * what you see after save (must match `applyScrollIndicatorLayoutToElement` in the editor).
+ * Scroll block: uses same top-left coordinate system as editor.
+ * Matches `applyNodeToDom` logic in visual-editor for parity.
  */
 export function buildHeroScrollIndicatorLayoutStyle(opts: {
   x: number
@@ -46,16 +46,15 @@ export function buildHeroScrollIndicatorLayoutStyle(opts: {
   const ty = roundLayoutPx(opts.y)
   const scaleVal = opts.scale ?? 1
   const needScale = typeof opts.scale === "number" && scaleVal !== 1
-  const parts: string[] = [`translate(calc(-50% + ${tx}px), ${ty}px)`]
+  const parts: string[] = [`translate(${tx}px, ${ty}px)`]
   if (needScale) parts.push(`scale(${scaleVal})`)
   const result: CSSProperties = {
-    left: "50%",
-    bottom: "1rem",
+    position: "absolute",
     transform: parts.join(" "),
-    transformOrigin: "center bottom",
+    transformOrigin: "top left",
   }
-  if (typeof opts.width === "number") result.width = opts.width
-  if (typeof opts.height === "number") result.height = opts.height
+  if (typeof opts.width === "number") result.width = `${roundLayoutPx(opts.width)}px`
+  if (typeof opts.height === "number") result.height = `${roundLayoutPx(opts.height)}px`
   return result
 }
 
@@ -120,7 +119,7 @@ export function getElementLayoutStyle(
   const needScale = typeof styles.scale === "number" && scaleVal !== 1
   const shouldApplyGeometry = includeGeometry && (needTranslate || needScale)
 
-  // Special layout for scroll indicator (uses left: 50% + calc-based translate)
+  // Special layout for scroll indicator - ALWAYS apply positioning, even if no geometry
   if (targetId === "hero-scroll-indicator") {
     if (typeof window !== "undefined") {
       console.log("[HERO-SCROLL][getElementLayoutStyle-conditions]", {
@@ -135,34 +134,26 @@ export function getElementLayoutStyle(
         includeGeometry
       })
     }
-    if (shouldApplyGeometry) {
-      const layout = buildHeroScrollIndicatorLayoutStyle({
-        x: tx,
-        y: ty,
-        scale: needScale ? scaleVal : undefined,
-        width: includeGeometry && typeof styles.width === "number" ? roundLayoutPx(styles.width as number) : undefined,
-        height: includeGeometry && typeof styles.height === "number" ? roundLayoutPx(styles.height as number) : undefined,
+    // Always build scroll layout for proper positioning context (position: absolute + transform-origin)
+    const layout = buildHeroScrollIndicatorLayoutStyle({
+      x: tx,
+      y: ty,
+      scale: needScale ? scaleVal : undefined,
+      width: includeGeometry && shouldApplyGeometry && typeof styles.width === "number" ? roundLayoutPx(styles.width as number) : undefined,
+      height: includeGeometry && shouldApplyGeometry && typeof styles.height === "number" ? roundLayoutPx(styles.height as number) : undefined,
+    })
+    const result: CSSProperties = { ...layout }
+    if (typeof styles.opacity === "number") result.opacity = styles.opacity
+    if (typeof window !== "undefined") {
+      console.log("[HERO-SCROLL][getElementLayoutStyle-built]", {
+        hasGeometry: shouldApplyGeometry,
+        transform: result.transform,
+        position: result.position,
+        width: result.width,
+        height: result.height
       })
-      const result: CSSProperties = { ...layout }
-      if (typeof styles.opacity === "number") result.opacity = styles.opacity
-      if (typeof window !== "undefined") {
-        console.log("[HERO-SCROLL][getElementLayoutStyle-built]", {
-          transform: result.transform,
-          left: result.left,
-          bottom: result.bottom,
-          width: result.width,
-          height: result.height
-        })
-      }
-      return result
-    } else {
-      if (typeof window !== "undefined") {
-        console.log("[HERO-SCROLL][getElementLayoutStyle-no-geometry]", {
-          reason: "shouldApplyGeometry is false",
-          willReturnEmpty: true
-        })
-      }
     }
+    return result
   }
 
   const layout =

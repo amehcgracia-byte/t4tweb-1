@@ -872,17 +872,18 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       }
       if (node.explicitStyle) {
         // Apply gradient first if enabled, BEFORE applying color
-        if ((node.type === "text" || node.type === "button") && node.style.gradientEnabled) {
-          el.style.background = `linear-gradient(90deg, ${node.style.gradientStart || "#FFB15A"}, ${node.style.gradientEnd || "#FF6C00"})`
+        const nodeStyleAny = node.style as any
+        if ((node.type === "text" || node.type === "button") && nodeStyleAny.gradientEnabled) {
+          el.style.background = `linear-gradient(90deg, ${nodeStyleAny.gradientStart || "#FFB15A"}, ${nodeStyleAny.gradientEnd || "#FF6C00"})`
           el.style.backgroundClip = "text"
           el.style.webkitBackgroundClip = "text"
           el.style.webkitTextFillColor = "transparent"
           el.style.color = "transparent"
           if (node.id === "hero-title" || node.id === "hero-subtitle") {
             console.log(`[HERO-GRADIENT][applyNodeToDom-${node.id}]`, {
-              gradientEnabled: node.style.gradientEnabled,
-              gradientStart: node.style.gradientStart,
-              gradientEnd: node.style.gradientEnd,
+              gradientEnabled: nodeStyleAny.gradientEnabled,
+              gradientStart: nodeStyleAny.gradientStart,
+              gradientEnd: nodeStyleAny.gradientEnd,
               applied: true
             })
           }
@@ -891,7 +892,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           if (node.style.color) el.style.color = node.style.color
           if (node.id === "hero-title" || node.id === "hero-subtitle") {
             console.log(`[HERO-GRADIENT][applyNodeToDom-${node.id}]`, {
-              gradientEnabled: node.style.gradientEnabled,
+              gradientEnabled: nodeStyleAny.gradientEnabled,
               fallbackColor: node.style.color,
               applied: false
             })
@@ -1085,11 +1086,12 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
               })
             }
             // Log hero-title gradient edits
-            if (command.nodeId === "hero-title" && (command.patch.gradientEnabled !== undefined || command.patch.gradientStart !== undefined || command.patch.gradientEnd !== undefined)) {
+            if (command.nodeId === "hero-title" && ((command.patch as any).gradientEnabled !== undefined || (command.patch as any).gradientStart !== undefined || (command.patch as any).gradientEnd !== undefined)) {
+              const updatedStyleAny = updated.style as any
               console.log("[HERO-TITLE-GRADIENT][editor-state]", {
-                gradientEnabled: updated.style.gradientEnabled,
-                gradientStart: updated.style.gradientStart,
-                gradientEnd: updated.style.gradientEnd,
+                gradientEnabled: updatedStyleAny.gradientEnabled,
+                gradientStart: updatedStyleAny.gradientStart,
+                gradientEnd: updatedStyleAny.gradientEnd,
                 explicitStyle: updated.explicitStyle,
                 patch: command.patch
               })
@@ -2365,7 +2367,7 @@ export function VisualEditorOverlay() {
                     <input
                       type="checkbox"
                       id="gradient-enabled"
-                      checked={selectedNode.style.gradientEnabled || false}
+                      checked={(selectedNode.style as any).gradientEnabled || false}
                       onChange={(e) => {
                         console.log("[TEXT-GRADIENT-UI][toggle]", { nodeId: selectedNode.id, newValue: e.target.checked })
                         dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { gradientEnabled: e.target.checked } })
@@ -2374,14 +2376,14 @@ export function VisualEditorOverlay() {
                     />
                     <span className="text-[10px]">Enable gradient</span>
                   </div>
-                  {selectedNode.style.gradientEnabled && (
+                  {(selectedNode.style as any).gradientEnabled && (
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-[10px]">Start</label>
                         <input
                           type="color"
                           className="h-8 w-full rounded border p-1"
-                          value={selectedNode.style.gradientStart || "#FFB15A"}
+                          value={(selectedNode.style as any).gradientStart || "#FFB15A"}
                           onChange={(e) => {
                             console.log("[TEXT-GRADIENT-UI][start-change]", { nodeId: selectedNode.id, newValue: e.target.value })
                             dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { gradientStart: e.target.value } })
@@ -2393,7 +2395,7 @@ export function VisualEditorOverlay() {
                         <input
                           type="color"
                           className="h-8 w-full rounded border p-1"
-                          value={selectedNode.style.gradientEnd || "#FF6C00"}
+                          value={(selectedNode.style as any).gradientEnd || "#FF6C00"}
                           onChange={(e) => {
                             console.log("[TEXT-GRADIENT-UI][end-change]", { nodeId: selectedNode.id, newValue: e.target.value })
                             dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { gradientEnd: e.target.value } })
@@ -2560,19 +2562,26 @@ export function VisualEditorOverlay() {
                       }
                     }
 
-                    // Fallback: use blob URL (for non-hero-logo or if upload fails)
-                    const url = URL.createObjectURL(file)
-                    setHasNonPersistableUpload(true)
-                    dispatch({
-                      type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
-                      nodeId: selectedNode.id,
-                      patch: { src: url, mediaKind: "image" },
-                    })
-                    console.log(`[IMAGE-FILE][blob-fallback]`, {
-                      nodeId: selectedNode.id,
-                      isHeroLogo,
-                      fallback: "blob"
-                    })
+                    // Fallback: use blob URL only for non-hero-logo (hero-logo must use Sanity CDN or nothing)
+                    if (!isHeroLogo) {
+                      const url = URL.createObjectURL(file)
+                      setHasNonPersistableUpload(true)
+                      dispatch({
+                        type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
+                        nodeId: selectedNode.id,
+                        patch: { src: url, mediaKind: "image" },
+                      })
+                      console.log(`[IMAGE-FILE][blob-fallback]`, {
+                        nodeId: selectedNode.id,
+                        isHeroLogo,
+                        fallback: "blob"
+                      })
+                    } else {
+                      console.log(`[HERO-LOGO][no-fallback-blob]`, {
+                        nodeId: selectedNode.id,
+                        reason: "hero-logo requires Sanity CDN URL, not blob"
+                      })
+                    }
                   }}
                 />
                 {hasNonPersistableUpload && (

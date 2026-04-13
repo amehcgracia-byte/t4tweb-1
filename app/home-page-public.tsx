@@ -10,7 +10,7 @@ import { Navigation } from "@/components/navigation"
 import { SceneSection } from "@/components/scene-section"
 import { LatestReleaseSection } from "@/components/latest-release-section"
 import { IntroBannerSection } from "@/components/intro-banner-section"
-import { loadHeroData } from "@/lib/sanity/hero-loader"
+import { loadHeroDataWithDraft } from "@/lib/sanity/hero-loader-with-draft"
 import { loadNavigationData } from "@/lib/sanity/navigation-loader"
 import { loadIntroBannerData } from "@/lib/sanity/intro-banner-loader"
 import { loadBandMembersData } from "@/lib/sanity/band-members-loader"
@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic"
 
 export default async function HomePagePublic() {
   const [heroData, navigationData, introBannerData, bandMembersData, liveConcerts] = await Promise.all([
-    loadHeroData(),
+    loadHeroDataWithDraft(),
     loadNavigationData(),
     loadIntroBannerData(),
     loadBandMembersData(),
