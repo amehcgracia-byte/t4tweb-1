@@ -1,24 +1,33 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, type CSSProperties } from "react"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { NavigationData } from "@/lib/sanity/navigation-loader"
 
+/**
+ * Navbar button/container pattern:
+ * editor stores box opacity as backgroundColor alpha, never CSS opacity,
+ * so text/logo/icon children stay fully opaque in public render.
+ */
+function getNavbarBoxPatternStyle(elementStyles: NavigationData["elementStyles"], targetId: string): CSSProperties {
+  const style = { ...getElementLayoutStyle(elementStyles, targetId) }
+  delete style.opacity
+
+  const persistedStyle = elementStyles[targetId]
+  if (typeof persistedStyle?.backgroundColor === "string") {
+    style.backgroundColor = persistedStyle.backgroundColor
+    style.backgroundImage = "none"
+  }
+
+  return style
+}
+
 export function Navigation({ data }: { data: NavigationData }) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-
-  // Log on client side
-  if (typeof window !== "undefined") {
-    console.log("[NAVBAR-TRACE] Navigation component received:", {
-      elementStyles: Object.keys(data.elementStyles),
-      "nav-logo": data.elementStyles["nav-logo"],
-      "nav-brand-name": data.elementStyles["nav-brand-name"],
-    })
-  }
 
   // Refs for editable elements
   const navRef = useRef<HTMLDivElement>(null)
@@ -208,6 +217,7 @@ export function Navigation({ data }: { data: NavigationData }) {
             data-editor-node-type="card"
             data-editor-node-label="Navigation Inner Container"
             className="flex h-16 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 md:h-[4.5rem] md:px-4"
+            style={getNavbarBoxPatternStyle(data.elementStyles, "navigation-inner")}
           >
             <a
               ref={logoLinkRef}
@@ -257,6 +267,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id={`nav-link-${index}`}
                   data-editor-node-type="button"
                   data-editor-node-label={`Nav Link: ${link.label}`}
+                  style={getNavbarBoxPatternStyle(data.elementStyles, `nav-link-${index}`)}
                 >
                   {link.label}
                 </a>
@@ -266,8 +277,10 @@ export function Navigation({ data }: { data: NavigationData }) {
                 href={data.ctaHref || "#contact"}
                 data-editor-node-id="nav-book-button"
                 data-editor-node-type="button"
-                  data-editor-node-label="Book Button"
-                >
+                data-editor-node-label="Book Button"
+                className={primaryCtaClass}
+                style={getNavbarBoxPatternStyle(data.elementStyles, "nav-book-button")}
+              >
                 {data.ctaLabel || "Book"}
               </a>
             </div>
@@ -310,7 +323,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id={`nav-mobile-link-${index}`}
                   data-editor-node-type="button"
                   data-editor-node-label={`Mobile Nav: ${link.label}`}
-                  style={{}}
+                  style={getNavbarBoxPatternStyle(data.elementStyles, `nav-mobile-link-${index}`)}
                 >
                   {link.label}
                 </a>
@@ -324,7 +337,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id="nav-mobile-book-button"
                   data-editor-node-type="button"
                   data-editor-node-label="Mobile Book Button"
-                  style={{}}
+                  style={getNavbarBoxPatternStyle(data.elementStyles, "nav-mobile-book-button")}
                 >
                   {data.ctaLabel || "Book the band"}
                 </a>

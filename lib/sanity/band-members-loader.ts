@@ -10,8 +10,11 @@ export interface BandMemberData {
 
 export interface BandMembersLoadResult {
   members: BandMemberData[]
+  backgroundImageUrl: string
   elementStyles?: Record<string, Record<string, unknown>>
 }
+
+const DEFAULT_BAND_BACKGROUND = "/images/sections/band-section.jpg"
 
 const FALLBACK_MEMBERS: BandMemberData[] = [
   { id: 1, fullName: "Janosch Puhe", role: "Main Vocals", image: "/images/members/Janosch Puhe2.JPG" },
@@ -20,6 +23,49 @@ const FALLBACK_MEMBERS: BandMemberData[] = [
   { id: 4, fullName: "Robii Crowford", role: "Electric Guitar", image: "/images/members/Robii Crowford.JPG" },
   { id: 5, fullName: "Tarik Benatmane", role: "Electric Bass", image: "/images/members/Tarik Benatmane.JPG" },
 ]
+
+function normalizeElementStyleEntry(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const raw = value as Record<string, unknown>
+  const geometry = raw.geometry && typeof raw.geometry === "object" && !Array.isArray(raw.geometry)
+    ? raw.geometry as Record<string, unknown>
+    : null
+  const normalized: Record<string, unknown> = {}
+
+  if (geometry) {
+    for (const key of ["x", "y", "width", "height"]) {
+      if (typeof geometry[key] === "number") normalized[key] = Math.round(geometry[key] as number)
+    }
+  }
+
+  for (const [key, entryValue] of Object.entries(raw)) {
+    if (key === "geometry") continue
+    normalized[key] = entryValue
+  }
+
+  return normalized
+}
+
+function parseElementStyles(value: unknown): Record<string, Record<string, unknown>> {
+  const parsed = typeof value === "string"
+    ? (() => {
+        try {
+          return JSON.parse(value) as unknown
+        } catch {
+          return null
+        }
+      })()
+    : value
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
+
+  const result: Record<string, Record<string, unknown>> = {}
+  for (const [nodeId, styleValue] of Object.entries(parsed as Record<string, unknown>)) {
+    const style = normalizeElementStyleEntry(styleValue)
+    if (style) result[nodeId] = style
+  }
+  return result
+}
 
 export async function loadBandMembersData(
   perspective: "published" | "drafts" = "published"
@@ -53,34 +99,26 @@ export async function loadBandMembersData(
 
     // Load band members settings (styles/layout materialized from editor)
     const settingsQuery = `*[_type == "bandMembersSettings"][0]{
-      elementStyles
+      elementStyles,
+      "backgroundImageUrl": backgroundImage.asset->url
     }`
-    const settings = await client.fetch<{ elementStyles?: any } | null>(settingsQuery)
-    
-    let elementStyles = {}
-    if (settings?.elementStyles) {
-      if (typeof settings.elementStyles === 'string') {
-        try {
-          elementStyles = JSON.parse(settings.elementStyles)
-        } catch (e) {
-          console.error("[loadBandMembersData] Failed to parse elementStyles JSON string:", e)
-        }
-      } else if (typeof settings.elementStyles === 'object' && settings.elementStyles !== null) {
-        // Already an object (legacy data or schema mismatch)
-        elementStyles = settings.elementStyles
-      }
-    }
+    const settings = await client.fetch<{
+      elementStyles?: unknown
+      backgroundImageUrl?: string
+    } | null>(settingsQuery)
+    const elementStyles = parseElementStyles(settings?.elementStyles)
 
     return {
       members,
+      backgroundImageUrl: settings?.backgroundImageUrl || DEFAULT_BAND_BACKGROUND,
       elementStyles,
     }
   } catch (error) {
     console.error("[loadBandMembersData]", error)
     return {
       members: FALLBACK_MEMBERS,
+      backgroundImageUrl: DEFAULT_BAND_BACKGROUND,
       elementStyles: {},
     }
   }
 }
-

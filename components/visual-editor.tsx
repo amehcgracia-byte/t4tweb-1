@@ -1,11 +1,12 @@
 "use client"
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
+import { TEXT_EMPHASIS_SHADOW, applyScrollIndicatorLayoutToElement, clearScrollIndicatorLayoutFromElement } from "@/lib/hero-layout-styles"
 
-type NodeType = "section" | "background" | "card" | "text" | "button" | "image" | "group"
+type NodeType = "section" | "background" | "card" | "text" | "button" | "image" | "group" | "overlay"
 
 type Point = { x: number; y: number }
 
@@ -54,6 +55,10 @@ interface EditorNode {
     fontWeight?: string
     fontStyle?: string
     textDecoration?: string
+    textShadowEnabled?: boolean
+    gradientEnabled?: boolean
+    gradientStart?: string
+    gradientEnd?: string
     scale?: number
     minHeight?: string
     paddingTop?: string
@@ -75,6 +80,9 @@ interface EditorNode {
     accentGradientEnabled?: boolean
     accentGradientStart?: string
     accentGradientEnd?: string
+    extraNodeType?: ExtraNodeKind
+    parentSection?: string
+    label?: string
   }
   explicitContent: boolean
   explicitStyle: boolean
@@ -204,6 +212,7 @@ type Command =
   | { type: "UPDATE_BACKGROUND"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_SECTION"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_GROUP"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
+  | { type: "ADD_EXTRA_NODE"; node: EditorNode }
   | { type: "DELETE_NODE"; nodeId: string }
   | { type: "COPY_NODE"; nodeId: string }
   | { type: "CUT_NODE"; nodeId: string }
@@ -219,6 +228,7 @@ const typePriority: Record<NodeType, number> = {
   section: 5,
   image: 3,
   group: 2,
+  overlay: 3,
 }
 
 
@@ -231,7 +241,7 @@ function isEditingInput(target: EventTarget | null): boolean {
 function normalizeType(raw: string): NodeType {
   if (raw === "link") return "button"
   if (raw === "box") return "card"
-  if (raw === "section" || raw === "background" || raw === "card" || raw === "text" || raw === "button" || raw === "image" || raw === "group") {
+  if (raw === "section" || raw === "background" || raw === "card" || raw === "text" || raw === "button" || raw === "image" || raw === "group" || raw === "overlay") {
     return raw
   }
   return "text"
@@ -276,6 +286,7 @@ const TEXT_TOOL_EXACT_IDS = new Set<string>([
   "nav-brand-name",
   "hero-title",
   "hero-subtitle",
+  "hero-scroll-label",
   "intro-banner-text",
   "intro-book-button",
   "intro-press-button",
@@ -289,16 +300,143 @@ const TEXT_TOOL_EXACT_IDS = new Set<string>([
   "about-text-2",
   "about-tags",
   "about-copy-button",
+  "contact-header-eyebrow",
+  "contact-header-title",
+  "contact-header-description",
+  "contact-email-title",
+  "contact-email-description",
+  "contact-email-address",
+  "contact-middle-text",
+  "contact-telegram-title",
+  "contact-telegram-description",
+  "contact-telegram-handle",
   "footer-copyright",
   "footer-description",
   "footer-cta",
 ])
 
+const HERO_TEXT_PATTERN_NODE_IDS = new Set<string>([
+  "hero-title",
+  "hero-subtitle",
+  "hero-scroll-label",
+])
+
+const NAVBAR_TEXT_PATTERN_NODE_IDS = new Set<string>([
+  "nav-brand-name",
+  "nav-book-button",
+  "nav-mobile-book-button",
+])
+
+const EXTRA_NODE_PREFIX = "extra-"
+type ExtraNodeKind = "text" | "button" | "card" | "overlay"
+
+const EXTRA_NODE_LIMITS: Record<ExtraNodeKind, number> = {
+  text: 6,
+  button: 4,
+  card: 4,
+  overlay: 3,
+}
+
+function isExtraNodeId(nodeId: string): boolean {
+  return nodeId.startsWith(EXTRA_NODE_PREFIX)
+}
+
+function getExtraNodeKind(node: EditorNode): ExtraNodeKind | null {
+  if (!isExtraNodeId(node.id)) return null
+  if (node.type === "text" || node.type === "button" || node.type === "card" || node.type === "overlay") return node.type
+  return null
+}
+
+function createExtraNodeFromHydrated(nodeId: string, hydrated: HydratedNodeOverride): EditorNode | null {
+  const content = (hydrated.content || {}) as Record<string, unknown>
+  const style = (hydrated.style || {}) as Record<string, unknown>
+  const type = content.extraNodeType || style.extraNodeType || (hydrated as HydratedNodeOverride & { nodeType?: unknown }).nodeType
+  const normalizedType = typeof type === "string" ? normalizeType(type) : normalizeType(String(content.type || "text"))
+  if (normalizedType !== "text" && normalizedType !== "button" && normalizedType !== "card" && normalizedType !== "overlay") return null
+  const sectionId = typeof content.parentSection === "string" ? content.parentSection : "root"
+
+  return {
+    id: nodeId,
+    type: normalizedType,
+    sectionId,
+    label: typeof content.label === "string" ? content.label : `Extra ${normalizedType}`,
+    isGrouped: false,
+    geometry: {
+      x: typeof hydrated.geometry?.x === "number" ? hydrated.geometry.x : 32,
+      y: typeof hydrated.geometry?.y === "number" ? hydrated.geometry.y : 32,
+      width: typeof hydrated.geometry?.width === "number" ? hydrated.geometry.width : normalizedType === "button" ? 164 : 260,
+      height: typeof hydrated.geometry?.height === "number" ? hydrated.geometry.height : normalizedType === "button" ? 48 : 80,
+    },
+    style: { ...(hydrated.style || {}) },
+    content: { ...(hydrated.content || {}) },
+    explicitContent: Boolean(hydrated.explicitContent),
+    explicitStyle: Boolean(hydrated.explicitStyle),
+    explicitPosition: Boolean(hydrated.explicitPosition),
+    explicitSize: Boolean(hydrated.explicitSize),
+  }
+}
+
+function isNavbarTextPatternNodeId(nodeId: string): boolean {
+  return NAVBAR_TEXT_PATTERN_NODE_IDS.has(nodeId) || /^nav-(?:mobile-)?link-\d+$/.test(nodeId)
+}
+
+function isNavbarOrHeroTextPatternNodeId(nodeId: string): boolean {
+  return HERO_TEXT_PATTERN_NODE_IDS.has(nodeId) || isNavbarTextPatternNodeId(nodeId)
+}
+
+const HERO_IMAGE_FILTER_DEFAULTS = {
+  contrast: 100,
+  saturation: 100,
+  brightness: 100,
+  opacity: 1,
+  negative: false,
+} satisfies Pick<EditorNode["style"], "contrast" | "saturation" | "brightness" | "opacity" | "negative">
+
+function isUsableHeroTextGeometry(geometry: Partial<NodeGeometry> | null | undefined): boolean {
+  const x = geometry?.x
+  const y = geometry?.y
+  const width = geometry?.width
+  const height = geometry?.height
+
+  return (
+    typeof x === "number" &&
+    typeof y === "number" &&
+    typeof width === "number" &&
+    typeof height === "number" &&
+    Number.isFinite(x) &&
+    Number.isFinite(y) &&
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    Math.abs(x) <= 2400 &&
+    Math.abs(y) <= 900 &&
+    width > 1 &&
+    height > 1 &&
+    width <= 2400 &&
+    height <= 800
+  )
+}
+
+const NAVBAR_BUTTON_TEXT_TOOL_IDS = new Set<string>([
+  "nav-book-button",
+  "nav-mobile-book-button",
+])
+
+function isNavbarLinkButtonNodeId(nodeId: string): boolean {
+  return /^nav-(?:mobile-)?link-\d+$/.test(nodeId)
+}
+
+function isNavbarTextOrButtonPatternNode(node: EditorNode): boolean {
+  return node.id === "nav-brand-name" || NAVBAR_BUTTON_TEXT_TOOL_IDS.has(node.id) || isNavbarLinkButtonNodeId(node.id)
+}
+
 function hasRealTextToolingWriter(node: EditorNode | null): boolean {
   if (!node) return false
   if (node.type !== "text" && node.type !== "button") return false
+  if (isExtraNodeId(node.id)) return true
+  if (isNavbarTextOrButtonPatternNode(node)) return true
   if (TEXT_TOOL_EXACT_IDS.has(node.id)) return true
-  if (/^nav-link-\d+$/.test(node.id)) return true
+  if (/^live-(?:upcoming|history)-event-\d+-(?:date|venue|city|country|genre|price|time|status|capacity|locationUrl)$/.test(node.id)) return true
+  if (/^live-(?:upcoming|history|stream|social)-/.test(node.id)) return true
   return false
 }
 
@@ -562,7 +700,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const explicitContent = hydrated?.explicitContent ?? (el.dataset.editorExplicitContent === "true")
   const explicitStyle = hydrated?.explicitStyle ?? (el.dataset.editorExplicitStyle === "true")
   let explicitPosition = hydrated?.explicitPosition ?? (el.dataset.editorExplicitPosition === "true")
-  const explicitSize = hydrated?.explicitSize ?? (el.dataset.editorExplicitSize === "true")
+  let explicitSize = hydrated?.explicitSize ?? (el.dataset.editorExplicitSize === "true")
   const geometryX = parseDatasetNumber(el.dataset.editorGeometryX)
   const geometryY = parseDatasetNumber(el.dataset.editorGeometryY)
   const geometryWidth = parseDatasetNumber(el.dataset.editorGeometryWidth)
@@ -570,17 +708,29 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const hydratedGeometry = hydrated?.geometry || null
   const hydratedStyle = hydrated?.style || null
   const hydratedContent = hydrated?.content || null
+  const isHeroTextPatternNode = HERO_TEXT_PATTERN_NODE_IDS.has(entry.id)
+  const hasUsableHydratedHeroTextGeometry = isHeroTextPatternNode && isUsableHeroTextGeometry(hydratedGeometry)
+  const hydratedGeometryForNode = isHeroTextPatternNode && !hasUsableHydratedHeroTextGeometry ? null : hydratedGeometry
+  const hydratedStyleForNode = isHeroTextPatternNode
+    ? (() => {
+      const textStyle = { ...(hydratedStyle || {}) }
+      if (!hasUsableHydratedHeroTextGeometry) delete textStyle.scale
+      delete textStyle.minHeight
+      delete textStyle.paddingTop
+      delete textStyle.paddingBottom
+        return textStyle
+      })()
+    : hydratedStyle
 
   // HERO NODES FIX: If hero node has persisted geometry but explicitPosition=false,
   // force explicitPosition=true so applyNodeToDom applies the transform
   const HERO_NODE_IDS_TO_FIX = new Set(["hero-scroll-indicator", "hero-logo", "hero-bg-image"])
   if (HERO_NODE_IDS_TO_FIX.has(entry.id) && !explicitPosition && hydratedGeometry && (hydratedGeometry.x !== 0 || hydratedGeometry.y !== 0)) {
     explicitPosition = true
-    console.log(`[HERO-SCROLL-FIX][explicitPosition-override]`, {
-      nodeId: entry.id,
-      reason: "has persisted geometry but explicitPosition was false",
-      geometry: hydratedGeometry
-    })
+  }
+  if (isHeroTextPatternNode) {
+    explicitPosition = hasUsableHydratedHeroTextGeometry && explicitPosition
+    explicitSize = hasUsableHydratedHeroTextGeometry && explicitSize
   }
 
   return {
@@ -590,10 +740,10 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     label: entry.label,
     isGrouped: entry.isGrouped,
     geometry: {
-      x: (typeof hydratedGeometry?.x === "number" ? hydratedGeometry.x : null) ?? geometryX ?? 0,
-      y: (typeof hydratedGeometry?.y === "number" ? hydratedGeometry.y : null) ?? geometryY ?? 0,
-      width: (typeof hydratedGeometry?.width === "number" ? hydratedGeometry.width : null) ?? geometryWidth ?? entry.rect.width,
-      height: (typeof hydratedGeometry?.height === "number" ? hydratedGeometry.height : null) ?? geometryHeight ?? entry.rect.height,
+      x: (typeof hydratedGeometryForNode?.x === "number" ? hydratedGeometryForNode.x : null) ?? geometryX ?? 0,
+      y: (typeof hydratedGeometryForNode?.y === "number" ? hydratedGeometryForNode.y : null) ?? geometryY ?? 0,
+      width: (typeof hydratedGeometryForNode?.width === "number" ? hydratedGeometryForNode.width : null) ?? geometryWidth ?? entry.rect.width,
+      height: (typeof hydratedGeometryForNode?.height === "number" ? hydratedGeometryForNode.height : null) ?? geometryHeight ?? entry.rect.height,
     },
     style: {
       color: rgbToHex(cs.color),
@@ -607,7 +757,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       minHeight: cs.minHeight,
       paddingTop: cs.paddingTop,
       paddingBottom: cs.paddingBottom,
-      ...(hydratedStyle || {}),
+      ...(hydratedStyleForNode || {}),
     },
     // Merge hydratedContent for fields that cannot be read from the DOM
     // (e.g. gradientEnabled, gradientStart, gradientEnd, concert data).
@@ -745,8 +895,13 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       const bag = (window as Window & { __HOME_EDITOR_NODE_OVERRIDES__?: Record<string, HydratedNodeOverride> }).__HOME_EDITOR_NODE_OVERRIDES__
       if (bag && typeof bag === "object") {
         Object.entries(bag).forEach(([id, hydrated]) => {
-          if (!isPersistOnlyNodeId(id)) return
           if (nextNodes.has(id)) return
+          if (isExtraNodeId(id)) {
+            const extraNode = createExtraNodeFromHydrated(id, hydrated)
+            if (extraNode) nextNodes.set(id, extraNode)
+            return
+          }
+          if (!isPersistOnlyNodeId(id)) return
           nextNodes.set(id, createPersistOnlyNode(id, hydrated))
         })
       }
@@ -775,6 +930,14 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     }
   }, [isEditing])
 
+  const extraNodeRegistrySignature = Array.from(nodes.keys()).filter(isExtraNodeId).sort().join("|")
+
+  useEffect(() => {
+    if (!isEditing || !isHydrated || !nodesBuiltRef.current || !extraNodeRegistrySignature) return
+    const timeout = window.setTimeout(() => setRegistry(scanRegistry()), 0)
+    return () => window.clearTimeout(timeout)
+  }, [isEditing, isHydrated, extraNodeRegistrySignature])
+
   // Boot timeout: if editorBootComplete not set within 30 seconds, something is wrong
   useEffect(() => {
     if (!isEditing || !isHydrated || editorBootComplete) return
@@ -791,11 +954,12 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeout)
   }, [isEditing, isHydrated, editorBootComplete])
 
-  // Save nodes to sessionStorage whenever they change (for session persistence on refresh)
+  // Session snapshots are diagnostic only. Hero doc-backed images are excluded so
+  // un-deployed filter/src edits cannot survive a browser refresh as local state.
   useEffect(() => {
     if (!isEditing || !isHydrated || nodes.size === 0) return
     try {
-      const serialized = Array.from(nodes.entries())
+      const serialized = Array.from(nodes.entries()).filter(([id]) => id !== "hero-bg-image" && id !== "hero-logo")
       window.sessionStorage.setItem("__VISUAL_EDITOR_SESSION_STATE__", JSON.stringify(serialized))
     } catch (e) {
       // Silently fail - sessionStorage might be full or unavailable
@@ -809,57 +973,25 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     el.style.animation = "none"
     const hasManagedTransform = el.dataset.editorManagedTransform === "true"
     const hasManagedSize = el.dataset.editorManagedSize === "true"
+    const isHeroTextPatternNode = HERO_TEXT_PATTERN_NODE_IDS.has(node.id)
+    const hasUsableHeroTextGeometry = isHeroTextPatternNode && isUsableHeroTextGeometry(node.geometry)
     const nodeScale = Math.max(0.1, node.style.scale ?? 1)
-
-    // Log hero-scroll-indicator layout application
-    if (node.id === "hero-scroll-indicator") {
-      const willApplyTransform = node.explicitPosition || (node.explicitStyle && nodeScale !== 1)
-      let appliedTransform = "none"
-      if (willApplyTransform) {
-        const parts: string[] = [`translate(calc(-50% + ${g.x}px), ${g.y}px)`]
-        if (nodeScale !== 1) parts.push(`scale(${nodeScale})`)
-        appliedTransform = parts.join(" ")
-      }
-      
-      console.log("[HERO-SCROLL][applyNodeToDom-layout]", {
-        nodeId: node.id,
-        x: g.x,
-        y: g.y,
-        width: g.width,
-        height: g.height,
-        scale: nodeScale,
-        explicitPosition: node.explicitPosition,
-        explicitSize: node.explicitSize,
-        explicitStyle: node.explicitStyle,
-        willApplyTransform,
-        appliedTransform,
-        currentTransform: el.style.transform,
-        currentWidth: el.style.width,
-        currentHeight: el.style.height,
-        specialHandling: "scroll-indicator"
-      })
-    }
 
     // Special handling for hero-scroll-indicator to match public page layout
     if (node.id === "hero-scroll-indicator") {
       if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
-        const parts: string[] = [`translate(calc(-50% + ${g.x}px), ${g.y}px)`]
-        if (nodeScale !== 1) parts.push(`scale(${nodeScale})`)
-        el.style.left = "50%"
-        el.style.bottom = "2rem"
-        el.style.transform = parts.join(" ")
-        el.style.transformOrigin = "center bottom"
+        applyScrollIndicatorLayoutToElement(el, g, nodeScale)
         el.dataset.editorManagedTransform = "true"
       } else {
         if (hasManagedTransform) {
-          el.style.removeProperty("left")
-          el.style.removeProperty("bottom")
-          el.style.removeProperty("transform")
-          el.style.removeProperty("transform-origin")
+          clearScrollIndicatorLayoutFromElement(el)
           delete el.dataset.editorManagedTransform
         }
       }
-    } else if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
+    } else if (
+      (isHeroTextPatternNode && hasUsableHeroTextGeometry && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1))) ||
+      (!isHeroTextPatternNode && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)))
+    ) {
       el.style.transform = nodeScale !== 1
         ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})`
         : `translate(${g.x}px, ${g.y}px)`
@@ -872,7 +1004,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         delete el.dataset.editorManagedTransform
       }
     }
-    if (node.explicitSize) {
+    if (
+      (isHeroTextPatternNode && hasUsableHeroTextGeometry && node.explicitSize) ||
+      (!isHeroTextPatternNode && node.explicitSize)
+    ) {
       el.style.width = `${Math.max(8, g.width)}px`
       el.style.height = `${Math.max(8, g.height)}px`
       el.dataset.editorManagedSize = "true"
@@ -905,30 +1040,24 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           el.style.webkitBackgroundClip = "text"
           el.style.webkitTextFillColor = "transparent"
           el.style.color = "transparent"
-          if (node.id === "hero-title" || node.id === "hero-subtitle") {
-            console.log(`[HERO-GRADIENT][applyNodeToDom-${node.id}]`, {
-              gradientEnabled: nodeStyleAny.gradientEnabled,
-              gradientStart: nodeStyleAny.gradientStart,
-              gradientEnd: nodeStyleAny.gradientEnd,
-              applied: true
-            })
-          }
         } else {
-          // Only apply color if gradient is NOT enabled
+          el.style.removeProperty("background")
+          el.style.removeProperty("background-image")
+          el.style.removeProperty("background-clip")
+          el.style.removeProperty("-webkit-background-clip")
+          el.style.removeProperty("-webkit-text-fill-color")
           if (node.style.color) el.style.color = node.style.color
-          if (node.id === "hero-title" || node.id === "hero-subtitle") {
-            console.log(`[HERO-GRADIENT][applyNodeToDom-${node.id}]`, {
-              gradientEnabled: nodeStyleAny.gradientEnabled,
-              fallbackColor: node.style.color,
-              applied: false
-            })
-          }
         }
         if (node.style.fontSize) el.style.fontSize = node.style.fontSize
         if (node.style.fontFamily) el.style.fontFamily = node.style.fontFamily
         if (node.style.fontWeight) el.style.fontWeight = node.style.fontWeight
         if (node.style.fontStyle) el.style.fontStyle = node.style.fontStyle
         if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
+        if (node.style.textShadowEnabled === true) {
+          el.style.textShadow = TEXT_EMPHASIS_SHADOW
+        } else if (node.style.textShadowEnabled === false) {
+          el.style.removeProperty("text-shadow")
+        }
       }
     }
     if (node.type === "button") {
@@ -937,7 +1066,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       }
       if (node.explicitStyle && node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
     }
-    if (node.type === "card") {
+    if (node.type === "card" || node.type === "overlay") {
       if (node.explicitContent && node.content.text !== undefined) el.textContent = node.content.text
       if (node.explicitStyle && node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
     }
@@ -1068,7 +1197,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             let isStyleEdit = !!n.explicitStyle
             Object.entries(command.patch).forEach(([k, v]) => {
               // Gradient properties are STYLE, not content
-              if (["gradientEnabled", "gradientStart", "gradientEnd", "accentGradientEnabled", "accentGradientStart", "accentGradientEnd"].includes(k)) {
+              if (["gradientEnabled", "gradientStart", "gradientEnd", "textShadowEnabled", "accentGradientEnabled", "accentGradientStart", "accentGradientEnd"].includes(k)) {
                 isStyleEdit = true;
                 (style as Record<string, unknown>)[k] = v
               }
@@ -1084,46 +1213,15 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
               }
             })
             const updated = { ...n, content, style, explicitContent: isContentEdit, explicitStyle: isStyleEdit }
-            // Log hero-logo edits
-            if (command.nodeId === "hero-logo") {
-              console.log("[HERO-LOGO][reducer-entry]", {
-                nodeId: command.nodeId,
-                patch: command.patch,
-                patchSrc: (command.patch as Record<string, unknown>).src?.toString().substring(0, 100) || null
-              })
-              console.log("[HERO-LOGO][reducer-update]", {
-                nodeId: command.nodeId,
-                patch: command.patch,
-                priorSrc: n.content.src?.toString().substring(0, 100),
-                newSrc: content.src?.toString().substring(0, 100),
-                contentSrcAfterUpdate: content.src?.toString().substring(0, 100),
-                updatedNodeContentSrc: updated.content.src?.toString().substring(0, 100),
-                explicitContent: updated.explicitContent
-              })
-            }
-            // Log hero-scroll-indicator edits
-            if (command.nodeId === "hero-scroll-indicator") {
-              console.log("[HERO-SCROLL][update-card]", {
-                nodeId: command.nodeId,
-                patch: command.patch,
-                priorContent: n.content,
-                newContent: content,
-                explicitContent: updated.explicitContent
-              })
-            }
-            // Log hero-title gradient edits
-            if (command.nodeId === "hero-title" && ((command.patch as any).gradientEnabled !== undefined || (command.patch as any).gradientStart !== undefined || (command.patch as any).gradientEnd !== undefined)) {
-              const updatedStyleAny = updated.style as any
-              console.log("[HERO-TITLE-GRADIENT][editor-state]", {
-                gradientEnabled: updatedStyleAny.gradientEnabled,
-                gradientStart: updatedStyleAny.gradientStart,
-                gradientEnd: updatedStyleAny.gradientEnd,
-                explicitStyle: updated.explicitStyle,
-                patch: command.patch
-              })
-            }
             return updated
           })
+          break
+        }
+        case "ADD_EXTRA_NODE": {
+          next.set(command.node.id, command.node)
+          setSelectedId(command.node.id)
+          setOpenPanel(true)
+          window.setTimeout(() => setRegistry(scanRegistry()), 0)
           break
         }
         case "DELETE_NODE":
@@ -1269,6 +1367,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     candidates.sort((a, b) => typePriority[a.type] - typePriority[b.type])
 
     const best = candidates[0]
+    if (best && HERO_TEXT_PATTERN_NODE_IDS.has(best.id)) return best
     if (best) {
       const groupedAncestor = best.element.parentElement?.closest<HTMLElement>("[data-editor-grouped='true'][data-editor-node-id]")
       if (groupedAncestor?.dataset.editorNodeId && groupedAncestor.dataset.editorNodeId !== best.id) {
@@ -1327,6 +1426,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       for (const id of next.keys()) {
         if (registry.has(id)) continue
         if (isPersistOnlyNodeId(id)) continue
+        if (isExtraNodeId(id)) continue
         next.delete(id)
         changed = true
       }
@@ -1390,6 +1490,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     <VisualEditorContext.Provider value={value}>
       <MotionConfig reducedMotion={isEditing ? "always" : "never"}>
         {children}
+        {isEditing && <ExtraNodesLayer nodes={nodes} />}
       </MotionConfig>
     </VisualEditorContext.Provider>
   )
@@ -1459,6 +1560,84 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
   )
 }
 
+function ExtraNodesLayer({ nodes }: { nodes: Map<string, EditorNode> }) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) return null
+
+  return (
+    <>
+      {Array.from(nodes.values()).map((node) => {
+        const kind = getExtraNodeKind(node)
+        if (!kind) return null
+        const parent = document.querySelector<HTMLElement>(`[data-editor-node-id="${node.sectionId}"]`)
+        if (!parent) return null
+
+        const baseStyle: CSSProperties = {
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: `${Math.max(8, node.geometry.width)}px`,
+          height: `${Math.max(8, node.geometry.height)}px`,
+          transform: `translate(${node.geometry.x}px, ${node.geometry.y}px)`,
+          transformOrigin: "top left",
+          zIndex: kind === "overlay" ? 8 : 20,
+          color: node.style.color,
+          backgroundColor: node.style.backgroundColor,
+          fontSize: node.style.fontSize,
+          fontFamily: node.style.fontFamily,
+          fontWeight: node.style.fontWeight,
+          fontStyle: node.style.fontStyle,
+          textDecoration: node.style.textDecoration,
+          display: kind === "button" ? "inline-flex" : kind === "text" ? "block" : "flex",
+          alignItems: kind === "text" ? undefined : "center",
+          justifyContent: kind === "text" ? undefined : "center",
+          padding: kind === "text" ? undefined : kind === "button" ? "0 18px" : "16px",
+          borderRadius: kind === "text" ? undefined : kind === "button" ? "8px" : "8px",
+          border: kind === "card" ? "1px solid rgba(255,255,255,0.18)" : undefined,
+          backdropFilter: kind === "overlay" ? "blur(2px)" : undefined,
+          pointerEvents: "auto",
+        }
+        if ((kind === "text" || kind === "button") && node.style.textShadowEnabled) {
+          baseStyle.textShadow = TEXT_EMPHASIS_SHADOW
+        }
+        if ((kind === "text" || kind === "button") && node.style.gradientEnabled) {
+          baseStyle.background = `linear-gradient(90deg, ${node.style.gradientStart || "#FFB15A"}, ${node.style.gradientEnd || "#FF6C00"})`
+          baseStyle.backgroundClip = "text"
+          baseStyle.WebkitBackgroundClip = "text"
+          baseStyle.WebkitTextFillColor = "transparent"
+          baseStyle.color = "transparent"
+        }
+
+        const commonProps = {
+          "data-editor-node-id": node.id,
+          "data-editor-node-type": node.type,
+          "data-editor-node-label": node.label,
+          "data-editor-section-id": node.sectionId,
+          "data-editor-extra-node": "true",
+          style: baseStyle,
+        }
+
+        if (kind === "button") {
+          return createPortal(
+            <a {...commonProps} href={node.content.href || "#"}>{node.content.text || "New button"}</a>,
+            parent
+          )
+        }
+
+        return createPortal(
+          <div {...commonProps}>{kind === "overlay" ? "" : node.content.text}</div>,
+          parent
+        )
+      })}
+    </>
+  )
+}
+
 export function VisualEditorOverlay() {
   const t = new Date().toISOString()
   console.log(`[OVERLAY-MOUNT] ${t} - VisualEditorOverlay mounting`)
@@ -1466,15 +1645,19 @@ export function VisualEditorOverlay() {
   console.log(`[OVERLAY-MOUNT] ${t} - Context loaded. isEditing=${isEditing}, nodes.size=${nodes.size}`)
   const [deployStatus, setDeployStatus] = useState<string | null>(null)
   const [deployDetails, setDeployDetails] = useState<string | null>(null)
+  const [deployDetailsExpanded, setDeployDetailsExpanded] = useState(false)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
   const [hasNonPersistableUpload, setHasNonPersistableUpload] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
+  const [addMessage, setAddMessage] = useState<string | null>(null)
   const selectedIdsRef = useRef<string[]>(selectedIds)
   const [marqueeRect, setMarqueeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const marqueeRef = useRef<{ active: boolean; start: Point }>({ active: false, start: { x: 0, y: 0 } })
   const nodesRef = useRef<Map<string, EditorNode>>(nodes)
   const baselineNodeSignaturesRef = useRef<Map<string, string>>(new Map())
   const dirtyNodeIdsRef = useRef<Set<string>>(new Set())
+  const extraNodeCounterRef = useRef(0)
 
   const getNodeSignature = useCallback((node: EditorNode): string => {
     return JSON.stringify({
@@ -1517,15 +1700,6 @@ export function VisualEditorOverlay() {
       const current = getNodeSignature(node)
       if (baseline === undefined || baseline !== current) {
         dirtyNodeIdsRef.current.add(id)
-        if (id === "hero-scroll-indicator") {
-          console.log("[HERO-SCROLL][marked-dirty]", {
-            nodeId: id,
-            hasBaseline: baseline !== undefined,
-            baselineLength: baseline?.length,
-            currentLength: current.length,
-            changed: baseline !== current
-          })
-        }
       }
     })
   }, [isEditing, nodes, getNodeSignature])
@@ -1540,8 +1714,8 @@ export function VisualEditorOverlay() {
   const isHeroAssetNode =
     (selectedNode?.type === "image" || selectedNode?.type === "background") &&
     (selectedNode.id === "hero-logo" || selectedNode.id === "hero-bg-image")
-  const isHeroScrollIndicatorCard = selectedNode?.type === "card" && selectedNode.id === "hero-scroll-indicator"
   const isFooterSocialGroup = selectedNode?.type === "card" && selectedNode.id === "footer-social-group"
+  const isNavbarOrHeroTextNode = selectedNode ? isNavbarOrHeroTextPatternNodeId(selectedNode.id) : false
   const hasNestedEditableChildren = Boolean(
     selectedNode?.type === "card" &&
       selectedEntry?.element &&
@@ -1558,27 +1732,16 @@ export function VisualEditorOverlay() {
         selectedEntry.element.querySelector("[data-concert-field]")
       )
   )
-  let isSimpleEditableCard =
-    selectedNode?.type === "card" &&
+  const isSimpleEditableBox =
+    (selectedNode?.type === "card" || selectedNode?.type === "overlay") &&
     !isFooterSocialGroup &&
     !hasNestedEditableChildren &&
     !hasStructuredCardFields
 
-  // Force hero-scroll-indicator to be simple editable for scrollLabel text field
-  if (selectedNode?.id === "hero-scroll-indicator") {
-    isSimpleEditableCard = true
-    console.log("[HERO-SCROLL][panel-conditions]", {
-      nodeId: "hero-scroll-indicator",
-      type: selectedNode.type,
-      isSimpleEditableCard: true,
-      reason: "force enabled for scrollLabel text editing",
-      contentText: selectedNode.content?.text,
-      explicitContent: selectedNode.explicitContent
-    })
-  }
-  const footerSocialLinkItems = useMemo(() => {
-    if (!isFooterSocialGroup || !selectedEntry?.element) return [] as Array<{ id: string; name: string; href: string }>
-    return Array.from(selectedEntry.element.querySelectorAll<HTMLElement>("[data-link-item='true'][data-editor-node-id]"))
+  const selectedEntryElement = selectedEntry?.element
+  const footerSocialLinkItems = (() => {
+    if (!isFooterSocialGroup || !selectedEntryElement) return [] as Array<{ id: string; name: string; href: string }>
+    return Array.from(selectedEntryElement.querySelectorAll<HTMLElement>("[data-link-item='true'][data-editor-node-id]"))
       .map((el) => {
         const id = (el.dataset.editorNodeId || "").trim()
         if (!id) return null
@@ -1590,7 +1753,107 @@ export function VisualEditorOverlay() {
         }
       })
       .filter((item): item is { id: string; name: string; href: string } => Boolean(item))
-  }, [isFooterSocialGroup, selectedEntry, nodes])
+  })()
+
+  const addExtraNode = (kind: ExtraNodeKind): void => {
+    const selectedSectionElement =
+      selectedEntry?.element?.closest<HTMLElement>("[data-editor-node-type='section'][data-editor-node-id]") ||
+      (selectedEntry?.type === "section" ? selectedEntry.element : null)
+    const viewportCenterY = window.innerHeight / 2
+    const fallbackSection = Array.from(document.querySelectorAll<HTMLElement>("[data-editor-node-type='section'][data-editor-node-id]"))
+      .map((el) => ({ el, rect: el.getBoundingClientRect() }))
+      .filter(({ rect }) => rect.bottom > 0 && rect.top < window.innerHeight)
+      .sort((a, b) => Math.abs((a.rect.top + a.rect.bottom) / 2 - viewportCenterY) - Math.abs((b.rect.top + b.rect.bottom) / 2 - viewportCenterY))[0]?.el || null
+    const sectionElement = selectedSectionElement || fallbackSection
+    const sectionId = sectionElement?.dataset.editorNodeId || null
+
+    if (!sectionElement || !sectionId) {
+      setAddMessage("Select a section before adding a block.")
+      return
+    }
+
+    const existingCount = Array.from(nodes.values()).filter((node) => node.sectionId === sectionId && getExtraNodeKind(node) === kind).length
+    const limit = EXTRA_NODE_LIMITS[kind]
+    if (existingCount >= limit) {
+      setAddMessage(`Too many extra ${kind}s in this section. Remove one element before adding another.`)
+      return
+    }
+
+    const rect = sectionElement.getBoundingClientRect()
+    const defaults: Record<ExtraNodeKind, { type: NodeType; label: string; width: number; height: number; text?: string; href?: string; style: EditorNode["style"] }> = {
+      text: {
+        type: "text",
+        label: "Extra Text",
+        width: 260,
+        height: 48,
+        text: "New text",
+        style: { color: "#ffffff", fontSize: "24px", fontWeight: "600", textShadowEnabled: false },
+      },
+      button: {
+        type: "button",
+        label: "Extra Button",
+        width: 164,
+        height: 48,
+        text: "New button",
+        href: "#",
+        style: { color: "#ffffff", backgroundColor: "rgba(255, 140, 33, 0.85)", fontSize: "16px", fontWeight: "600" },
+      },
+      card: {
+        type: "card",
+        label: "Extra Card",
+        width: 300,
+        height: 168,
+        style: { backgroundColor: "rgba(0, 0, 0, 0.45)" },
+      },
+      overlay: {
+        type: "overlay",
+        label: "Extra Overlay",
+        width: 340,
+        height: 190,
+        style: { backgroundColor: "rgba(0, 0, 0, 0.32)" },
+      },
+    }
+    const preset = defaults[kind]
+    const yBase = Math.max(32, Math.min(Math.max(32, rect.height - preset.height - 32), window.innerHeight * 0.35 - rect.top))
+    const xBase = Math.max(32, Math.min(Math.max(32, rect.width - preset.width - 32), 80 + existingCount * 18))
+    extraNodeCounterRef.current += 1
+    let nodeId = `${EXTRA_NODE_PREFIX}${sectionId}-${kind}-${extraNodeCounterRef.current}`
+    while (nodes.has(nodeId)) {
+      extraNodeCounterRef.current += 1
+      nodeId = `${EXTRA_NODE_PREFIX}${sectionId}-${kind}-${extraNodeCounterRef.current}`
+    }
+    const node: EditorNode = {
+      id: nodeId,
+      type: preset.type,
+      sectionId,
+      label: preset.label,
+      isGrouped: false,
+      geometry: {
+        x: Math.round(xBase),
+        y: Math.round(yBase + existingCount * 18),
+        width: preset.width,
+        height: preset.height,
+      },
+      style: preset.style,
+      content: {
+        text: preset.text,
+        href: preset.href,
+        extraNodeType: kind,
+        parentSection: sectionId,
+        label: preset.label,
+      },
+      explicitContent: true,
+      explicitStyle: true,
+      explicitPosition: true,
+      explicitSize: true,
+    }
+
+    dispatch({ type: "ADD_EXTRA_NODE", node })
+    setSelectedIds([nodeId])
+    setAddMenuOpen(false)
+    setAddMessage(null)
+  }
+
   const selectedBandMemberIndex = extractBandMemberIndex(selectedNode?.id)
 
   const getBandMemberFieldValue = useCallback((index: number, field: "number" | "name" | "role" | "photo"): string => {
@@ -1641,18 +1904,20 @@ export function VisualEditorOverlay() {
 
   const onDeploy = async () => {
     setDeployStatus("connecting")
+    setDeployDetailsExpanded(false)
+    setCopyState("idle")
     try {
       const changedNodeIds = Array.from(dirtyNodeIdsRef.current)
       console.log("[DEPLOY][dirty-nodes]", {
         totalDirty: changedNodeIds.length,
         nodeIds: changedNodeIds,
-        hasHeroScroll: changedNodeIds.includes("hero-scroll-indicator"),
         dirtySet: Array.from(dirtyNodeIdsRef.current)
       })
-      const nonPersistableNodes = Array.from(nodes.values())
+      const deployableNodes = Array.from(nodes.values())
+      const nonPersistableNodes = deployableNodes
         .filter((node) => (node.type === "image" || node.type === "background") && !isPersistableImageSrc(node.content.src))
         .map((node) => node.id)
-      const serializedNodes = Array.from(nodes.values()).map((node) => ({
+      const serializedNodes = deployableNodes.map((node) => ({
         id: node.id,
         type: node.type,
         label: node.label,
@@ -1834,13 +2099,25 @@ export function VisualEditorOverlay() {
     dispatch({ type: "MOVE_NODE", nodeId, dx, dy })
   }, [dispatch])
 
+  const resetHeroImageFilters = useCallback((nodeId: "hero-bg-image" | "hero-logo") => {
+    const node = nodesRef.current.get(nodeId)
+    dispatch({
+      type: node?.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
+      nodeId,
+      patch: HERO_IMAGE_FILTER_DEFAULTS,
+    })
+  }, [dispatch])
+
   const arrangeSelectedNodes = useCallback(() => {
     const targets = selectedIds.length > 0 ? selectedIds : (selectedId ? [selectedId] : [])
     if (targets.length === 0) return
     dispatch({ type: "BEGIN_TRANSACTION" })
     targets.forEach((nodeId) => arrangeNodeById(nodeId))
+    targets.forEach((nodeId) => {
+      if (nodeId === "hero-bg-image" || nodeId === "hero-logo") resetHeroImageFilters(nodeId)
+    })
     dispatch({ type: "END_TRANSACTION" })
-  }, [arrangeNodeById, dispatch, selectedId, selectedIds])
+  }, [arrangeNodeById, dispatch, resetHeroImageFilters, selectedId, selectedIds])
 
   useEffect(() => {
     if (!isEditing || !openPanel || !selectedNode) {
@@ -2178,15 +2455,24 @@ export function VisualEditorOverlay() {
     deployStatus === "failed" ? "text-red-300" :
     "text-slate-300"
   const deployStatusTitle =
-    deployStatus === "success" ? "Success" :
-    deployStatus === "partial" ? "Partial" :
-    deployStatus === "failed" ? "Error / Failed" :
-    "Saving..."
+    deployStatus === "success" ? "SUCCESS" :
+    deployStatus === "partial" ? "PARTIAL" :
+    deployStatus === "failed" ? "FAIL" :
+    "SAVING"
   const deployStatusMessage =
-    deployStatus === "success" ? "All changes were saved and propagated." :
-    deployStatus === "partial" ? "Some changes were saved, but propagation is incomplete." :
-    deployStatus === "failed" ? "Save/deploy failed. Review technical details." :
-    "Deploy is currently running."
+    deployStatus === "success" ? "Todo quedó bien publicado." :
+    deployStatus === "partial" ? "Casi todo pasó, pero hay detalles que revisar." :
+    deployStatus === "failed" ? "El deploy no terminó limpio." :
+    "El deploy está corriendo."
+  const deployStatusPanelClass =
+    deployStatus === "success" ? "border-emerald-400/40 bg-emerald-500/10 shadow-emerald-950/40" :
+    deployStatus === "partial" ? "border-amber-400/45 bg-amber-500/10 shadow-amber-950/40" :
+    deployStatus === "failed" ? "border-red-400/45 bg-red-500/10 shadow-red-950/40" :
+    "border-slate-400/30 bg-slate-500/10 shadow-black/30"
+  const deployDetailsLines = deployDetails?.split("\n").filter((line) => line.trim().length > 0) ?? []
+  const deployPersistedLines = deployDetailsLines.filter((line) => /persisted|saved|done|success|updated/i.test(line))
+  const deploySkippedLines = deployDetailsLines.filter((line) => /partial|skipped|warning|nonPersistable/i.test(line))
+  const deployFailedLines = deployDetailsLines.filter((line) => /failed|error|mismatch/i.test(line))
 
   return (
     <>
@@ -2210,21 +2496,99 @@ export function VisualEditorOverlay() {
         )}
       </div>
 
+      <div data-editor-toolbar className="fixed top-3 right-3 z-[9999] text-white">
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="Add block"
+            title="Add block"
+            onClick={() => {
+              setAddMenuOpen((value) => !value)
+              setAddMessage(null)
+            }}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-2xl font-semibold leading-none text-slate-950 shadow-2xl hover:bg-slate-100"
+          >
+            +
+          </button>
+          {addMenuOpen && (
+            <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-lg border border-white/15 bg-[#111827] py-1 text-sm shadow-2xl">
+              {(["text", "button", "card", "overlay"] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  className="block w-full px-3 py-2 text-left text-white hover:bg-white/10"
+                  onClick={() => addExtraNode(kind)}
+                >
+                  {kind === "text" ? "Add Text" : kind === "button" ? "Add Button" : kind === "card" ? "Add Card" : "Add Overlay"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {addMessage && (
+          <div className="mt-2 max-w-64 rounded-lg border border-amber-300/40 bg-amber-950/90 px-3 py-2 text-xs text-amber-50 shadow-xl">
+            {addMessage}
+          </div>
+        )}
+      </div>
+
       {deployDetails && (
         <div data-editor-deploy-modal className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/65 p-4">
-          <div className="max-h-[80vh] w-full max-w-2xl rounded-lg border border-white/20 bg-[#111827] p-4 text-slate-100 shadow-2xl">
+          <div className="max-h-[86vh] w-full max-w-2xl overflow-hidden rounded-lg border border-white/20 bg-[#111827] text-slate-100 shadow-2xl">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">Deploy result</h3>
+              <h3 className="px-4 pt-4 text-sm font-semibold text-white">Deploy result</h3>
               <button
                 type="button"
-                onClick={() => { setDeployDetails(null); setCopyState("idle") }}
-                className="rounded border border-white/30 px-2 py-1 text-xs text-white hover:bg-white/10"
+                onClick={() => { setDeployDetails(null); setDeployDetailsExpanded(false); setCopyState("idle") }}
+                className="mr-4 mt-4 rounded border border-white/30 px-2 py-1 text-xs text-white hover:bg-white/10"
               >
                 Close
               </button>
             </div>
-            <pre className="max-h-[55vh] overflow-auto whitespace-pre-wrap rounded border border-white/15 bg-black/35 p-3 text-xs text-slate-100 select-text">{deployDetails}</pre>
-            <div className="mt-3 flex items-center gap-2">
+            <div className="px-4 pb-4">
+              <div className={`rounded-lg border p-5 text-center shadow-xl ${deployStatusPanelClass}`}>
+                <div className={`text-4xl font-black tracking-[0.18em] ${deployStatusColor}`}>{deployStatusTitle}</div>
+                <p className="mt-2 text-sm font-medium text-white/85">{deployStatusMessage}</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDeployDetailsExpanded((value) => !value)}
+                className="mt-4 flex w-full items-center justify-between rounded border border-white/15 bg-white/[0.03] px-3 py-2 text-left text-sm font-medium text-white hover:bg-white/[0.07]"
+                aria-expanded={deployDetailsExpanded}
+              >
+                <span>{deployDetailsExpanded ? "▼ Ocultar detalles" : "▶ Ver detalles técnicos"}</span>
+                <span className="text-xs text-white/50">{deployDetailsLines.length} líneas</span>
+              </button>
+
+              {deployDetailsExpanded && (
+                <div className="mt-3 max-h-[46vh] space-y-3 overflow-auto rounded border border-white/15 bg-black/25 p-3">
+                  {deployPersistedLines.length > 0 && (
+                    <div>
+                      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-300">Persisted / Success</h4>
+                      <pre className="whitespace-pre-wrap rounded bg-black/30 p-2 text-xs text-slate-100 select-text">{deployPersistedLines.join("\n")}</pre>
+                    </div>
+                  )}
+                  {deploySkippedLines.length > 0 && (
+                    <div>
+                      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-300">Skipped / Warnings</h4>
+                      <pre className="whitespace-pre-wrap rounded bg-black/30 p-2 text-xs text-slate-100 select-text">{deploySkippedLines.join("\n")}</pre>
+                    </div>
+                  )}
+                  {deployFailedLines.length > 0 && (
+                    <div>
+                      <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-300">Failed / Errors</h4>
+                      <pre className="whitespace-pre-wrap rounded bg-black/30 p-2 text-xs text-slate-100 select-text">{deployFailedLines.join("\n")}</pre>
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-300">Full technical log</h4>
+                    <pre className="whitespace-pre-wrap rounded bg-black/35 p-3 text-xs text-slate-100 select-text">{deployDetails}</pre>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 border-t border-white/10 px-4 py-3">
               <button type="button" onClick={onCopyDeployDetails} className="rounded border border-white/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/10">
                 Copy details
               </button>
@@ -2272,7 +2636,7 @@ export function VisualEditorOverlay() {
               className="w-full rounded border border-slate-300 px-2 py-1 text-xs font-semibold"
               onClick={arrangeSelectedNodes}
             >
-              Arrange / Auto-position
+              {selectedNode.id === "hero-bg-image" || selectedNode.id === "hero-logo" ? "Arrange + Reset image filters" : "Arrange / Auto-position"}
             </button>
             {selectedBandMemberIndex !== null && (
               <div className="space-y-2 rounded border border-slate-200 p-2">
@@ -2386,6 +2750,16 @@ export function VisualEditorOverlay() {
                   >
                     U
                   </button>
+                  {(isNavbarOrHeroTextNode || isExtraNodeId(selectedNode.id)) && (
+                    <button
+                      type="button"
+                      title="Text shadow"
+                      className={`rounded border px-2 py-1 text-xs ${selectedNode.style.textShadowEnabled ? "bg-slate-900 text-white" : ""}`}
+                      onClick={() => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { textShadowEnabled: !selectedNode.style.textShadowEnabled } })}
+                    >
+                      S
+                    </button>
+                  )}
                 </div>
                 <div className="mt-3 rounded border border-slate-200 p-2">
                   <label className="text-[10px] font-semibold">Gradient</label>
@@ -2484,6 +2858,13 @@ export function VisualEditorOverlay() {
 
             {selectedNode.id === "navigation-inner" && selectedNode.type === "card" && (
               <>
+                <label className="text-[10px]">Background Color</label>
+                <input
+                  type="color"
+                  className="h-8 w-full rounded border p-1"
+                  value={selectedNode.style.backgroundColor || "#000000"}
+                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { backgroundColor: e.target.value } })}
+                />
                 <label className="text-[10px]">Card Opacity ({readColorOpacity(selectedNode.style.backgroundColor).toFixed(2)})</label>
                 <input
                   type="range"
@@ -2506,7 +2887,11 @@ export function VisualEditorOverlay() {
                   onChange={(e) => dispatch({
                     type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
                     nodeId: selectedNode.id,
-                    patch: { src: e.target.value, mediaKind: "image" },
+                    patch: {
+                      src: e.target.value,
+                      mediaKind: "image",
+                      ...(selectedNode.id === "hero-bg-image" || selectedNode.id === "hero-logo" ? HERO_IMAGE_FILTER_DEFAULTS : {}),
+                    },
                   })}
                 >
                   <option value="">Select asset</option>
@@ -2522,74 +2907,60 @@ export function VisualEditorOverlay() {
                     const file = e.target.files?.[0]
                     if (!file) return
 
-                    // For hero-logo, try to upload to Sanity first
-                    const isHeroLogo = selectedNode.id === "hero-logo"
-                    if (isHeroLogo) {
+                    const requiresSanityAsset =
+                      selectedNode.id === "hero-logo" ||
+                      selectedNode.id === "hero-bg-image" ||
+                      selectedNode.id === "live-section-bg-image" ||
+                      selectedNode.id === "contact-bg-image" ||
+                      selectedNode.id === "footer-logo" ||
+                      /^member-item-\d+-image$/.test(selectedNode.id)
+
+                    if (requiresSanityAsset) {
                       try {
                         const formData = new FormData()
                         formData.append("file", file)
                         formData.append("nodeId", selectedNode.id)
-                        console.log(`[HERO-LOGO][upload-start]`, {
-                          nodeId: selectedNode.id,
-                          filename: file.name,
-                          size: file.size
-                        })
                         const uploadRes = await fetch("/api/editor-upload-asset", {
                           method: "POST",
                           body: formData
                         })
-                        console.log(`[HERO-LOGO][upload-response]`, {
-                          status: uploadRes.status,
-                          ok: uploadRes.ok,
-                          statusText: uploadRes.statusText
-                        })
                         if (uploadRes.ok) {
                           const data = await uploadRes.json() as { url?: string; error?: string }
-                          console.log(`[HERO-LOGO][upload-response-parsed]`, {
-                            hasUrl: !!data.url,
-                            url: data.url?.substring(0, 150) || null,
-                            error: data.error || null,
-                            fullData: JSON.stringify(data).substring(0, 300)
-                          })
                           if (data.url) {
-                            console.log(`[HERO-LOGO][upload-success]`, {
-                              nodeId: selectedNode.id,
-                              url: data.url.substring(0, 100),
-                              about_to_dispatch: true
-                            })
-                            console.log(`[HERO-LOGO][dispatch-update]`, {
-                              type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
-                              nodeId: selectedNode.id,
-                              patchSrc: data.url.substring(0, 100),
-                              patchMediaKind: "image"
-                            })
                             dispatch({
                               type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
                               nodeId: selectedNode.id,
-                              patch: { src: data.url, mediaKind: "image" },
+                              patch: {
+                                src: data.url,
+                                mediaKind: "image",
+                                ...(selectedNode.id === "hero-bg-image" || selectedNode.id === "hero-logo" ? HERO_IMAGE_FILTER_DEFAULTS : {}),
+                              },
                             })
                             return
-                          } else {
-                            console.error(`[HERO-LOGO][upload-success-but-no-url]`, { data })
                           }
+                          console.error("[hero-asset-upload] Upload succeeded without an asset URL.", {
+                            nodeId: selectedNode.id,
+                            error: data.error || null,
+                          })
                         } else {
                           const text = await uploadRes.text()
                           try {
                             const error = JSON.parse(text) as { error?: string }
-                            console.error(`[HERO-LOGO][upload-failed]`, { status: uploadRes.status, error: error.error })
+                            console.error("[hero-asset-upload] Upload failed.", { nodeId: selectedNode.id, status: uploadRes.status, error: error.error })
                           } catch {
-                            console.error(`[HERO-LOGO][upload-failed]`, { status: uploadRes.status, text: text.substring(0, 200) })
+                            console.error("[hero-asset-upload] Upload failed.", { nodeId: selectedNode.id, status: uploadRes.status, text: text.substring(0, 200) })
                           }
                         }
                       } catch (err) {
-                        console.error(`[HERO-LOGO][upload-exception]`, {
+                        console.error("[hero-asset-upload] Upload exception.", {
+                          nodeId: selectedNode.id,
                           error: err instanceof Error ? err.message : String(err)
                         })
                       }
                     }
 
-                    // Fallback: use blob URL only for non-hero-logo (hero-logo must use Sanity CDN or nothing)
-                    if (!isHeroLogo) {
+                    // Doc-backed image nodes must deploy as Sanity CDN URLs. Other image nodes can keep a local blob preview.
+                    if (!requiresSanityAsset) {
                       const url = URL.createObjectURL(file)
                       setHasNonPersistableUpload(true)
                       dispatch({
@@ -2597,15 +2968,10 @@ export function VisualEditorOverlay() {
                         nodeId: selectedNode.id,
                         patch: { src: url, mediaKind: "image" },
                       })
-                      console.log(`[IMAGE-FILE][blob-fallback]`, {
-                        nodeId: selectedNode.id,
-                        isHeroLogo,
-                        fallback: "blob"
-                      })
                     } else {
-                      console.log(`[HERO-LOGO][no-fallback-blob]`, {
+                      console.warn("[hero-asset-upload] Local blob preview was not applied.", {
                         nodeId: selectedNode.id,
-                        reason: "hero-logo requires Sanity CDN URL, not blob"
+                        reason: "This image node requires a Sanity CDN URL before deploy.",
                       })
                     }
                   }}
@@ -2634,7 +3000,7 @@ export function VisualEditorOverlay() {
                       />
                     </div>
                     <div>
-                      <label className="text-[10px]">Opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
+                      <label className="text-[10px]">Opacity ({Math.round((selectedNode.style.opacity ?? 1) * 100)}%)</label>
                       <input
                         type="range"
                         min={0}
@@ -2693,6 +3059,15 @@ export function VisualEditorOverlay() {
                       />
                       Negativo
                     </label>
+                    {(selectedNode.id === "hero-bg-image" || selectedNode.id === "hero-logo") && (
+                      <button
+                        type="button"
+                        className="w-full rounded border border-slate-300 px-2 py-1 text-xs font-semibold"
+                        onClick={() => resetHeroImageFilters(selectedNode.id as "hero-bg-image" | "hero-logo")}
+                      >
+                        Reset image filters to current base
+                      </button>
+                    )}
                   </>
                 )}
               </>
@@ -2740,14 +3115,18 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {isSimpleEditableCard && (
+            {isSimpleEditableBox && (
               <>
-                <label className="text-xs font-semibold">Card Text</label>
-                <textarea
-                  className="w-full rounded border p-1 text-xs"
-                  value={selectedNode.content.text || ""}
-                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { text: e.target.value } })}
-                />
+                {selectedNode.type === "card" && !isExtraNodeId(selectedNode.id) && (
+                  <>
+                    <label className="text-xs font-semibold">Card Text</label>
+                    <textarea
+                      className="w-full rounded border p-1 text-xs"
+                      value={selectedNode.content.text || ""}
+                      onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { text: e.target.value } })}
+                    />
+                  </>
+                )}
                 <label className="text-[10px]">Box opacity ({readColorOpacity(selectedNode.style.backgroundColor).toFixed(2)})</label>
                 <input
                   type="range"

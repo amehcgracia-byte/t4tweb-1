@@ -60,15 +60,6 @@ export async function loadHeroData(perspective: "published" | "drafts" = "publis
 
     const fetched = await client.fetch<Partial<HeroData> | null>(query)
 
-    console.log("[loadHeroData] Query result:", {
-      perspective,
-      hasData: !!fetched,
-      hasElementStyles: !!fetched?.elementStyles,
-      elementStylesKeys: fetched?.elementStyles ? Object.keys(fetched.elementStyles) : null,
-      heroScrollInElementStyles: fetched?.elementStyles && "hero-scroll-indicator" in fetched.elementStyles,
-      scrollIndicatorData: fetched?.elementStyles?.["hero-scroll-indicator"]
-    })
-
     // Validate critical fields
     if (!fetched || (!fetched.bgUrl && !fetched.title)) {
       console.warn("[loadHeroData] Fallback used - no data from Sanity")
@@ -80,15 +71,6 @@ export async function loadHeroData(perspective: "published" | "drafts" = "publis
       fetched.elementStyles && typeof fetched.elementStyles === 'object' && !Array.isArray(fetched.elementStyles)
         ? (fetched.elementStyles as HeroData['elementStyles'])
         : undefined
-
-    if (elementStyles?.["hero-scroll-indicator"]) {
-      console.log("[loadHeroData] hero-scroll-indicator found in elementStyles:", {
-        x: elementStyles["hero-scroll-indicator"].x,
-        y: elementStyles["hero-scroll-indicator"].y,
-        width: elementStyles["hero-scroll-indicator"].width,
-        height: elementStyles["hero-scroll-indicator"].height
-      })
-    }
 
     return {
       title: fetched.title || FALLBACK.title,

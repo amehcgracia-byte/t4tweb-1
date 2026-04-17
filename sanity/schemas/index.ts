@@ -10,6 +10,8 @@ import navigation from './navigation'
 import introBanner from './introBanner'
 import homeEditorState from './homeEditorState'
 import bandMembersSettings from './bandMembersSettings'
+import liveSection from './liveSection'
+import footerSection from './footerSection'
 
 export const schemas = [
   siteSettings,
@@ -24,4 +26,6 @@ export const schemas = [
   introBanner,
   homeEditorState,
   bandMembersSettings,
+  liveSection,
+  footerSection,
 ]

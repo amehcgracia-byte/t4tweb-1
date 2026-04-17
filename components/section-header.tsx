@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 import { motion } from "framer-motion"
 import { useVisualEditor } from "@/components/visual-editor"
+import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 
 const view = { once: true, amount: 0.25 as const }
 
@@ -18,6 +19,7 @@ type SectionHeaderProps = {
   dataEditId?: string
   dataEditType?: string
   dataEditLabel?: string
+  elementStyles?: Record<string, Record<string, unknown>>
 }
 
 /**
@@ -36,6 +38,7 @@ export function SectionHeader({
   dataEditId,
   dataEditType,
   dataEditLabel,
+  elementStyles,
 }: SectionHeaderProps) {
   const { isEditing } = useVisualEditor()
   return (
@@ -51,6 +54,7 @@ export function SectionHeader({
         data-editor-node-id={dataEditId ? `${dataEditId}-eyebrow` : undefined}
         data-editor-node-type="text"
         data-editor-node-label={dataEditLabel ? `${dataEditLabel} Eyebrow` : undefined}
+        style={dataEditId ? getElementLayoutStyle(elementStyles, `${dataEditId}-eyebrow`) : undefined}
       >
         {eyebrow}
       </motion.span>
@@ -64,6 +68,7 @@ export function SectionHeader({
         data-editor-node-id={dataEditId ? `${dataEditId}-title` : undefined}
         data-editor-node-type="text"
         data-editor-node-label={dataEditLabel ? `${dataEditLabel} Title` : undefined}
+        style={dataEditId ? getElementLayoutStyle(elementStyles, `${dataEditId}-title`) : undefined}
       >
         {title}
       </motion.h2>
@@ -78,6 +83,7 @@ export function SectionHeader({
           data-editor-node-id={dataEditId ? `${dataEditId}-description` : undefined}
           data-editor-node-type="text"
           data-editor-node-label={dataEditLabel ? `${dataEditLabel} Description` : undefined}
+          style={dataEditId ? getElementLayoutStyle(elementStyles, `${dataEditId}-description`) : undefined}
         >
           {description}
         </motion.p>

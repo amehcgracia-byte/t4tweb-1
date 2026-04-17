@@ -1,23 +1,135 @@
 "use client"
 
-import { useRef, useEffect, useMemo, useState } from "react"
+import { useRef, useEffect, useMemo, useState, type CSSProperties } from "react"
 import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
-import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 
+function getRawElementStyle(elementStyles: HeroData["elementStyles"], targetId: string): Record<string, unknown> {
+  const value = elementStyles?.[targetId]
+  return value && typeof value === "object" ? value as Record<string, unknown> : {}
+}
+
+function getHeroSectionHeight(elementStyles: HeroData["elementStyles"]): number {
+  const section = getRawElementStyle(elementStyles, "hero-section")
+  return typeof section.height === "number" && section.height > 0 ? section.height : 900
+}
+
+function getHeroSectionFrameStyle(elementStyles: HeroData["elementStyles"]): CSSProperties {
+  const section = getRawElementStyle(elementStyles, "hero-section")
+  const height = section.height
+  if (typeof height !== "number" || !Number.isFinite(height) || height <= 0) return {}
+
+  return {
+    minHeight: `max(100dvh, ${Math.round(height)}px)`,
+  }
+}
+
+function hasBrokenHeroScrollGeometry(styles: Record<string, unknown>, elementStyles: HeroData["elementStyles"]): boolean {
+  const section = getRawElementStyle(elementStyles, "hero-section")
+  const sectionWidth = typeof section.width === "number" && section.width > 0 ? section.width : 1440
+  const sectionHeight = getHeroSectionHeight(elementStyles)
+  const x = styles.x
+  const y = styles.y
+
+  return (
+    (typeof x === "number" && Math.abs(x) > sectionWidth * 0.25) ||
+    (typeof y === "number" && Math.abs(y) > sectionHeight * 0.5)
+  )
+}
+
+function hasUsableHeroTextGeometry(styles: Record<string, unknown>, elementStyles: HeroData["elementStyles"]): boolean {
+  const sectionHeight = getHeroSectionHeight(elementStyles)
+  const x = styles.x
+  const y = styles.y
+  const width = styles.width
+  const height = styles.height
+
+  return (
+    typeof x === "number" &&
+    typeof y === "number" &&
+    typeof width === "number" &&
+    typeof height === "number" &&
+    Number.isFinite(x) &&
+    Number.isFinite(y) &&
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    Math.abs(x) <= 2400 &&
+    Math.abs(y) <= sectionHeight * 0.9 &&
+    width > 1 &&
+    height > 1 &&
+    width <= 2400 &&
+    height <= 800
+  )
+}
+
+function applyLegacyTextStyleFields(result: CSSProperties, styles: Record<string, unknown>): CSSProperties {
+  if (typeof styles.fontSize === "string" && styles.fontSize.trim()) result.fontSize = styles.fontSize
+  if (typeof styles.fontWeight === "string" && styles.fontWeight.trim()) result.fontWeight = styles.fontWeight
+  if (typeof styles.fontStyle === "string" && styles.fontStyle !== "normal") result.fontStyle = styles.fontStyle
+  if (typeof styles.textDecoration === "string" && styles.textDecoration !== "none") result.textDecoration = styles.textDecoration
+  if (typeof styles.lineHeight === "string" && styles.lineHeight.trim()) result.lineHeight = styles.lineHeight
+  if (typeof styles.letterSpacing === "string" && styles.letterSpacing.trim() && styles.letterSpacing !== "normal") {
+    result.letterSpacing = styles.letterSpacing
+  }
+  if (typeof styles.textAlign === "string" && styles.textAlign.trim()) result.textAlign = styles.textAlign as CSSProperties["textAlign"]
+  return result
+}
+
+function getHeroTextPatternStyle(elementStyles: HeroData["elementStyles"], targetId: string): CSSProperties {
+  const styles = getRawElementStyle(elementStyles, targetId)
+  return applyLegacyTextStyleFields(
+    getElementLayoutStyle(elementStyles, targetId, { includeGeometry: hasUsableHeroTextGeometry(styles, elementStyles) }),
+    styles
+  )
+}
+
+function getHeroScrollIndicatorStyle(elementStyles: HeroData["elementStyles"]): CSSProperties {
+  const styles = getRawElementStyle(elementStyles, "hero-scroll-indicator")
+  return getElementLayoutStyle(elementStyles, "hero-scroll-indicator", {
+    includeGeometry: !hasBrokenHeroScrollGeometry(styles, elementStyles),
+  })
+}
+
+function isLegacyWashedHeroBackgroundStyle(styles: Record<string, unknown>): boolean {
+  const contrast = styles.contrast
+  const saturation = styles.saturation
+  const brightness = styles.brightness
+
+  return (
+    contrast === 50 &&
+    saturation === 50 &&
+    brightness === 50 &&
+    (styles.opacity === undefined || styles.opacity === 1) &&
+    (styles.negative === undefined || styles.negative === false)
+  )
+}
+
+function getHeroBackgroundImageStyle(elementStyles: HeroData["elementStyles"]): CSSProperties {
+  const rawStyles = getRawElementStyle(elementStyles, "hero-bg-image")
+  if (!isLegacyWashedHeroBackgroundStyle(rawStyles)) {
+    return getElementLayoutStyle(elementStyles, "hero-bg-image")
+  }
+
+  return getElementLayoutStyle(
+    {
+      ...(elementStyles || {}),
+      "hero-bg-image": {
+        ...rawStyles,
+        contrast: 100,
+        saturation: 100,
+        brightness: 100,
+        opacity: 1,
+        negative: false,
+      },
+    },
+    "hero-bg-image"
+  )
+}
 
 export function HeroSection({ data }: { data: HeroData }) {
-  // Log elementStyles received
-  if (typeof window !== "undefined") {
-    console.log("[HERO-TRACE] HeroSection received:", {
-      elementStyles: Object.keys(data.elementStyles || {}),
-      "hero-logo": data.elementStyles?.["hero-logo"],
-      "hero-bg-image": data.elementStyles?.["hero-bg-image"],
-    })
-  }
   const sectionRef = useRef<HTMLElement>(null)
   const [isDebugMode, setIsDebugMode] = useState(false)
 
@@ -29,6 +141,7 @@ export function HeroSection({ data }: { data: HeroData }) {
   const heroSubtitleRef = useRef<HTMLParagraphElement>(null)
   const heroButtonsRef = useRef<HTMLDivElement>(null)
   const heroScrollRef = useRef<HTMLDivElement>(null)
+  const heroScrollLabelRef = useRef<HTMLSpanElement>(null)
 
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
 
@@ -141,6 +254,20 @@ export function HeroSection({ data }: { data: HeroData }) {
           dimensions: existing?.dimensions || { width: heroScrollRef.current.offsetWidth, height: heroScrollRef.current.offsetHeight },
         })
       }
+
+      if (heroScrollLabelRef.current) {
+        const existing = getElementById('hero-scroll-label')
+        registerEditable({
+          id: 'hero-scroll-label',
+          type: 'text',
+          label: 'Scroll Label',
+          parentId: 'hero-scroll-indicator',
+          element: heroScrollLabelRef.current,
+          originalRect: heroScrollLabelRef.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: heroScrollLabelRef.current.offsetWidth, height: heroScrollLabelRef.current.offsetHeight },
+        })
+      }
     }
 
     registerAll()
@@ -153,6 +280,7 @@ export function HeroSection({ data }: { data: HeroData }) {
       unregisterEditable('hero-subtitle')
       unregisterEditable('hero-buttons')
       unregisterEditable('hero-scroll-indicator')
+      unregisterEditable('hero-scroll-label')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing])
@@ -169,35 +297,10 @@ export function HeroSection({ data }: { data: HeroData }) {
   const backgroundY = useTransform(scrollYProgress, [0, 1], [staticY, 35])
 
   const content = data
-  const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
-  const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
 
   const mainTitleText = content.title || ""
   const scrollLabelText = content.scrollLabel || "SCROLL"
-
-  // Build filter effects for hero-bg-image from elementStyles
-  const bgImageFilters = (() => {
-    const styles = data.elementStyles?.["hero-bg-image"]
-    if (!styles) return {}
-
-    const filterParts: string[] = []
-    const st = styles as Record<string, unknown>
-
-    if (typeof st.contrast === "number" && st.contrast !== 1) {
-      filterParts.push(`contrast(${st.contrast})`)
-    }
-    if (typeof st.saturation === "number" && st.saturation !== 1) {
-      filterParts.push(`saturate(${st.saturation})`)
-    }
-    if (typeof st.brightness === "number" && st.brightness !== 1) {
-      filterParts.push(`brightness(${st.brightness})`)
-    }
-    if (st.negative === true) {
-      filterParts.push("invert(1)")
-    }
-
-    return filterParts.length > 0 ? { filter: filterParts.join(" ") } : {}
-  })()
+  const heroFrameStyle = getHeroSectionFrameStyle(data.elementStyles)
 
   return (
     <section
@@ -210,6 +313,7 @@ export function HeroSection({ data }: { data: HeroData }) {
       data-editor-node-type="section"
       data-editor-node-label="Hero Section"
       className="relative flex min-h-screen min-h-[100dvh] w-full items-stretch overflow-hidden bg-black"
+      style={heroFrameStyle}
     >
       <div className="absolute inset-0 z-0">
         <motion.div
@@ -223,13 +327,10 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-media-kind="image"
             data-editor-node-label="Hero Background"
             className="absolute inset-0"
-            style={{
-              ...getElementLayoutStyle(data.elementStyles, "hero-bg-image"),
-              ...bgImageFilters,
-            }}
+            style={getHeroBackgroundImageStyle(data.elementStyles)}
           >
             <Image
-              src={resolvedHeroBgSrc}
+              src={content.bgUrl}
               alt="Tales for the Tillerman live atmosphere"
               fill
               priority
@@ -242,11 +343,10 @@ export function HeroSection({ data }: { data: HeroData }) {
         </motion.div>
       </div>
 
-      <div className="absolute inset-0 z-[1] bg-black/33" />
-      <div className="absolute inset-0 z-[1] bg-gradient-to-b from-black/10 via-transparent to-black/58" />
-      <div className="absolute inset-0 z-[1] bg-[radial-gradient(circle_at_50%_62%,#00000088_12%,transparent_82%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-36 bg-gradient-to-b from-black/20 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-1/2 bg-gradient-to-t from-black/42 via-black/10 to-transparent" />
 
-      <div className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col justify-center px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col justify-center px-4 sm:px-6 lg:px-8" style={heroFrameStyle}>
         <div className="flex flex-col items-center pb-6 pt-8 text-center sm:pb-8 sm:pt-12">
           <h1
             ref={heroTitleRef}
@@ -254,7 +354,7 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-node-type="text"
             data-editor-node-label="Hero Title"
             className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6"
-            style={getElementLayoutStyle(data.elementStyles, "hero-title")}
+            style={getHeroTextPatternStyle(data.elementStyles, "hero-title")}
           >
             {mainTitleText}
           </h1>
@@ -263,7 +363,7 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-node-id="hero-logo"
             data-editor-node-type="image"
             data-editor-node-label="Hero Logo"
-            className="relative mt-2 mb-4"
+            className="relative mt-2 mb-4 overflow-hidden"
             style={{
               ...{
                 width: "clamp(7rem, 24vw, 10rem)",
@@ -272,14 +372,12 @@ export function HeroSection({ data }: { data: HeroData }) {
               ...getElementLayoutStyle(data.elementStyles, "hero-logo"),
             }}
           >
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#FF8C21]/15 to-transparent blur-xl" />
-            <div className="absolute inset-0 rounded-full bg-black/10" />
             <Image
-              src={resolvedHeroLogoSrc}
+              src={content.logoUrl}
               alt="Tales for the Tillerman logo"
               fill
               priority
-              className="object-contain drop-shadow-2xl"
+              className="object-contain"
               sizes="(min-width: 768px) 213px, 141px"
             />
           </div>
@@ -289,7 +387,7 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-node-type="text"
             data-editor-node-label="Subtítulo"
             className="mt-1 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent sm:text-xs sm:tracking-[0.3em]"
-            style={getElementLayoutStyle(data.elementStyles, "hero-subtitle")}
+            style={getHeroTextPatternStyle(data.elementStyles, "hero-subtitle")}
           >
             {content.subtitle}
           </p>
@@ -322,21 +420,6 @@ export function HeroSection({ data }: { data: HeroData }) {
         </div>
       </div>
 
-      {(() => {
-        const scrollStyle = getElementLayoutStyle(data.elementStyles, "hero-scroll-indicator");
-        if (typeof window !== "undefined") {
-          console.log("[HERO-SCROLL][render-public]", {
-            hasElementStyles: !!data.elementStyles,
-            hasScrollInStyles: data.elementStyles && "hero-scroll-indicator" in data.elementStyles,
-            appliedStyle: scrollStyle,
-            styleKeys: Object.keys(scrollStyle),
-            transform: scrollStyle.transform,
-            left: scrollStyle.left,
-            bottom: scrollStyle.bottom
-          });
-        }
-        return null;
-      })()}
       <div
         ref={heroScrollRef}
         data-editor-node-id="hero-scroll-indicator"
@@ -344,9 +427,18 @@ export function HeroSection({ data }: { data: HeroData }) {
         data-editor-node-label="Scroll Indicator"
         data-editor-grouped="true"
         className="absolute bottom-10 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2 text-white/80"
-        style={getElementLayoutStyle(data.elementStyles, "hero-scroll-indicator")}
+        style={getHeroScrollIndicatorStyle(data.elementStyles)}
       >
-        <span className="text-xs font-medium uppercase tracking-[0.35em] text-white/90">{scrollLabelText}</span>
+        <span
+          ref={heroScrollLabelRef}
+          data-editor-node-id="hero-scroll-label"
+          data-editor-node-type="text"
+          data-editor-node-label="Scroll Label"
+          className="text-xs font-medium uppercase tracking-[0.35em] text-white/90"
+          style={getHeroTextPatternStyle(data.elementStyles, "hero-scroll-label")}
+        >
+          {scrollLabelText}
+        </span>
         <div className="relative">
           <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-b from-[#FF8C21]/20 to-transparent blur-sm" />
           <svg className="relative h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

@@ -7,6 +7,7 @@ export default defineType({
   type: 'document',
   icon: CalendarIcon,
   fields: [
+    defineField({ name: 'editorId', title: 'Visual editor ID', type: 'number', readOnly: true }),
     defineField({ name: 'venue', title: 'Venue', type: 'string' }),
     defineField({ name: 'city', title: 'City', type: 'string' }),
     defineField({ name: 'country', title: 'Country', type: 'string' }),
@@ -20,6 +21,12 @@ export default defineType({
     defineField({ name: 'image', title: 'Event Image', type: 'image' }),
     defineField({ name: 'ticketUrl', title: 'Ticket URL', type: 'url' }),
     defineField({ name: 'isFeatured', title: 'Featured Event', type: 'boolean', initialValue: false }),
+    defineField({
+      name: 'updatedAt',
+      title: 'Last updated (visual editor)',
+      type: 'datetime',
+      readOnly: true,
+    }),
   ],
   orderings: [{ title: 'Date', name: 'date', by: [{ field: 'date', direction: 'desc' }] }],
   preview: {

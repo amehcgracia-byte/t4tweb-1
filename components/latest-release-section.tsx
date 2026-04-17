@@ -1,11 +1,14 @@
 "use client"
 
 import { useRef, useEffect, useState } from "react"
+import Image from "next/image"
 import { motion } from "framer-motion"
-import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
+import { CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { useVisualEditor } from "@/components/visual-editor"
+import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import type { LatestReleaseData } from "@/lib/sanity/latest-release-loader"
 
-export function LatestReleaseSection() {
+export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
   const [isIosMobile, setIsIosMobile] = useState(false)
   const [isAndroidMobile, setIsAndroidMobile] = useState(false)
@@ -18,12 +21,15 @@ export function LatestReleaseSection() {
   const watchButtonRef = useRef<HTMLAnchorElement>(null)
   const showsButtonRef = useRef<HTMLAnchorElement>(null)
 
-  const releaseTitle = CAMPAIGN_CONTENT.releaseTitle
-  const releaseSubtitle = CAMPAIGN_CONTENT.releaseSubtitle
-  const releaseWatchLabel = CAMPAIGN_CONTENT.releaseCtaLabel
-  const releaseShowsLabel = CAMPAIGN_CONTENT.showsCtaLabel
-  const releaseWatchHref = CAMPAIGN_CONTENT.releaseCtaHref
-  const releaseShowsHref = CAMPAIGN_CONTENT.showsCtaHref
+  const releaseTitle = data.releaseTitle
+  const releaseSubtitle = data.releaseSubtitle
+  const releaseWatchLabel = data.releaseCtaLabel
+  const releaseShowsLabel = data.showsCtaLabel
+  const releaseWatchHref = data.releaseCtaHref
+  const releaseShowsHref = data.showsCtaHref
+  const youtubeId = data.youtubeId
+  const youtubeEmbedSrc = `https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1`
+  const youtubePosterSrc = `https://i.ytimg.com/vi/${youtubeId}/maxresdefault.jpg`
   const renderStaticCard = isEditing
 
   useEffect(() => {
@@ -57,7 +63,7 @@ export function LatestReleaseSection() {
       const existing = getElementById('latest-release-bg')
       registerEditable({
         id: 'latest-release-bg',
-        type: 'image',
+        type: 'background',
         label: 'Release Background',
         parentId: null,
         element: bgRef.current,
@@ -156,6 +162,7 @@ export function LatestReleaseSection() {
       data-editor-node-type="section"
       data-editor-node-label="Release Section"
       className="relative overflow-hidden bg-black"
+      style={getElementLayoutStyle(data.elementStyles, "latest-release-section")}
     >
       <div 
         ref={bgRef}
@@ -164,17 +171,21 @@ export function LatestReleaseSection() {
         data-editor-media-kind="video"
         data-editor-node-label="Fondo Video YouTube"
         className="absolute left-0 top-0 z-0 h-full w-full"
+        style={getElementLayoutStyle(data.elementStyles, "latest-release-bg")}
       >
         {isIosMobile ? (
-          <img
-            src="https://i.ytimg.com/vi/xofflmVqYGs/maxresdefault.jpg"
+          <Image
+            src={youtubePosterSrc}
             alt=""
             aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover"
+            fill
+            unoptimized
+            sizes="100vw"
+            className="object-cover"
           />
         ) : (
           <iframe
-            src="https://www.youtube.com/embed/xofflmVqYGs?autoplay=1&mute=1&loop=1&playlist=xofflmVqYGs&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
+            src={youtubeEmbedSrc}
             title=""
             aria-hidden="true"
             className={`pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 ${
@@ -199,6 +210,7 @@ export function LatestReleaseSection() {
               data-editor-node-type="card"
               data-editor-node-label="Release Card"
               className="mx-auto flex w-full max-w-4xl flex-col items-center rounded-xl border border-primary/28 bg-black/24 p-4 text-center shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-6 md:p-8"
+              style={getElementLayoutStyle(data.elementStyles, "latest-release-card")}
 
             >
               <h2 
@@ -207,6 +219,7 @@ export function LatestReleaseSection() {
                 data-editor-node-type="text"
                 data-editor-node-label="Título del Lanzamiento"
                 className="mb-[var(--spacing-sm)] w-full text-balance text-center font-serif text-[clamp(1.65rem,7.2vw,2.4rem)] leading-[1.1] text-foreground sm:text-[length:var(--text-h2)] sm:leading-[var(--line-height-tight)]"
+                style={getElementLayoutStyle(data.elementStyles, "latest-release-title")}
 
               >
                 {releaseTitle}
@@ -218,6 +231,7 @@ export function LatestReleaseSection() {
                 data-editor-node-type="text"
                 data-editor-node-label="Subtítulo del Lanzamiento"
                 className="mb-5 w-full max-w-3xl text-balance text-center text-sm leading-relaxed text-muted-foreground sm:mb-6 sm:text-[length:var(--text-body)]"
+                style={getElementLayoutStyle(data.elementStyles, "latest-release-subtitle")}
 
               >
                 {releaseSubtitle}
@@ -233,6 +247,7 @@ export function LatestReleaseSection() {
                   data-editor-node-type="button"
                   data-editor-node-label="Watch Video Button"
                   className={`min-h-[46px] w-full rounded-xl px-5 py-2.5 text-center text-sm font-semibold shadow-md sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
+                  style={getElementLayoutStyle(data.elementStyles, "latest-release-watch-button")}
 
                 >
                   {releaseWatchLabel}
@@ -246,6 +261,7 @@ export function LatestReleaseSection() {
                   data-editor-node-type="button"
                   data-editor-node-label="See Shows Button"
                   className="min-h-[46px] w-full rounded-xl border border-primary/35 px-5 py-2.5 text-center text-sm font-semibold text-primary transition-colors hover:bg-primary/10 sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base"
+                  style={getElementLayoutStyle(data.elementStyles, "latest-release-shows-button")}
 
                 >
                   {releaseShowsLabel}
@@ -263,6 +279,7 @@ export function LatestReleaseSection() {
             viewport={isEditing ? undefined : { once: true, amount: 0.25 }}
             transition={isEditing ? undefined : { duration: 0.45 }}
             className="flex w-full max-w-4xl flex-col items-center rounded-2xl border border-primary/28 bg-black/24 p-6 text-center shadow-md backdrop-blur-sm md:p-8"
+            style={getElementLayoutStyle(data.elementStyles, "latest-release-card")}
           >
             <h2 
               ref={titleRef}
@@ -270,6 +287,7 @@ export function LatestReleaseSection() {
               data-editor-node-type="text"
               data-editor-node-label="Título del Lanzamiento"
               className="mb-[var(--spacing-sm)] w-full text-balance text-center font-serif text-[clamp(1.65rem,7.2vw,2.4rem)] leading-[1.1] text-foreground sm:text-[length:var(--text-h2)] sm:leading-[var(--line-height-tight)]"
+              style={getElementLayoutStyle(data.elementStyles, "latest-release-title")}
 
             >
               {releaseTitle}
@@ -281,6 +299,7 @@ export function LatestReleaseSection() {
               data-editor-node-type="text"
               data-editor-node-label="Subtítulo del Lanzamiento"
               className="mb-5 w-full max-w-3xl text-balance text-center text-sm leading-relaxed text-muted-foreground sm:mb-6 sm:text-[length:var(--text-body)]"
+              style={getElementLayoutStyle(data.elementStyles, "latest-release-subtitle")}
 
             >
               {releaseSubtitle}
@@ -296,6 +315,7 @@ export function LatestReleaseSection() {
                 data-editor-node-type="button"
                 data-editor-node-label="Watch Video Button"
                 className={`min-h-[46px] w-full rounded-xl px-5 py-2.5 text-center text-sm font-semibold shadow-md sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
+                style={getElementLayoutStyle(data.elementStyles, "latest-release-watch-button")}
 
               >
                 {releaseWatchLabel}
@@ -309,6 +329,7 @@ export function LatestReleaseSection() {
                 data-editor-node-type="button"
                 data-editor-node-label="See Shows Button"
                 className="min-h-[46px] w-full rounded-xl border border-primary/35 px-5 py-2.5 text-center text-sm font-semibold text-primary transition-colors hover:bg-primary/10 sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base"
+                style={getElementLayoutStyle(data.elementStyles, "latest-release-shows-button")}
 
               >
                 {releaseShowsLabel}

@@ -9,7 +9,5 @@ export async function loadHeroDataWithDraft(): Promise<HeroData> {
   const draft = await draftMode()
   const perspective = draft.isEnabled ? 'drafts' : 'published'
 
-  console.log('[loadHeroDataWithDraft] Loading with perspective:', perspective)
-
   return loadHeroData(perspective)
 }

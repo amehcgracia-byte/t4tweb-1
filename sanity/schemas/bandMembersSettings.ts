@@ -3,10 +3,9 @@ import { defineField, defineType } from 'sanity'
 /**
  * Band Members Section Settings
  *
- * Stores layout, styling, and positioning overrides for the Band Members section.
- * These are materialized from homeEditorState when changes are saved in the visual editor.
- *
- * This document is read by bandMembersLoader and applied to BandMembersSection.
+ * Stores API-managed settings for the Band Members section.
+ * `elementStyles` is intentionally not exposed in Studio: editor deploy writes it as
+ * a structured object and the public loader normalizes it before render.
  */
 
 const bandMembersSettings = defineType({
@@ -15,10 +14,15 @@ const bandMembersSettings = defineType({
   type: 'document',
   fields: [
     defineField({
-      name: 'elementStyles',
-      title: 'Element Styles',
-      type: 'text',
-      description: 'Styling and layout overrides for band section elements (position, size, colors, typography) stored as JSON',
+      name: 'backgroundImage',
+      title: 'Background Image',
+      type: 'image',
+      options: { hotspot: true },
+    }),
+    defineField({
+      name: 'updatedAt',
+      title: 'Updated At',
+      type: 'datetime',
       hidden: true,
     }),
   ],

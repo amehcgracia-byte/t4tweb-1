@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react"
 
+export const TEXT_EMPHASIS_SHADOW = "0 2px 10px rgba(0, 0, 0, 0.72), 0 0 2px rgba(0, 0, 0, 0.9)"
+
 /** Integer px avoids subpixel drift between editor measure, Sanity JSON, and SSR. */
 export function roundLayoutPx(n: number): number {
   return Math.round(n)
@@ -69,7 +71,7 @@ export function applyScrollIndicatorLayoutToElement(
   const tx = roundLayoutPx(g.x)
   const ty = roundLayoutPx(g.y)
   el.style.left = "50%"
-  el.style.bottom = "1rem"
+  el.style.bottom = "2rem"
   el.style.transformOrigin = "center bottom"
   const parts: string[] = [`translate(calc(-50% + ${tx}px), ${ty}px)`]
   if (nodeScale !== 1) parts.push(`scale(${nodeScale})`)
@@ -83,6 +85,18 @@ export function clearScrollIndicatorLayoutFromElement(el: HTMLElement): void {
   el.style.removeProperty("transform-origin")
 }
 
+export function toCssFilterPercentValue(value: number): string {
+  return `${value}%`
+}
+
+function isIdentityOpacityValue(value: number): boolean {
+  return Math.abs(value - 1) < 0.0001
+}
+
+function isIdentityFilterPercentValue(value: number): boolean {
+  return Math.abs(value - 100) < 0.0001
+}
+
 /**
  * Maps CMS `elementStyles` map entries to inline CSS (hero, navigation, etc.).
  * Same rules as visual-editor `applyNodeToDom` for non-scroll nodes.
@@ -92,23 +106,7 @@ export function getElementLayoutStyle(
   targetId: string,
   options?: { includeGeometry?: boolean }
 ): CSSProperties {
-  if (targetId === "hero-scroll-indicator" && typeof window !== "undefined") {
-    console.log("[HERO-SCROLL][getElementLayoutStyle-entry]", {
-      targetId,
-      hasElementStyles: !!elementStyles,
-      elementStylesKeys: elementStyles ? Object.keys(elementStyles) : null,
-      hasTargetId: elementStyles ? targetId in elementStyles : false,
-      targetData: elementStyles?.[targetId]
-    })
-  }
-  if (!elementStyles || !elementStyles[targetId]) {
-    if (targetId === "hero-scroll-indicator" && typeof window !== "undefined") {
-      console.log("[HERO-SCROLL][getElementLayoutStyle-early-return]", {
-        reason: "no elementStyles or targetId not found"
-      })
-    }
-    return {}
-  }
+  if (!elementStyles || !elementStyles[targetId]) return {}
 
   const styles = elementStyles[targetId] as Record<string, unknown>
   const includeGeometry = options?.includeGeometry ?? true
@@ -123,19 +121,6 @@ export function getElementLayoutStyle(
 
   // Special layout for scroll indicator - ALWAYS apply positioning, even if no geometry
   if (targetId === "hero-scroll-indicator") {
-    if (typeof window !== "undefined") {
-      console.log("[HERO-SCROLL][getElementLayoutStyle-conditions]", {
-        shouldApplyGeometry,
-        hasX: typeof styles.x === "number",
-        hasY: typeof styles.y === "number",
-        x: tx,
-        y: ty,
-        needTranslate,
-        needScale,
-        scaleVal,
-        includeGeometry
-      })
-    }
     // Always build scroll layout for proper positioning context (position: absolute + transform-origin)
     const layout = buildHeroScrollIndicatorLayoutStyle({
       x: tx,
@@ -145,16 +130,7 @@ export function getElementLayoutStyle(
       height: includeGeometry && shouldApplyGeometry && typeof styles.height === "number" ? roundLayoutPx(styles.height as number) : undefined,
     })
     const result: CSSProperties = { ...layout }
-    if (typeof styles.opacity === "number") result.opacity = styles.opacity
-    if (typeof window !== "undefined") {
-      console.log("[HERO-SCROLL][getElementLayoutStyle-built]", {
-        hasGeometry: shouldApplyGeometry,
-        transform: result.transform,
-        position: result.position,
-        width: result.width,
-        height: result.height
-      })
-    }
+    if (typeof styles.opacity === "number" && !isIdentityOpacityValue(styles.opacity)) result.opacity = styles.opacity
     return result
   }
 
@@ -192,15 +168,22 @@ export function getElementLayoutStyle(
   if (styles.bold === true) result.fontWeight = "bold"
   if (styles.italic === true) result.fontStyle = "italic"
   if (styles.underline === true) result.textDecoration = "underline"
+  if (styles.textShadowEnabled === true) result.textShadow = TEXT_EMPHASIS_SHADOW
 
   // Opacity and effects
-  if (typeof styles.opacity === "number") result.opacity = styles.opacity
+  if (typeof styles.opacity === "number" && !isIdentityOpacityValue(styles.opacity)) result.opacity = styles.opacity
 
   // Image filters (contrast, saturation, brightness, negative)
   const filterParts: string[] = []
-  if (typeof styles.contrast === "number") filterParts.push(`contrast(${styles.contrast})`)
-  if (typeof styles.saturation === "number") filterParts.push(`saturate(${styles.saturation})`)
-  if (typeof styles.brightness === "number") filterParts.push(`brightness(${styles.brightness})`)
+  if (typeof styles.contrast === "number" && !isIdentityFilterPercentValue(styles.contrast)) {
+    filterParts.push(`contrast(${toCssFilterPercentValue(styles.contrast)})`)
+  }
+  if (typeof styles.saturation === "number" && !isIdentityFilterPercentValue(styles.saturation)) {
+    filterParts.push(`saturate(${toCssFilterPercentValue(styles.saturation)})`)
+  }
+  if (typeof styles.brightness === "number" && !isIdentityFilterPercentValue(styles.brightness)) {
+    filterParts.push(`brightness(${toCssFilterPercentValue(styles.brightness)})`)
+  }
   if (styles.negative === true) filterParts.push("invert(1)")
   if (filterParts.length > 0) result.filter = filterParts.join(" ")
 
@@ -210,40 +193,6 @@ export function getElementLayoutStyle(
     result.backgroundClip = "text"
     result.WebkitBackgroundClip = "text"
     result.color = "transparent"
-    // Debug: log gradient application
-    if (typeof window !== "undefined") {
-      console.log(`[HERO-GRADIENT][public-render] ${targetId}:`, {
-        enabled: styles.gradientEnabled,
-        start: styles.gradientStart,
-        end: styles.gradientEnd,
-        applied: true
-      })
-    }
-  }
-
-  // Log scroll indicator style application
-  if (targetId === "hero-scroll-indicator" && typeof window !== "undefined") {
-    console.log(`[HERO-SCROLL][getElementLayoutStyle]`, {
-      targetId,
-      inputStyles: {
-        x: styles.x,
-        y: styles.y,
-        width: styles.width,
-        height: styles.height,
-        scale: styles.scale
-      },
-      includeGeometry: options?.includeGeometry ?? true,
-      hasX: typeof styles.x === "number",
-      hasY: typeof styles.y === "number",
-      shouldApplyGeometry: !!(typeof styles.x === "number" || typeof styles.y === "number"),
-      appliedCss: {
-        left: result.left,
-        bottom: result.bottom,
-        transform: result.transform,
-        width: result.width,
-        height: result.height
-      }
-    })
   }
 
   return result

@@ -13,8 +13,11 @@ import { IntroBannerSection } from "@/components/intro-banner-section"
 import { loadHeroData } from "@/lib/sanity/hero-loader"
 import { loadNavigationData } from "@/lib/sanity/navigation-loader"
 import { loadIntroBannerData } from "@/lib/sanity/intro-banner-loader"
+import { loadLatestReleaseData } from "@/lib/sanity/latest-release-loader"
 import { loadBandMembersData } from "@/lib/sanity/band-members-loader"
-import { loadLiveConcerts } from "@/lib/live-concerts-loader"
+import { loadContactSectionData } from "@/lib/sanity/contact-loader"
+import { loadFooterData } from "@/lib/sanity/footer-loader"
+import { loadLiveSectionData } from "@/lib/live-concerts-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
 import { HomeEditorOverridesProvider } from "@/components/home-editor-overrides-provider"
 import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
@@ -22,12 +25,15 @@ import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
 export const dynamic = "force-dynamic"
 
 export default async function HomePage({ perspective = "published", isEditorRoute = false }: { perspective?: "published" | "drafts"; isEditorRoute?: boolean } = {}) {
-  const [heroData, navigationData, introBannerData, bandMembersData, liveConcerts] = await Promise.all([
+  const [heroData, navigationData, introBannerData, latestReleaseData, bandMembersData, liveData, contactData, footerData] = await Promise.all([
     loadHeroData(perspective),
     loadNavigationData(perspective),
     loadIntroBannerData(perspective),
+    loadLatestReleaseData(perspective),
     loadBandMembersData(perspective),
-    loadLiveConcerts(),
+    loadLiveSectionData(perspective),
+    loadContactSectionData(perspective),
+    loadFooterData(perspective),
   ])
   // Load homeEditorNodes only for editor mode (for visual-editor state), but don't pass to sections
   // Sections render from Sanity data only, without client-side override mixing
@@ -49,7 +55,7 @@ export default async function HomePage({ perspective = "published", isEditorRout
 
         <SectionDivider editorId="section-divider-intro-release" />
 
-        <LatestReleaseSection />
+        <LatestReleaseSection data={latestReleaseData} />
 
         <SectionDivider editorId="section-divider-release-about" />
 
@@ -66,24 +72,28 @@ export default async function HomePage({ perspective = "published", isEditorRout
         <SectionDivider editorId="section-divider-press-band" />
 
         <SceneSection id="band">
-          <BandMembersSection initialMembers={bandMembersData.members} elementStyles={bandMembersData.elementStyles} />
+          <BandMembersSection
+            initialMembers={bandMembersData.members}
+            backgroundImageUrl={bandMembersData.backgroundImageUrl}
+            elementStyles={bandMembersData.elementStyles}
+          />
         </SceneSection>
 
         <SectionDivider editorId="section-divider-band-live" />
 
         <SceneSection id="live">
-          <LiveSection initialConcerts={liveConcerts} />
+          <LiveSection data={liveData} />
         </SceneSection>
 
         <SectionDivider editorId="section-divider-live-contact" />
 
         <SceneSection id="contact">
-          <ContactSection />
+          <ContactSection data={contactData} />
         </SceneSection>
 
         <SectionDivider editorId="section-divider-contact-footer" />
 
-        <Footer />
+        <Footer data={footerData} />
       </HomeEditorOverridesProvider>
     </main>
   )

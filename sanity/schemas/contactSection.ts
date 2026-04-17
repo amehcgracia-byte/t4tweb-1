@@ -8,6 +8,7 @@ export default defineType({
     defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'string' }),
     defineField({ name: 'title', title: 'Title', type: 'string' }),
     defineField({ name: 'description', title: 'Description', type: 'text' }),
+    defineField({ name: 'middleText', title: 'Middle Text', type: 'string' }),
     defineField({
       name: 'contactMethods',
       title: 'Contact Methods',
@@ -23,6 +24,8 @@ export default defineType({
         ],
       }],
     }),
-    defineField({ name: 'backgroundImage', title: 'Background Image', type: 'image' }),
+    defineField({ name: 'backgroundImage', title: 'Background Image', type: 'image', options: { hotspot: true } }),
+    // elementStyles is managed via editor deploy API, not Studio UI.
+    defineField({ name: 'updatedAt', title: 'Last updated (visual editor)', type: 'datetime', readOnly: true }),
   ],
 })

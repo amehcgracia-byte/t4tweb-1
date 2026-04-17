@@ -7,10 +7,14 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
+import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import type { ContactSectionData } from "@/lib/sanity/contact-loader"
 
-interface ContactSectionProps {}
+interface ContactSectionProps {
+  data: ContactSectionData
+}
 
-export function ContactSection({}: ContactSectionProps) {
+export function ContactSection({ data }: ContactSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -199,35 +203,22 @@ export function ContactSection({}: ContactSectionProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing])
 
-  const contactMethods = [
-    {
-      title: "Email Us",
-      description: "For booking inquiries Momo Garcia - Band Management",
-      icon: EmailIcon,
-      href: "mailto:talesforthetillerman@gmail.com",
-      label: "talesforthetillerman@gmail.com",
-      internal: true,
-    },
-    {
-      title: "Telegram",
-      description: "Janosch Puhe - Quick response for urgent matters",
-      icon: TelegramIcon,
-      href: "https://t.me/Janoschpuhe",
-      label: "@Janoschpuhe +4916090615287",
-      internal: false,
-    },
-  ]
-  const contactBgSrc = "/images/sections/contact-bg.jpg"
-  const emailHref = contactMethods[0].href
-  const telegramHref = contactMethods[1].href
-  const contactHeaderTitle = "Get in Touch"
-  const emailTitle = contactMethods[0].title
-  const emailDescription = contactMethods[0].description
-  const emailAddress = contactMethods[0].label
-  const middleText = "or"
-  const telegramTitle = contactMethods[1].title
-  const telegramDescription = contactMethods[1].description
-  const telegramHandle = contactMethods[1].label
+  const elementStyles = data.elementStyles
+  const contactBgSrc = data.backgroundImageUrl
+  const emailMethod = data.contactMethods[0]
+  const telegramMethod = data.contactMethods[1]
+  const emailHref = emailMethod.href
+  const telegramHref = telegramMethod.href
+  const contactHeaderTitle = data.title
+  const emailTitle = emailMethod.title
+  const emailDescription = emailMethod.description
+  const emailAddress = emailMethod.label
+  const middleText = data.middleText
+  const telegramTitle = telegramMethod.title
+  const telegramDescription = telegramMethod.description
+  const telegramHandle = telegramMethod.label
+  const headerStyle = getElementLayoutStyle(elementStyles, "contact-header")
+
   return (
     <section
       ref={sectionRef}
@@ -235,6 +226,7 @@ export function ContactSection({}: ContactSectionProps) {
       data-editor-node-id="contact-section"
       data-editor-node-type="section"
       data-editor-node-label="Sección de Contacto"
+      style={getElementLayoutStyle(elementStyles, "contact-section")}
       className="relative min-h-[82vh] min-h-[82dvh] overflow-hidden sm:min-h-screen sm:min-h-[100dvh]">
       <div 
         ref={bgRef}
@@ -242,6 +234,7 @@ export function ContactSection({}: ContactSectionProps) {
         data-editor-node-type="background"
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo contacto"
+        style={getElementLayoutStyle(elementStyles, "contact-bg-image")}
         className="absolute inset-0 -z-10">
         <Image
           src={contactBgSrc}
@@ -257,15 +250,16 @@ export function ContactSection({}: ContactSectionProps) {
       <div className="section-photo-fade-bottom" />
 
       <div className="relative z-10 mx-auto w-full max-w-5xl min-h-screen flex flex-col justify-end">
-        <motion.div ref={headerRef} style={isEditing ? undefined : { opacity, y }} className="mb-10 md:mb-12">
+        <motion.div ref={headerRef} style={isEditing ? headerStyle : { ...headerStyle, opacity, y }} className="mb-10 md:mb-12">
           <div>
           <SectionHeader
-            eyebrow="Contact"
+            eyebrow={data.eyebrow}
             title={contactHeaderTitle}
-            description="Get in touch for booking inquiries and event collaborations."
+            description={data.description}
             dataEditId="contact-header"
             dataEditType="text"
             dataEditLabel="Encabezado Contacto"
+            elementStyles={elementStyles}
           />
           </div>
         </motion.div>
@@ -275,7 +269,7 @@ export function ContactSection({}: ContactSectionProps) {
           <motion.a
             ref={emailCardRef}
             data-editor-node-id="contact-email"
-            data-editor-node-type="card"
+            data-editor-node-type="button"
             data-editor-node-label="Contacto Email"
             data-editor-grouped="true"
             initial={isEditing ? false : { opacity: 0, x: -20 }}
@@ -283,6 +277,7 @@ export function ContactSection({}: ContactSectionProps) {
             whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
             transition={isEditing ? undefined : { duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
             href={emailHref}
+            style={getElementLayoutStyle(elementStyles, "contact-email")}
             className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
               isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
             }`}>
@@ -294,6 +289,7 @@ export function ContactSection({}: ContactSectionProps) {
               data-editor-node-id="contact-email-title"
               data-editor-node-type="text"
               data-editor-node-label="Título Email"
+              style={getElementLayoutStyle(elementStyles, "contact-email-title")}
               className="mb-2 font-serif text-base text-foreground md:text-xl">
               {emailTitle}
             </h3>
@@ -302,6 +298,7 @@ export function ContactSection({}: ContactSectionProps) {
               data-editor-node-id="contact-email-description"
               data-editor-node-type="text"
               data-editor-node-label="Descripción Email"
+              style={getElementLayoutStyle(elementStyles, "contact-email-description")}
               className="mb-3 text-sm text-muted-foreground md:mb-4 md:text-base">
               {emailDescription}
             </p>
@@ -311,6 +308,7 @@ export function ContactSection({}: ContactSectionProps) {
                 data-editor-node-id="contact-email-address"
                 data-editor-node-type="text"
                 data-editor-node-label="Dirección Email"
+                style={getElementLayoutStyle(elementStyles, "contact-email-address")}
                 className="truncate">
                 {emailAddress}
               </span>
@@ -323,6 +321,7 @@ export function ContactSection({}: ContactSectionProps) {
               data-editor-node-id="contact-middle-text"
               data-editor-node-type="text"
               data-editor-node-label="Contact Middle Text"
+              style={getElementLayoutStyle(elementStyles, "contact-middle-text")}
               className="text-xs text-muted-foreground md:text-base">
               {middleText.split("\n").map((line, index) => (
                 <span key={`${line}-${index}`}>
@@ -336,7 +335,7 @@ export function ContactSection({}: ContactSectionProps) {
           <motion.a
             ref={telegramCardRef}
             data-editor-node-id="contact-telegram"
-            data-editor-node-type="card"
+            data-editor-node-type="button"
             data-editor-node-label="Contacto Telegram"
             data-editor-grouped="true"
             initial={isEditing ? false : { opacity: 0, x: 20 }}
@@ -346,6 +345,7 @@ export function ContactSection({}: ContactSectionProps) {
             href={telegramHref}
             target="_blank"
             rel="noopener noreferrer"
+            style={getElementLayoutStyle(elementStyles, "contact-telegram")}
             className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
               isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
             }`}>
@@ -357,6 +357,7 @@ export function ContactSection({}: ContactSectionProps) {
               data-editor-node-id="contact-telegram-title"
               data-editor-node-type="text"
               data-editor-node-label="Título Telegram"
+              style={getElementLayoutStyle(elementStyles, "contact-telegram-title")}
               className="mb-2 font-serif text-base text-foreground md:text-xl">
               {telegramTitle}
             </h3>
@@ -365,6 +366,7 @@ export function ContactSection({}: ContactSectionProps) {
               data-editor-node-id="contact-telegram-description"
               data-editor-node-type="text"
               data-editor-node-label="Descripción Telegram"
+              style={getElementLayoutStyle(elementStyles, "contact-telegram-description")}
               className="mb-3 text-sm text-muted-foreground md:mb-4 md:text-base">
               {telegramDescription}
             </p>
@@ -374,6 +376,7 @@ export function ContactSection({}: ContactSectionProps) {
                 data-editor-node-id="contact-telegram-handle"
                 data-editor-node-type="text"
                 data-editor-node-label="Handle Telegram"
+                style={getElementLayoutStyle(elementStyles, "contact-telegram-handle")}
                 className="truncate">
                 {telegramHandle}
               </span>

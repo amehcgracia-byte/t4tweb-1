@@ -20,5 +20,12 @@ export default defineType({
         ],
       }],
     }),
+    // elementStylesFieldConfig() — managed via editor API, not Studio UI
+    defineField({
+      name: 'updatedAt',
+      title: 'Last updated (visual editor)',
+      type: 'datetime',
+      readOnly: true,
+    }),
   ],
 })

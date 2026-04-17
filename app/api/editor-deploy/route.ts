@@ -24,6 +24,10 @@ interface DeployNodePayload {
     fontWeight?: string
     fontStyle?: string
     textDecoration?: string
+    textShadowEnabled?: boolean
+    gradientEnabled?: boolean
+    gradientStart?: string
+    gradientEnd?: string
     textAlign?: "left" | "center" | "right"
     scale?: number
     minHeight?: string
@@ -54,6 +58,9 @@ interface DeployNodePayload {
     time?: string
     capacity?: string
     locationUrl?: string
+    extraNodeType?: "text" | "button" | "card" | "overlay"
+    parentSection?: string
+    label?: string
   }
   explicitContent: boolean
   explicitStyle: boolean
@@ -99,12 +106,21 @@ const TARGET_SECTION = "hero"
 const SANITY_DOC_TYPE = "heroSection"
 const SANITY_DOC_NAV = "navigation"
 const SANITY_DOC_INTRO = "introBanner"
+const SANITY_DOC_LATEST_RELEASE = "latestRelease"
+const SANITY_DOC_LIVE_SECTION = "liveSection"
+const SANITY_DOC_CONCERT = "concert"
 const SANITY_DOC_BAND_MEMBERS = "bandMembersSettings"
+const SANITY_DOC_CONTACT = "contactSection"
+const SANITY_DOC_FOOTER = "footerSection"
 const SANITY_DOC_HOME_EDITOR_STATE = "homeEditorState"
 const HOME_EDITOR_STATE_DOCUMENT_ID = "homeEditorState-singleton"
 const REVALIDATED_PATH = "/"
 const INTRO_DOCUMENT_ID = "introBanner"
+const LATEST_RELEASE_DOCUMENT_ID = "latestRelease"
+const LIVE_SECTION_DOCUMENT_ID = "liveSection"
 const BAND_MEMBERS_DOCUMENT_ID = "bandMembersSettings"
+const CONTACT_DOCUMENT_ID = "contactSection"
+const FOOTER_DOCUMENT_ID = "footerSection"
 const SHOULD_REVALIDATE_PATH = process.env.EDITOR_DEPLOY_REVALIDATE_LOCAL_PATH !== "false"
 const PUBLIC_REVALIDATE_URL = process.env.EDITOR_DEPLOY_PUBLIC_REVALIDATE_URL || ""
 const PUBLIC_REVALIDATE_SECRET = process.env.EDITOR_DEPLOY_PUBLIC_REVALIDATE_SECRET || ""
@@ -132,6 +148,44 @@ const BAND_MEMBERS_LAYOUT_IDS = new Set([
   "member-item-4",
 ])
 
+const BAND_MEMBER_SUBNODE_FIELDS = new Set(["name", "role", "number", "image"])
+
+const CONTACT_NODE_IDS = new Set([
+  "contact-section",
+  "contact-bg-image",
+  "contact-header",
+  "contact-header-eyebrow",
+  "contact-header-title",
+  "contact-header-description",
+  "contact-email",
+  "contact-email-title",
+  "contact-email-description",
+  "contact-email-address",
+  "contact-middle-text",
+  "contact-telegram",
+  "contact-telegram-title",
+  "contact-telegram-description",
+  "contact-telegram-handle",
+])
+
+const FOOTER_SOCIAL_IDS = new Set([
+  "footer-social-instagram",
+  "footer-social-youtube",
+  "footer-social-telegram",
+  "footer-social-linktree",
+])
+
+const FOOTER_NODE_IDS = new Set([
+  "footer-section",
+  "footer-logo",
+  "footer-description",
+  "footer-cta",
+  "footer-social-group",
+  "footer-divider",
+  "footer-copyright",
+  ...FOOTER_SOCIAL_IDS,
+])
+
 /**
  * Public loaders use `perspective: "published"`. Deploy must patch the **published**
  * document id — never `drafts.*`, or the live site will keep reading stale data while
@@ -145,6 +199,23 @@ function isNavLayoutId(id: string): boolean {
   return id === "navigation" || id === "navigation-inner" || id.startsWith("nav-")
 }
 
+const NAVBAR_TEXT_NODE_IDS = new Set(["nav-brand-name"])
+const NAVBAR_BUTTON_NODE_IDS = new Set(["nav-book-button", "nav-mobile-book-button"])
+const NAVBAR_CONTAINER_NODE_IDS = new Set(["navigation-inner"])
+const NAVBAR_IMAGE_NODE_IDS = new Set(["nav-logo"])
+
+function isNavbarLinkButtonNodeId(nodeId: string): boolean {
+  return /^nav-(?:mobile-)?link-\d+$/.test(nodeId)
+}
+
+function isNavbarButtonPatternNodeId(nodeId: string): boolean {
+  return NAVBAR_BUTTON_NODE_IDS.has(nodeId) || isNavbarLinkButtonNodeId(nodeId)
+}
+
+function isNavbarBoxPatternNodeId(nodeId: string): boolean {
+  return NAVBAR_CONTAINER_NODE_IDS.has(nodeId) || isNavbarButtonPatternNodeId(nodeId)
+}
+
 const HERO_NODE_IDS = new Set([
   "hero-section",
   "hero-bg-image",
@@ -152,8 +223,72 @@ const HERO_NODE_IDS = new Set([
   "hero-subtitle",
   "hero-logo",
   "hero-scroll-indicator",
+  "hero-scroll-label",
   "hero-buttons",
 ])
+
+const HERO_TEXT_NODE_IDS = new Set(["hero-title", "hero-subtitle", "hero-scroll-label"])
+const HERO_IMAGE_NODE_IDS = new Set(["hero-bg-image", "hero-logo"])
+const HERO_IMAGE_FILTER_DEFAULTS = {
+  contrast: 100,
+  saturation: 100,
+  brightness: 100,
+  opacity: 1,
+  negative: false,
+} satisfies Record<"contrast" | "saturation" | "brightness" | "opacity" | "negative", number | boolean>
+
+function mergeHeroImageFilterDefaults(target: Record<string, unknown>): void {
+  Object.assign(target, HERO_IMAGE_FILTER_DEFAULTS)
+}
+
+function isUsableHeroTextGeometryInput(node: DeployNodePayload): boolean {
+  const x = node.geometry?.x
+  const y = node.geometry?.y
+  const width = node.geometry?.width
+  const height = node.geometry?.height
+
+  return (
+    HERO_TEXT_NODE_IDS.has(node.id) &&
+    typeof x === "number" &&
+    typeof y === "number" &&
+    typeof width === "number" &&
+    typeof height === "number" &&
+    Number.isFinite(x) &&
+    Number.isFinite(y) &&
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    Math.abs(x) <= 2400 &&
+    Math.abs(y) <= 900 &&
+    width > 1 &&
+    height > 1 &&
+    width <= 2400 &&
+    height <= 800
+  )
+}
+
+function isUsableHeroTextElementStyle(style: Record<string, unknown>): boolean {
+  const x = style.x
+  const y = style.y
+  const width = style.width
+  const height = style.height
+
+  return (
+    typeof x === "number" &&
+    typeof y === "number" &&
+    typeof width === "number" &&
+    typeof height === "number" &&
+    Number.isFinite(x) &&
+    Number.isFinite(y) &&
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    Math.abs(x) <= 2400 &&
+    Math.abs(y) <= 900 &&
+    width > 1 &&
+    height > 1 &&
+    width <= 2400 &&
+    height <= 800
+  )
+}
 
 const INTRO_NODE_IDS = new Set([
   "intro-section",
@@ -172,6 +307,30 @@ const RELEASE_NODE_IDS = new Set([
   "latest-release-watch-button",
   "latest-release-shows-button",
 ])
+
+const LIVE_STATIC_NODE_IDS = new Set([
+  "live-section",
+  "live-section-bg-image",
+  "live-see-shows-header",
+  "live-section-see-shows-button",
+  "live-stream-header",
+  "live-stream-platforms-group",
+  "live-stream-platforms-title",
+  "live-social-platforms-group",
+  "live-social-platforms-title",
+  "live-upcoming-title",
+  "live-upcoming-list",
+  "live-upcoming-empty",
+  "live-upcoming-empty-text",
+  "live-history-title",
+  "live-history-list",
+  "live-history-empty",
+  "live-history-empty-text",
+])
+
+function isLiveNodeId(id: string): boolean {
+  return LIVE_STATIC_NODE_IDS.has(id) || /^live-(?:streaming|social)-/.test(id) || /^live-(?:upcoming|history)-event-\d+(?:-.+)?$/.test(id)
+}
 
 function isImageSrcPersistable(src: string): boolean {
   const value = src.trim()
@@ -219,8 +378,35 @@ function buildSanityImageFieldFromSrc(
   }
 }
 
+function resolveSanityImagePatch(
+  nodeId: string,
+  src: string,
+  projectId: string,
+  dataset: string
+): {
+  imageField: { _type: "image"; asset: { _type: "reference"; _ref: string } } | null
+  skippedReason: string | null
+} {
+  if (!src) return { imageField: null, skippedReason: `${nodeId}:missing-content-src` }
+  if (!isImageSrcPersistable(src)) return { imageField: null, skippedReason: `${nodeId}:src(blob/data url)` }
+
+  const imageField = buildSanityImageFieldFromSrc(src, projectId, dataset)
+  if (imageField) return { imageField, skippedReason: null }
+
+  if (src.includes("localhost") || src.startsWith("/images/")) {
+    return { imageField: null, skippedReason: `${nodeId}:src(local-or-site-path)` }
+  }
+
+  return { imageField: null, skippedReason: `${nodeId}:src(non-sanity-cdn url)` }
+}
+
 function shouldVerifyInHomeEditorState(node: DeployNodePayload): boolean {
   if (node.id === "intro-banner-gif") return false
+  if (RELEASE_NODE_IDS.has(node.id)) return false
+  if (isLiveNodeId(node.id)) return false
+  if (isBandMembersNodeId(node.id)) return false
+  if (CONTACT_NODE_IDS.has(node.id)) return false
+  if (FOOTER_NODE_IDS.has(node.id)) return false
   const isImageLikeNode = node.type === "image" || node.type === "background"
   if (isImageLikeNode && node.explicitContent) return true
   if (HERO_NODE_IDS.has(node.id)) return false
@@ -253,6 +439,11 @@ function approxEqualNumber(a: unknown, b: unknown): boolean {
 function normalizeComparableValue(value: unknown): unknown {
   if (typeof value === "number") return roundLayoutPx(value)
   if (Array.isArray(value) || (value && typeof value === "object")) return JSON.parse(JSON.stringify(value))
+  return value
+}
+
+function normalizeHeroEffectComparableValue(value: unknown): unknown {
+  if (typeof value === "number") return Math.round(value * 100) / 100
   return value
 }
 
@@ -342,6 +533,27 @@ function parsePxNumber(value: string | undefined): number | undefined {
   return undefined
 }
 
+function parseYouTubeId(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+  if (/^[a-zA-Z0-9_-]{6,}$/.test(trimmed) && !trimmed.includes("/")) return trimmed
+  try {
+    const url = new URL(trimmed)
+    if (url.hostname.includes("youtu.be")) {
+      return url.pathname.split("/").filter(Boolean)[0] || ""
+    }
+    const queryId = url.searchParams.get("v")
+    if (queryId) return queryId
+    const embedMatch = /\/embed\/([^/?#]+)/.exec(url.pathname)
+    if (embedMatch?.[1]) return embedMatch[1]
+    const thumbnailMatch = /\/vi\/([^/?#]+)/.exec(url.pathname)
+    if (thumbnailMatch?.[1]) return thumbnailMatch[1]
+  } catch {
+    return ""
+  }
+  return ""
+}
+
 /** Map visual-editor `node.style` (color, fontSize, fontWeight) into Sanity elementStyles shape. */
 function mergeDeployVisualStyleIntoTarget(target: Record<string, unknown>, node: DeployNodePayload): void {
   if (!node.explicitStyle) return
@@ -354,6 +566,210 @@ function mergeDeployVisualStyleIntoTarget(target: Record<string, unknown>, node:
     const n = typeof fw === "number" ? fw : parseInt(String(fw), 10)
     if (!Number.isNaN(n)) target.fontWeight = n
   }
+}
+
+function mergeDeployTextEffectsIntoTarget(target: Record<string, unknown>, st: Record<string, unknown>): void {
+  if (st.bold === true) target.bold = true
+  else if (st.fontWeight !== undefined) target.bold = false
+
+  if (typeof st.italic === "boolean") target.italic = st.italic
+  else if (typeof st.fontStyle === "string") target.italic = st.fontStyle === "italic"
+
+  if (typeof st.underline === "boolean") target.underline = st.underline
+  else if (typeof st.textDecoration === "string") target.underline = st.textDecoration === "underline"
+
+  if (typeof st.textShadowEnabled === "boolean") target.textShadowEnabled = st.textShadowEnabled
+  if (typeof st.gradientEnabled === "boolean") target.gradientEnabled = st.gradientEnabled
+  if (typeof st.gradientStart === "string") target.gradientStart = st.gradientStart
+  if (typeof st.gradientEnd === "string") target.gradientEnd = st.gradientEnd
+}
+
+function parseBandMemberNodeId(nodeId: string): { index: number; field: "name" | "role" | "number" | "image" | null } | null {
+  const match = /^member-item-(\d+)(?:-(name|role|number|image))?$/.exec(nodeId)
+  if (!match) return null
+  const index = Number(match[1])
+  if (!Number.isFinite(index)) return null
+  const field = match[2]
+  return {
+    index,
+    field: BAND_MEMBER_SUBNODE_FIELDS.has(field) ? field as "name" | "role" | "number" | "image" : null,
+  }
+}
+
+function isBandMembersNodeId(nodeId: string): boolean {
+  return BAND_MEMBERS_LAYOUT_IDS.has(nodeId) || parseBandMemberNodeId(nodeId) !== null
+}
+
+function mergeStableElementStyleFromNode(target: Record<string, unknown>, node: DeployNodePayload): void {
+  if (node.explicitPosition) {
+    target.x = roundLayoutPx(node.geometry.x)
+    target.y = roundLayoutPx(node.geometry.y)
+  }
+  if (node.explicitSize) {
+    target.width = roundLayoutPx(node.geometry.width)
+    target.height = roundLayoutPx(node.geometry.height)
+  }
+  const scaleVal = node.style?.scale
+  if (node.explicitStyle && typeof scaleVal === "number") {
+    target.scale = Math.round(scaleVal * 1000) / 1000
+  }
+  mergeDeployVisualStyleIntoTarget(target, node)
+  if (node.explicitStyle) {
+    const st = node.style as Record<string, unknown>
+    for (const key of ["opacity", "contrast", "saturation", "brightness", "negative"]) {
+      if (st[key] !== undefined && st[key] !== null) target[key] = st[key]
+    }
+  }
+}
+
+function normalizeStoredElementStyles(value: unknown): Record<string, Record<string, unknown>> {
+  const parsed = typeof value === "string"
+    ? (() => {
+        try {
+          return JSON.parse(value) as unknown
+        } catch {
+          return null
+        }
+      })()
+    : value
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
+
+  const result: Record<string, Record<string, unknown>> = {}
+  for (const [nodeId, rawStyle] of Object.entries(parsed as Record<string, unknown>)) {
+    if (!rawStyle || typeof rawStyle !== "object" || Array.isArray(rawStyle)) continue
+    const style = rawStyle as Record<string, unknown>
+    const geometry = style.geometry && typeof style.geometry === "object" && !Array.isArray(style.geometry)
+      ? style.geometry as Record<string, unknown>
+      : null
+    const normalized: Record<string, unknown> = {}
+    if (geometry) {
+      for (const key of ["x", "y", "width", "height"]) {
+        if (typeof geometry[key] === "number") normalized[key] = roundLayoutPx(geometry[key] as number)
+      }
+    }
+    for (const [key, entryValue] of Object.entries(style)) {
+      if (key !== "geometry") normalized[key] = entryValue
+    }
+    result[nodeId] = normalized
+  }
+  return result
+}
+
+function buildContactContentPatch(
+  nodes: DeployNodePayload[],
+  existing: {
+    contactMethods?: Array<{ title?: string; description?: string; href?: string; label?: string; contactName?: string }>
+  }
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {}
+  const baseMethods = Array.isArray(existing.contactMethods) && existing.contactMethods.length > 0
+    ? existing.contactMethods.map((method) => ({
+        title: method.title || "",
+        description: method.description || "",
+        href: method.href || "",
+        label: method.label || "",
+        contactName: method.contactName || "",
+      }))
+    : [
+        { title: "", description: "", href: "", label: "", contactName: "" },
+        { title: "", description: "", href: "", label: "", contactName: "" },
+      ]
+  while (baseMethods.length < 2) baseMethods.push({ title: "", description: "", href: "", label: "", contactName: "" })
+  let methodsDirty = false
+
+  for (const node of nodes) {
+    if (!node.explicitContent) continue
+    const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+    const href = typeof node.content.href === "string" ? node.content.href.trim() : ""
+
+    if (node.id === "contact-header-eyebrow" && text) patch.eyebrow = text
+    if (node.id === "contact-header-title" && text) patch.title = text
+    if (node.id === "contact-header-description" && text) patch.description = text
+    if (node.id === "contact-middle-text" && text) patch.middleText = text
+
+    if (node.id === "contact-email" && href) {
+      baseMethods[0] = { ...baseMethods[0], href }
+      methodsDirty = true
+    }
+    if (node.id === "contact-email-title" && text) {
+      baseMethods[0] = { ...baseMethods[0], title: text }
+      methodsDirty = true
+    }
+    if (node.id === "contact-email-description" && text) {
+      baseMethods[0] = { ...baseMethods[0], description: text }
+      methodsDirty = true
+    }
+    if (node.id === "contact-email-address" && text) {
+      baseMethods[0] = { ...baseMethods[0], label: text }
+      if (!baseMethods[0].href || baseMethods[0].href.startsWith("mailto:")) {
+        baseMethods[0].href = `mailto:${text}`
+      }
+      methodsDirty = true
+    }
+
+    if (node.id === "contact-telegram" && href) {
+      baseMethods[1] = { ...baseMethods[1], href }
+      methodsDirty = true
+    }
+    if (node.id === "contact-telegram-title" && text) {
+      baseMethods[1] = { ...baseMethods[1], title: text }
+      methodsDirty = true
+    }
+    if (node.id === "contact-telegram-description" && text) {
+      baseMethods[1] = { ...baseMethods[1], description: text }
+      methodsDirty = true
+    }
+    if (node.id === "contact-telegram-handle" && text) {
+      baseMethods[1] = { ...baseMethods[1], label: text }
+      methodsDirty = true
+    }
+  }
+
+  if (methodsDirty) patch.contactMethods = baseMethods
+  return patch
+}
+
+function buildFooterContentPatch(
+  nodes: DeployNodePayload[],
+  existing: {
+    socialLinks?: Array<{ id?: string; name?: string; href?: string }>
+  }
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {}
+  const fallbackSocialLinks = [
+    { id: "footer-social-instagram", name: "Instagram", href: "https://www.instagram.com/tales4tillerman" },
+    { id: "footer-social-youtube", name: "YouTube", href: "https://www.youtube.com/channel/UCiSLr9s4NLC1kzHBqJirsrQ" },
+    { id: "footer-social-telegram", name: "Telegram", href: "https://t.me/talesforthetillerman" },
+    { id: "footer-social-linktree", name: "Linktree", href: "https://linktr.ee/tales4tillerman" },
+  ]
+  const socialLinks = fallbackSocialLinks.map((fallback, index) => ({
+    id: existing.socialLinks?.[index]?.id || fallback.id,
+    name: existing.socialLinks?.[index]?.name || fallback.name,
+    href: existing.socialLinks?.[index]?.href || fallback.href,
+  }))
+  let socialDirty = false
+
+  for (const node of nodes) {
+    if (!node.explicitContent) continue
+    const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+    const href = typeof node.content.href === "string" ? node.content.href.trim() : ""
+
+    if (node.id === "footer-description" && text) patch.description = text
+    if (node.id === "footer-copyright" && text) patch.copyright = text.replace(/^©\s*/, "")
+    if (node.id === "footer-cta") {
+      if (text) patch.ctaLabel = text
+      if (href) patch.ctaHref = href
+    }
+
+    const socialIndex = socialLinks.findIndex((link) => link.id === node.id)
+    if (socialIndex >= 0 && href) {
+      socialLinks[socialIndex] = { ...socialLinks[socialIndex], href }
+      socialDirty = true
+    }
+  }
+
+  if (socialDirty) patch.socialLinks = socialLinks
+  return patch
 }
 
 function buildIntroContentPatch(nodes: DeployNodePayload[]): { patch: Record<string, unknown>; skipped: string[] } {
@@ -387,6 +803,108 @@ function buildIntroContentPatch(nodes: DeployNodePayload[]): { patch: Record<str
     }
   }
   return { patch, skipped }
+}
+
+function buildLatestReleaseContentPatch(
+  nodes: DeployNodePayload[],
+  existing: {
+    ctaButtons?: Array<{ label?: string; href?: string }>
+  }
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {}
+  const baseButtons = Array.isArray(existing.ctaButtons) && existing.ctaButtons.length > 0
+    ? existing.ctaButtons.map((button) => ({ label: button.label || "", href: button.href || "" }))
+    : [
+        { label: "", href: "" },
+        { label: "", href: "" },
+      ]
+  while (baseButtons.length < 2) baseButtons.push({ label: "", href: "" })
+  let buttonsDirty = false
+
+  for (const node of nodes) {
+    if (!node.explicitContent) continue
+    if (node.id === "latest-release-title") {
+      const title = typeof node.content.text === "string" ? node.content.text.trim() : ""
+      if (title) patch.title = title
+    }
+    if (node.id === "latest-release-subtitle") {
+      const subtitle = typeof node.content.text === "string" ? node.content.text.trim() : ""
+      if (subtitle) patch.subtitle = subtitle
+    }
+    if (node.id === "latest-release-bg") {
+      const videoSource =
+        typeof node.content.videoUrl === "string" && node.content.videoUrl.trim()
+          ? node.content.videoUrl
+          : typeof node.content.src === "string"
+            ? node.content.src
+            : ""
+      const youtubeId = parseYouTubeId(videoSource)
+      if (youtubeId) patch.youtubeId = youtubeId
+    }
+    if (node.id === "latest-release-watch-button" || node.id === "latest-release-shows-button") {
+      const index = node.id === "latest-release-watch-button" ? 0 : 1
+      const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+      const href = typeof node.content.href === "string" ? node.content.href.trim() : ""
+      if (text) {
+        baseButtons[index] = { ...baseButtons[index], label: text }
+        buttonsDirty = true
+      }
+      if (href) {
+        baseButtons[index] = { ...baseButtons[index], href }
+        buttonsDirty = true
+      }
+    }
+  }
+
+  if (buttonsDirty) patch.ctaButtons = baseButtons
+  return patch
+}
+
+function parseLiveConcertNodeId(nodeId: string): { listType: "upcoming" | "history"; editorId: number; field: string | null } | null {
+  const match = /^live-(upcoming|history)-event-(\d+)(?:-(date|venue|city|country|genre|price|time|status|capacity|locationUrl))?$/.exec(nodeId)
+  if (!match) return null
+  const editorId = Number(match[2])
+  if (!Number.isFinite(editorId)) return null
+  return {
+    listType: match[1] as "upcoming" | "history",
+    editorId,
+    field: match[3] || null,
+  }
+}
+
+function normalizeConcertPriceForSanity(value: string): number | undefined {
+  const trimmed = value.trim()
+  if (!trimmed || /^free$/i.test(trimmed)) return undefined
+  const numeric = Number(trimmed.replace(/[^\d.,-]/g, "").replace(",", "."))
+  return Number.isFinite(numeric) ? numeric : undefined
+}
+
+function collectLiveConcertPatches(nodes: DeployNodePayload[]): Map<number, Record<string, unknown>> {
+  const patches = new Map<number, Record<string, unknown>>()
+  for (const node of nodes) {
+    if (!node.explicitContent) continue
+    const parsed = parseLiveConcertNodeId(node.id)
+    if (!parsed) continue
+    const patch = patches.get(parsed.editorId) || {
+      editorId: parsed.editorId,
+      status: parsed.listType === "upcoming" ? "Upcoming" : "Completed",
+      updatedAt: new Date().toISOString(),
+    }
+    if (parsed.field) {
+      const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+      const href = typeof node.content.href === "string" ? node.content.href.trim() : ""
+      if (parsed.field === "price") {
+        const price = normalizeConcertPriceForSanity(text)
+        if (price !== undefined) patch.price = price
+      } else if (parsed.field === "locationUrl") {
+        if (href || text) patch.ticketUrl = href || text
+      } else if (text) {
+        patch[parsed.field === "country" ? "country" : parsed.field] = text
+      }
+    }
+    patches.set(parsed.editorId, patch)
+  }
+  return patches
 }
 
 function getEnvDiagnostics(): DeployEnvDiagnostics {
@@ -498,7 +1016,7 @@ export async function GET() {
 
 /**
  * Normalize title segments for comparison, ignoring _key and non-render fields.
- * Only compares: text, color, bold, italic, underline, opacity, gradientEnabled, gradientStart, gradientEnd
+ * Only compares: text, color, bold, italic, underline, opacity, textShadowEnabled, gradientEnabled, gradientStart, gradientEnd
  */
 function normalizeTitleSegments(segments: unknown[]): Array<{
   text: string
@@ -507,6 +1025,7 @@ function normalizeTitleSegments(segments: unknown[]): Array<{
   italic?: boolean
   underline?: boolean
   opacity?: number
+  textShadowEnabled?: boolean
   gradientEnabled?: boolean
   gradientStart?: string
   gradientEnd?: string
@@ -524,6 +1043,7 @@ function normalizeTitleSegments(segments: unknown[]): Array<{
         italic: typeof s.italic === "boolean" ? s.italic : undefined,
         underline: typeof s.underline === "boolean" ? s.underline : undefined,
         opacity: typeof s.opacity === "number" ? s.opacity : undefined,
+        textShadowEnabled: typeof s.textShadowEnabled === "boolean" ? s.textShadowEnabled : undefined,
         gradientEnabled: typeof s.gradientEnabled === "boolean" ? s.gradientEnabled : undefined,
         gradientStart: typeof s.gradientStart === "string" ? s.gradientStart : undefined,
         gradientEnd: typeof s.gradientEnd === "string" ? s.gradientEnd : undefined,
@@ -543,34 +1063,6 @@ export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as DeployRequestPayload
     log("payload received", { nodeCount: payload.nodes.length, level: payload.level })
-    const releasePayloadNodes = payload.nodes.filter((node) => RELEASE_NODE_IDS.has(node.id))
-    log("[RELEASE-TRACE][route][payload]", {
-      releaseNodeCount: releasePayloadNodes.length,
-      releaseNodes: releasePayloadNodes.map((node) => ({
-        id: node.id,
-        geometry: node.geometry,
-        content: node.content,
-        style: node.style,
-        explicitContent: node.explicitContent,
-        explicitStyle: node.explicitStyle,
-        explicitPosition: node.explicitPosition,
-        explicitSize: node.explicitSize,
-      })),
-    })
-    const introPayloadNodes = payload.nodes.filter((node) => INTRO_NODE_IDS.has(node.id))
-    log("[INTRO-TRACE][route][payload]", {
-      introNodeCount: introPayloadNodes.length,
-      introNodes: introPayloadNodes.map((node) => ({
-        id: node.id,
-        geometry: node.geometry,
-        content: node.content,
-        style: node.style,
-        explicitContent: node.explicitContent,
-        explicitStyle: node.explicitStyle,
-        explicitPosition: node.explicitPosition,
-        explicitSize: node.explicitSize,
-      })),
-    })
     const sanityProjectId = process.env.SANITY_PROJECT_ID
     const nextPublicSanityProjectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
     const projectId = sanityProjectId || nextPublicSanityProjectId
@@ -585,6 +1077,7 @@ export async function POST(request: Request) {
 
     const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text")
     const heroSubtitleNode = payload.nodes.find((node) => node.id === "hero-subtitle" && node.type === "text")
+    const heroScrollLabelNode = payload.nodes.find((node) => node.id === "hero-scroll-label" && node.type === "text")
 
     const steps: DeployStepResult[] = [{
       step: "checking",
@@ -670,7 +1163,7 @@ export async function POST(request: Request) {
       perspective: "published",
     })
 
-    const [existingHero, existingNavigation, existingIntro] = await Promise.all([
+    const [existingHero, existingNavigation, existingIntro, existingLatestRelease, existingLiveSection, existingContact, existingFooter] = await Promise.all([
       writeClient.fetch<{
         _id: string
         title?: string
@@ -700,11 +1193,56 @@ export async function POST(request: Request) {
         `*[_type == $introType][0]{ _id, bannerText, gifUrl, bookLabel, bookHref, pressLabel, pressHref, elementStyles }`,
         { introType: SANITY_DOC_INTRO }
       ),
+      writeClient.fetch<{
+        _id: string
+        title?: string
+        subtitle?: string
+        youtubeId?: string
+        ctaButtons?: Array<{ label?: string; href?: string }>
+        elementStyles?: Record<string, Record<string, unknown>>
+      } | null>(
+        `*[_type == $releaseType][0]{ _id, title, subtitle, youtubeId, ctaButtons[]{ label, href }, elementStyles }`,
+        { releaseType: SANITY_DOC_LATEST_RELEASE }
+      ),
+      writeClient.fetch<{
+        _id: string
+        elementStyles?: Record<string, Record<string, unknown>>
+        backgroundImage?: { asset?: { _ref?: string; _id?: string } }
+      } | null>(
+        `*[_type == $liveType][0]{ _id, elementStyles, backgroundImage{asset->{_id}} }`,
+        { liveType: SANITY_DOC_LIVE_SECTION }
+      ),
+      writeClient.fetch<{
+        _id: string
+        eyebrow?: string
+        title?: string
+        description?: string
+        middleText?: string
+        contactMethods?: Array<{ title?: string; description?: string; href?: string; label?: string; contactName?: string }>
+        elementStyles?: Record<string, Record<string, unknown>>
+        backgroundImage?: { asset?: { _ref?: string; _id?: string } }
+      } | null>(
+        `*[_type == $contactType][0]{ _id, eyebrow, title, description, middleText, contactMethods[]{ title, description, href, label, contactName }, elementStyles, backgroundImage{asset->{_id}} }`,
+        { contactType: SANITY_DOC_CONTACT }
+      ),
+      writeClient.fetch<{
+        _id: string
+        logo?: { asset?: { _ref?: string; _id?: string } }
+        logoAlt?: string
+        description?: string
+        ctaLabel?: string
+        ctaHref?: string
+        copyright?: string
+        socialLinks?: Array<{ id?: string; name?: string; href?: string }>
+        elementStyles?: Record<string, Record<string, unknown>>
+      } | null>(
+        `*[_type == $footerType][0]{ _id, logo{asset->{_id}}, logoAlt, description, ctaLabel, ctaHref, copyright, socialLinks[]{ id, name, href }, elementStyles }`,
+        { footerType: SANITY_DOC_FOOTER }
+      ),
     ])
-    log("document fetch", { hero: !!existingHero?._id, navigation: !!existingNavigation?._id, intro: !!existingIntro?._id })
+    log("document fetch", { hero: !!existingHero?._id, navigation: !!existingNavigation?._id, intro: !!existingIntro?._id, latestRelease: !!existingLatestRelease?._id, live: !!existingLiveSection?._id, contact: !!existingContact?._id, footer: !!existingFooter?._id })
     // Determine mode: "segmented" if hero-title node exists and is editable, else "legacy"
     const heroTitleMode: "legacy" | "segmented" = heroTitleNode?.explicitContent ? "segmented" : "legacy"
-    log("[HERO-TITLE-MODE]", { mode: heroTitleMode, hasNode: !!heroTitleNode, hasExplicitContent: heroTitleNode?.explicitContent })
 
     if (!existingHero?._id) {
       steps.push({ step: "saving", ok: false, message: "Hero section document not found; refusing to create implicit duplicate." })
@@ -742,6 +1280,8 @@ export async function POST(request: Request) {
     let elementStylesInPayload: Record<string, Record<string, unknown>> = {}
     const navElementStylesInPayload: Record<string, Record<string, unknown>> = {}
     const introElementStylesInPayload: Record<string, Record<string, unknown>> = {}
+    const releaseElementStylesInPayload: Record<string, Record<string, unknown>> = {}
+    const liveElementStylesInPayload: Record<string, Record<string, unknown>> = {}
     const failedNodes: string[] = []
     const heroPatch: Record<string, unknown> = {}
 
@@ -790,13 +1330,13 @@ export async function POST(request: Request) {
     }
 
     const heroScrollNode = payload.nodes.find((node) => node.id === "hero-scroll-indicator")
-    if (heroScrollNode?.explicitContent) {
-      const scrollText = typeof heroScrollNode.content?.text === "string" ? heroScrollNode.content.text.trim() : ""
-      log("[HERO-SCROLL][payload-text]", { text: scrollText, captured: !!scrollText })
+    const explicitHeroScrollTextNode = heroScrollLabelNode?.explicitContent ? heroScrollLabelNode : heroScrollNode?.explicitContent ? heroScrollNode : null
+    if (explicitHeroScrollTextNode) {
+      const scrollText = typeof explicitHeroScrollTextNode.content?.text === "string" ? explicitHeroScrollTextNode.content.text.trim() : ""
       if (scrollText) {
         heroPatch.scrollLabel = scrollText
         if (!persistedFields.includes("scrollLabel")) persistedFields.push("scrollLabel")
-        if (!persistedNodes.includes("hero-scroll-indicator")) persistedNodes.push("hero-scroll-indicator")
+        if (!persistedNodes.includes(explicitHeroScrollTextNode.id)) persistedNodes.push(explicitHeroScrollTextNode.id)
       }
     }
 
@@ -805,61 +1345,30 @@ export async function POST(request: Request) {
     const heroBgImageNode = payload.nodes.find((node) => node.id === "hero-bg-image")
     if (heroBgImageNode?.explicitContent) {
       const src = typeof heroBgImageNode.content?.src === "string" ? heroBgImageNode.content.src.trim() : ""
-      if (!src) {
-        skippedNodes.push("hero-bg-image:missing-content-src")
-      } else if (!isImageSrcPersistable(src)) {
-        skippedNodes.push("hero-bg-image:src(blob/data url)")
-      } else {
-        const imageField = buildSanityImageFieldFromSrc(src, projectId, dataset)
-        if (!imageField) {
-          skippedNodes.push("hero-bg-image:src(non-sanity-cdn url)")
-        } else {
-          heroPatch.backgroundImage = imageField
-          if (!persistedFields.includes("backgroundImage")) persistedFields.push("backgroundImage")
-          if (!persistedNodes.includes("hero-bg-image")) persistedNodes.push("hero-bg-image")
-        }
+      const { imageField, skippedReason } = resolveSanityImagePatch("hero-bg-image", src, projectId, dataset)
+      if (skippedReason) {
+        skippedNodes.push(skippedReason)
+      } else if (imageField) {
+        heroPatch.backgroundImage = imageField
+        elementStylesInPayload["hero-bg-image"] = { ...(elementStylesInPayload["hero-bg-image"] || {}) }
+        mergeHeroImageFilterDefaults(elementStylesInPayload["hero-bg-image"])
+        if (!persistedFields.includes("backgroundImage")) persistedFields.push("backgroundImage")
+        if (!persistedNodes.includes("hero-bg-image")) persistedNodes.push("hero-bg-image")
       }
     }
 
-    // hero-logo: URL is now editable like hero-bg-image and nav-logo
     const heroLogoNode = payload.nodes.find((node) => node.id === "hero-logo")
     if (heroLogoNode?.explicitContent) {
       const src = typeof heroLogoNode.content?.src === "string" ? heroLogoNode.content.src.trim() : ""
-      log("[HERO-LOGO][incoming-src]", { src, length: src.length, isSanity: src.includes("cdn.sanity.io") })
-      if (!src) {
-        skippedNodes.push("hero-logo:missing-content-src")
-      } else if (!isImageSrcPersistable(src)) {
-        log("[HERO-LOGO][persistable-check]", { reason: "blob/data url rejected", src: src.substring(0, 100) })
-        skippedNodes.push("hero-logo:src(blob/data url)")
-      } else {
-        log("[HERO-LOGO][persistable-check]", { reason: "passed persistable", src: src.substring(0, 100) })
-        let imageField = buildSanityImageFieldFromSrc(src, projectId, dataset)
-
-        // Log incoming URL analysis
-        const isSanityCDN = src.includes("cdn.sanity.io")
-        const isLocalhost = src.includes("localhost") || src.startsWith("/images/")
-        log("[HERO-LOGO][incoming-src]", { src: src.substring(0, 150), isSanityCDN, isLocalhost })
-
-        // Only accept Sanity CDN URLs - localhost URLs cannot be fetched from server-side API route
-        if (!imageField && !isSanityCDN && !isLocalhost) {
-          // Non-localhost, non-Sanity external URL - could potentially fetch, but not now
-          log("[HERO-LOGO][unknown-url-type]", { src: src.substring(0, 150) })
-          skippedNodes.push("hero-logo:src(unknown-url-type)")
-        } else if (!imageField && isLocalhost) {
-          // Localhost URL - cannot fetch from server API route
-          log("[HERO-LOGO][localhost-url]", { src: src.substring(0, 150), detail: "Localhost URLs cannot be uploaded from server API route. Upload must occur in /editor before deploy." })
-          skippedNodes.push("hero-logo:src(localhost-url)")
-        }
-
-        if (!imageField) {
-          log("[HERO-LOGO][sanity-parse-failed]", { reason: "buildSanityImageFieldFromSrc returned null or URL is localhost/local", src: src.substring(0, 200) })
-          skippedNodes.push("hero-logo:src(non-sanity-cdn url)")
-        } else {
-          log("[HERO-LOGO][sanity-patch]", { imageField })
-          heroPatch.logo = imageField
-          if (!persistedFields.includes("logo")) persistedFields.push("logo")
-          if (!persistedNodes.includes("hero-logo")) persistedNodes.push("hero-logo")
-        }
+      const { imageField, skippedReason } = resolveSanityImagePatch("hero-logo", src, projectId, dataset)
+      if (skippedReason) {
+        skippedNodes.push(skippedReason)
+      } else if (imageField) {
+        heroPatch.logo = imageField
+        elementStylesInPayload["hero-logo"] = { ...(elementStylesInPayload["hero-logo"] || {}) }
+        mergeHeroImageFilterDefaults(elementStylesInPayload["hero-logo"])
+        if (!persistedFields.includes("logo")) persistedFields.push("logo")
+        if (!persistedNodes.includes("hero-logo")) persistedNodes.push("hero-logo")
       }
     }
 
@@ -871,96 +1380,45 @@ export async function POST(request: Request) {
       "hero-subtitle",
       "hero-logo",
       "hero-scroll-indicator",
+      "hero-scroll-label",
       "hero-buttons",
     ])
 
     for (const node of payload.nodes) {
       if (!HERO_LAYOUT_IDS.has(node.id)) continue
-      // Debug hero-title entry
-      if (node.id === "hero-title") {
-        log("[HERO-TITLE-GRADIENT][entry-check]", {
-          explicitPosition: node.explicitPosition,
-          explicitSize: node.explicitSize,
-          explicitStyle: node.explicitStyle,
-          nodeStyleKeys: Object.keys(node.style || {}),
-          styleGradient: { gradientEnabled: (node.style as any)?.gradientEnabled, gradientStart: (node.style as any)?.gradientStart, gradientEnd: (node.style as any)?.gradientEnd }
-        })
-      }
+      const isHeroTextNode = HERO_TEXT_NODE_IDS.has(node.id)
+      const hasUsableHeroTextGeometry = isHeroTextNode && isUsableHeroTextGeometryInput(node)
       const scaleVal = (node.style as { scale?: number })?.scale
-      const hasScale = node.explicitStyle && typeof scaleVal === "number"
+      const hasScale = node.explicitStyle && typeof scaleVal === "number" && (!isHeroTextNode || hasUsableHeroTextGeometry)
       if (!node.explicitPosition && !node.explicitSize && !hasScale && !node.explicitStyle) continue
 
       elementStylesInPayload[node.id] = { ...(elementStylesInPayload[node.id] || {}) }
       const s = elementStylesInPayload[node.id] as Record<string, unknown>
-      if (node.explicitPosition) {
+      if ((!isHeroTextNode || hasUsableHeroTextGeometry) && node.explicitPosition) {
         s.x = roundLayoutPx(node.geometry.x)
         s.y = roundLayoutPx(node.geometry.y)
       }
-      if (node.explicitSize) {
+      if ((!isHeroTextNode || hasUsableHeroTextGeometry) && node.explicitSize) {
         s.width = roundLayoutPx(node.geometry.width)
         s.height = roundLayoutPx(node.geometry.height)
       }
       if (hasScale) s.scale = Math.round(scaleVal * 1000) / 1000
 
-      // Log hero-scroll-indicator layout capture
-      if (node.id === "hero-scroll-indicator" && (node.explicitPosition || node.explicitSize || hasScale)) {
-        log("[HERO-SCROLL][payload-layout]", { x: s.x, y: s.y, width: s.width, height: s.height, scale: s.scale })
-      }
-
-      // Log hero-title full state for gradient capture decision
-      if (node.id === "hero-title") {
-        const willSkip = !node.explicitPosition && !node.explicitSize && !hasScale && !node.explicitStyle
-        log("[HERO-TITLE-GRADIENT][payload-full]", {
-          explicitPosition: node.explicitPosition,
-          explicitSize: node.explicitSize,
-          hasScale: hasScale,
-          explicitStyle: node.explicitStyle,
-          willSkip: willSkip,
-          fullNodeStyle: node.style,
-          gradient: { gradientEnabled: (node.style as any)?.gradientEnabled, gradientStart: (node.style as any)?.gradientStart, gradientEnd: (node.style as any)?.gradientEnd }
-        })
-      }
-
       if (node.explicitStyle) {
         const st = node.style as Record<string, unknown>
         // Image/background effects
-        if (node.id === "hero-bg-image" || node.id === "hero-logo") {
+        if (HERO_IMAGE_NODE_IDS.has(node.id)) {
           if (typeof st.contrast === "number") s.contrast = Math.round(st.contrast * 100) / 100
           if (typeof st.saturation === "number") s.saturation = Math.round(st.saturation * 100) / 100
           if (typeof st.brightness === "number") s.brightness = Math.round(st.brightness * 100) / 100
-          if (st.negative === true) s.negative = true
+          if (typeof st.negative === "boolean") s.negative = st.negative
           if (typeof st.opacity === "number") s.opacity = Math.round(st.opacity * 100) / 100
         }
-        // Text styles
-        if (node.id === "hero-title" || node.id === "hero-subtitle") {
-          if (typeof st.color === "string") s.color = st.color
-          if (typeof st.fontSize === "string") s.fontSize = st.fontSize
-          if (typeof st.fontWeight === "string" || typeof st.fontWeight === "number") s.fontWeight = st.fontWeight
-          if (st.bold === true) s.bold = true
-          if (st.italic === true) s.italic = true
-          if (st.underline === true) s.underline = true
+        // Hero text pattern: content lives in heroSection fields; visual text styles live in elementStyles.
+        if (HERO_TEXT_NODE_IDS.has(node.id)) {
+          mergeDeployVisualStyleIntoTarget(s, node)
+          mergeDeployTextEffectsIntoTarget(s, st)
           if (typeof st.opacity === "number") s.opacity = Math.round(st.opacity * 100) / 100
-          // Gradient properties
-          if (st.gradientEnabled === true) s.gradientEnabled = true
-          if (typeof st.gradientStart === "string") s.gradientStart = st.gradientStart
-          if (typeof st.gradientEnd === "string") s.gradientEnd = st.gradientEnd
-
-          // Debug gradient capture for both hero-title and hero-subtitle
-          if (node.id === "hero-title" || node.id === "hero-subtitle") {
-            log(`[HERO-GRADIENT][capture-${node.id}]`, {
-              hasEnabled: st.gradientEnabled === true,
-              enabledValue: st.gradientEnabled,
-              hasStart: typeof st.gradientStart === "string",
-              startValue: typeof st.gradientStart === "string" ? st.gradientStart : null,
-              hasEnd: typeof st.gradientEnd === "string",
-              endValue: typeof st.gradientEnd === "string" ? st.gradientEnd : null,
-              capturedInS: {
-                gradientEnabled: s.gradientEnabled,
-                gradientStart: s.gradientStart,
-                gradientEnd: s.gradientEnd
-              }
-            })
-          }
         }
         // Navigation card opacity
         if (node.id === "navigation-inner") {
@@ -968,23 +1426,6 @@ export async function POST(request: Request) {
         }
       }
 
-      if (node.id === "hero-title" || node.id === "hero-subtitle") {
-        const titleStyle = elementStylesInPayload[node.id]
-        // Always log hero-title state for debugging
-        if (node.id === "hero-title") {
-          log("[HERO-TITLE-GRADIENT][payload-state]", {
-            explicitStyle: node.explicitStyle,
-            nodeStyleGradient: { gradientEnabled: (node.style as any)?.gradientEnabled, gradientStart: (node.style as any)?.gradientStart, gradientEnd: (node.style as any)?.gradientEnd },
-            elementStylesGradient: titleStyle ? { gradientEnabled: (titleStyle as any).gradientEnabled, gradientStart: (titleStyle as any).gradientStart, gradientEnd: (titleStyle as any).gradientEnd } : null,
-            willCapture: !!(titleStyle && ((titleStyle as any).gradientEnabled || (titleStyle as any).gradientStart || (titleStyle as any).gradientEnd))
-          })
-        }
-        if (titleStyle && (titleStyle.gradientEnabled || titleStyle.gradientStart || titleStyle.gradientEnd)) {
-          log("[HERO-GRADIENT][payload]", { id: node.id, ...titleStyle })
-        }
-      }
-
-      log("hero layout captured", { id: node.id, x: s.x, y: s.y, w: s.width, h: s.height, scale: s.scale })
       if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
     }
 
@@ -1008,31 +1449,30 @@ export async function POST(request: Request) {
 
       if (node.explicitStyle) {
         const st = node.style as Record<string, unknown>
-        // Text styles for nav-brand-name
-        if (node.id === "nav-brand-name") {
+        // Navbar text pattern: content lives in navigation fields; visual text styles live in elementStyles.
+        if (NAVBAR_TEXT_NODE_IDS.has(node.id)) {
           if (typeof st.color === "string") s.color = st.color
           if (typeof st.fontSize === "string") s.fontSize = st.fontSize
           if (typeof st.fontWeight === "string" || typeof st.fontWeight === "number") s.fontWeight = st.fontWeight
-          if (st.bold === true) s.bold = true
-          if (st.italic === true) s.italic = true
-          if (st.underline === true) s.underline = true
+          mergeDeployTextEffectsIntoTarget(s, st)
           if (typeof st.opacity === "number") s.opacity = Math.round(st.opacity * 100) / 100
-          // Gradient properties
-          if (st.gradientEnabled === true) s.gradientEnabled = true
-          if (typeof st.gradientStart === "string") s.gradientStart = st.gradientStart
-          if (typeof st.gradientEnd === "string") s.gradientEnd = st.gradientEnd
         }
-        // Image filter effects for nav-logo
-        if (node.id === "nav-logo") {
+        // Navbar logo/image pattern: source lives in navigation.brandLogo; filters/layout live in elementStyles.
+        if (NAVBAR_IMAGE_NODE_IDS.has(node.id)) {
           if (typeof st.contrast === "number") s.contrast = Math.round(st.contrast * 100) / 100
           if (typeof st.saturation === "number") s.saturation = Math.round(st.saturation * 100) / 100
           if (typeof st.brightness === "number") s.brightness = Math.round(st.brightness * 100) / 100
           if (st.negative === true) s.negative = true
           if (typeof st.opacity === "number") s.opacity = Math.round(st.opacity * 100) / 100
         }
-        // Card opacity for navigation-inner
-        if (node.id === "navigation-inner") {
-          if (typeof st.opacity === "number") s.opacity = Math.round(st.opacity * 100) / 100
+        // Navbar button pattern: text/link content lives in navigation fields; visual box styles live in elementStyles.
+        if (isNavbarButtonPatternNodeId(node.id)) {
+          mergeDeployVisualStyleIntoTarget(s, node)
+          mergeDeployTextEffectsIntoTarget(s, st)
+        }
+        // Navbar container/button box pattern: backgroundColor includes alpha for exterior-only opacity.
+        if (isNavbarBoxPatternNodeId(node.id) && typeof st.backgroundColor === "string") {
+          s.backgroundColor = st.backgroundColor
         }
       }
 
@@ -1060,6 +1500,70 @@ export async function POST(request: Request) {
       if (hasScale) s.scale = Math.round(scaleVal * 1000) / 1000
       if (node.explicitStyle) mergeDeployVisualStyleIntoTarget(s, node)
       log("intro layout captured", { id: node.id, x: s.x, y: s.y, w: s.width, h: s.height, scale: s.scale })
+      if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
+    }
+
+    for (const node of payload.nodes) {
+      if (!RELEASE_NODE_IDS.has(node.id)) continue
+      const scaleVal = (node.style as { scale?: number })?.scale
+      const hasScale = node.explicitStyle && typeof scaleVal === "number"
+      const hasLayout = node.explicitPosition || node.explicitSize || hasScale
+      if (!hasLayout && !node.explicitStyle) continue
+
+      releaseElementStylesInPayload[node.id] = { ...(releaseElementStylesInPayload[node.id] || {}) }
+      const s = releaseElementStylesInPayload[node.id] as Record<string, unknown>
+      if (node.explicitPosition) {
+        s.x = roundLayoutPx(node.geometry.x)
+        s.y = roundLayoutPx(node.geometry.y)
+      }
+      if (node.explicitSize) {
+        s.width = roundLayoutPx(node.geometry.width)
+        s.height = roundLayoutPx(node.geometry.height)
+      }
+      if (hasScale) s.scale = Math.round(scaleVal * 1000) / 1000
+      if (node.explicitStyle) {
+        mergeDeployVisualStyleIntoTarget(s, node)
+        const st = node.style as Record<string, unknown>
+        if (node.id === "latest-release-bg") {
+          if (typeof st.contrast === "number") s.contrast = Math.round(st.contrast * 100) / 100
+          if (typeof st.saturation === "number") s.saturation = Math.round(st.saturation * 100) / 100
+          if (typeof st.brightness === "number") s.brightness = Math.round(st.brightness * 100) / 100
+          if (st.negative === true) s.negative = true
+        }
+        if (typeof st.opacity === "number") s.opacity = Math.round(st.opacity * 100) / 100
+      }
+      if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
+    }
+
+    for (const node of payload.nodes) {
+      if (!isLiveNodeId(node.id)) continue
+      const scaleVal = (node.style as { scale?: number })?.scale
+      const hasScale = node.explicitStyle && typeof scaleVal === "number"
+      const hasLayout = node.explicitPosition || node.explicitSize || hasScale
+      if (!hasLayout && !node.explicitStyle) continue
+
+      liveElementStylesInPayload[node.id] = { ...(liveElementStylesInPayload[node.id] || {}) }
+      const s = liveElementStylesInPayload[node.id] as Record<string, unknown>
+      if (node.explicitPosition) {
+        s.x = roundLayoutPx(node.geometry.x)
+        s.y = roundLayoutPx(node.geometry.y)
+      }
+      if (node.explicitSize) {
+        s.width = roundLayoutPx(node.geometry.width)
+        s.height = roundLayoutPx(node.geometry.height)
+      }
+      if (hasScale) s.scale = Math.round(scaleVal * 1000) / 1000
+      if (node.explicitStyle) {
+        mergeDeployVisualStyleIntoTarget(s, node)
+        const st = node.style as Record<string, unknown>
+        if (node.id === "live-section-bg-image") {
+          if (typeof st.contrast === "number") s.contrast = Math.round(st.contrast * 100) / 100
+          if (typeof st.saturation === "number") s.saturation = Math.round(st.saturation * 100) / 100
+          if (typeof st.brightness === "number") s.brightness = Math.round(st.brightness * 100) / 100
+          if (st.negative === true) s.negative = true
+        }
+        if (typeof st.opacity === "number") s.opacity = Math.round(st.opacity * 100) / 100
+      }
       if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
     }
 
@@ -1097,6 +1601,42 @@ export async function POST(request: Request) {
         }
       }
       log("intro element styles merged", { targets: Object.keys(mergedIntroElementStyles) })
+    }
+
+    let mergedReleaseElementStyles: Record<string, unknown> | null = null
+    if (Object.keys(releaseElementStylesInPayload).length > 0) {
+      const priorRaw = existingLatestRelease?.elementStyles
+      const prior =
+        priorRaw && typeof priorRaw === "object" && !Array.isArray(priorRaw) ? { ...priorRaw } : {}
+      mergedReleaseElementStyles = { ...prior }
+      for (const [targetId, incoming] of Object.entries(releaseElementStylesInPayload)) {
+        if (typeof incoming === "object" && incoming !== null) {
+          const prevTarget =
+            mergedReleaseElementStyles[targetId] && typeof mergedReleaseElementStyles[targetId] === "object"
+              ? (mergedReleaseElementStyles[targetId] as Record<string, unknown>)
+              : {}
+          mergedReleaseElementStyles[targetId] = { ...prevTarget, ...(incoming as Record<string, unknown>) }
+        }
+      }
+      log("latest release element styles merged", { targets: Object.keys(mergedReleaseElementStyles) })
+    }
+
+    let mergedLiveElementStyles: Record<string, unknown> | null = null
+    if (Object.keys(liveElementStylesInPayload).length > 0) {
+      const priorRaw = existingLiveSection?.elementStyles
+      const prior =
+        priorRaw && typeof priorRaw === "object" && !Array.isArray(priorRaw) ? { ...priorRaw } : {}
+      mergedLiveElementStyles = { ...prior }
+      for (const [targetId, incoming] of Object.entries(liveElementStylesInPayload)) {
+        if (typeof incoming === "object" && incoming !== null) {
+          const prevTarget =
+            mergedLiveElementStyles[targetId] && typeof mergedLiveElementStyles[targetId] === "object"
+              ? (mergedLiveElementStyles[targetId] as Record<string, unknown>)
+              : {}
+          mergedLiveElementStyles[targetId] = { ...prevTarget, ...(incoming as Record<string, unknown>) }
+        }
+      }
+      log("live element styles merged", { targets: Object.keys(mergedLiveElementStyles) })
     }
 
     const navContentPatch = existingNavigation?._id
@@ -1179,12 +1719,9 @@ export async function POST(request: Request) {
       ? buildIntroContentPatch(payload.nodes)
       : { patch: {}, skipped: [] }
     const introContentPatch = introContentResult.patch
-    log("[INTRO-TRACE][route][introContentPatch]", introContentPatch)
-    log("[INTRO-TRACE][route][introElementStylesInPayload]", introElementStylesInPayload)
     const hasIntroLayout =
       mergedIntroElementStyles !== null && Object.keys(mergedIntroElementStyles).length > 0
     const hasIntroContent = Object.keys(introContentPatch).length > 0
-    log("[INTRO-TRACE][route][mergedIntroElementStyles]", mergedIntroElementStyles)
 
     let introDocumentId: string | null = null
     if (existingIntro?._id && (hasIntroLayout || hasIntroContent)) {
@@ -1193,11 +1730,9 @@ export async function POST(request: Request) {
       }
       if (hasIntroLayout) introSetPayload.elementStyles = mergedIntroElementStyles
       Object.assign(introSetPayload, introContentPatch)
-      log("[INTRO-TRACE][route][introSetPayload-before-commit]", introSetPayload)
       const introPatchResponse = await writeClient.patch(toPublishedDocumentId(existingIntro._id)).set(introSetPayload).commit()
       introDocumentId = introPatchResponse._id
       log("intro patch committed", { docId: introDocumentId, hasIntroLayout, hasIntroContent })
-      log("[INTRO-TRACE][route][introPatchResponse]", introPatchResponse)
       const introParts: string[] = []
       if (hasIntroLayout) introParts.push("layout")
       if (hasIntroContent) introParts.push("content")
@@ -1223,22 +1758,6 @@ export async function POST(request: Request) {
         }
       }
 
-      const introReadback = await writeClient.fetch<{
-        _id: string
-        gifUrl?: string
-        elementStyles?: Record<string, Record<string, unknown>>
-      } | null>(
-        `*[_type == $introType][0]{ _id, gifUrl, elementStyles }`,
-        { introType: SANITY_DOC_INTRO }
-      )
-      log("[INTRO-TRACE][route][introReadback-after-commit]", {
-        docId: introReadback?._id || null,
-        gifUrl: introReadback?.gifUrl || null,
-        gifStyle: introReadback?.elementStyles?.["intro-banner-gif"] || null,
-        textStyle: introReadback?.elementStyles?.["intro-banner-text"] || null,
-        bookStyle: introReadback?.elementStyles?.["intro-book-button"] || null,
-        pressStyle: introReadback?.elementStyles?.["intro-press-button"] || null,
-      })
     }
     if (!existingIntro?._id && (hasIntroLayout || hasIntroContent)) {
       const introCreatePayload: Record<string, unknown> & { _id: string; _type: string } = {
@@ -1248,31 +1767,12 @@ export async function POST(request: Request) {
       }
       if (hasIntroLayout) introCreatePayload.elementStyles = mergedIntroElementStyles
       Object.assign(introCreatePayload, introContentPatch)
-      log("[INTRO-TRACE][route][introCreatePayload-before-commit]", introCreatePayload)
       const introCreateResponse = await writeClient.createOrReplace(introCreatePayload)
       introDocumentId = introCreateResponse._id
-      log("[INTRO-TRACE][route][introCreateResponse]", introCreateResponse)
       steps.push({
         step: "saving",
         ok: true,
         message: `Intro banner document created: ${introDocumentId}`,
-      })
-
-      const introReadback = await writeClient.fetch<{
-        _id: string
-        gifUrl?: string
-        elementStyles?: Record<string, Record<string, unknown>>
-      } | null>(
-        `*[_type == $introType][0]{ _id, gifUrl, elementStyles }`,
-        { introType: SANITY_DOC_INTRO }
-      )
-      log("[INTRO-TRACE][route][introReadback-after-create]", {
-        docId: introReadback?._id || null,
-        gifUrl: introReadback?.gifUrl || null,
-        gifStyle: introReadback?.elementStyles?.["intro-banner-gif"] || null,
-        textStyle: introReadback?.elementStyles?.["intro-banner-text"] || null,
-        bookStyle: introReadback?.elementStyles?.["intro-book-button"] || null,
-        pressStyle: introReadback?.elementStyles?.["intro-press-button"] || null,
       })
     }
 
@@ -1281,46 +1781,229 @@ export async function POST(request: Request) {
       if (!skippedNodes.includes("intro-banner-gif")) skippedNodes.push("intro-banner-gif")
     }
 
-    // ========== Band Members Settings Materialization ==========
-    // Materialize layout and styling changes from homeEditorState to bandMembersSettings document.
-    // This allows changes made in the visual editor to appear on the public site.
-    let bandMembersElementStyles: Record<string, Record<string, unknown>> = {}
-    let hasBandMembersLayout = false
+    const releaseContentPatch = buildLatestReleaseContentPatch(payload.nodes, {
+      ctaButtons: existingLatestRelease?.ctaButtons,
+    })
+    const hasReleaseLayout =
+      mergedReleaseElementStyles !== null && Object.keys(mergedReleaseElementStyles).length > 0
+    const hasReleaseContent = Object.keys(releaseContentPatch).length > 0
 
-    for (const node of payload.nodes) {
-      if (!BAND_MEMBERS_LAYOUT_IDS.has(node.id)) continue
-
-      // Only process if there are explicit position, size, or style changes
-      if (!node.explicitPosition && !node.explicitSize && !node.explicitStyle) continue
-
-      hasBandMembersLayout = true
-
-      // Collect styling/layout for this node
-      bandMembersElementStyles[node.id] = {
-        ...(node.geometry ? { geometry: node.geometry } : {}),
-        ...(node.style ? node.style : {}),
+    let latestReleaseDocumentId: string | null = null
+    if (existingLatestRelease?._id && (hasReleaseLayout || hasReleaseContent)) {
+      const releaseSetPayload: Record<string, unknown> = {
+        updatedAt: new Date().toISOString(),
+      }
+      if (hasReleaseLayout) releaseSetPayload.elementStyles = mergedReleaseElementStyles
+      Object.assign(releaseSetPayload, releaseContentPatch)
+      const releasePatchResponse = await writeClient
+        .patch(toPublishedDocumentId(existingLatestRelease._id))
+        .set(releaseSetPayload)
+        .commit()
+      latestReleaseDocumentId = releasePatchResponse._id
+      const releaseParts: string[] = []
+      if (hasReleaseLayout) releaseParts.push("layout")
+      if (hasReleaseContent) releaseParts.push("content")
+      steps.push({
+        step: "saving",
+        ok: true,
+        message: `Latest Release ${releaseParts.join(" + ")} saved: ${existingLatestRelease._id}`,
+      })
+    }
+    if (!existingLatestRelease?._id && (hasReleaseLayout || hasReleaseContent)) {
+      const releaseCreatePayload: Record<string, unknown> & { _id: string; _type: string } = {
+        _id: LATEST_RELEASE_DOCUMENT_ID,
+        _type: SANITY_DOC_LATEST_RELEASE,
+        title: "Latest Release",
+        subtitle: "Fresh groove, built for live stages and late-night playlists.",
+        youtubeId: "xofflmVqYGs",
+        ctaButtons: [
+          { label: "Stream the New Single", href: "https://open.spotify.com/intl-es/artist/0FHjK3O0k8HQMrJsF7KQwF" },
+          {
+            label: "See Upcoming Shows",
+            href: "https://www.bandsintown.com/e/108124718-tales-for-the-tillerman-at-mauerpark?came_from=250&utm_medium=web&utm_source=artist_page&utm_campaign=search_bar",
+          },
+        ],
+        updatedAt: new Date().toISOString(),
+      }
+      if (hasReleaseLayout) releaseCreatePayload.elementStyles = mergedReleaseElementStyles
+      Object.assign(releaseCreatePayload, releaseContentPatch)
+      const releaseCreateResponse = await writeClient.createOrReplace(releaseCreatePayload)
+      latestReleaseDocumentId = releaseCreateResponse._id
+      steps.push({
+        step: "saving",
+        ok: true,
+        message: `Latest Release document created: ${latestReleaseDocumentId}`,
+      })
+    }
+    if (hasReleaseLayout) {
+      if (!persistedFields.includes("latestRelease.elementStyles")) persistedFields.push("latestRelease.elementStyles")
+      for (const nodeId of Object.keys(mergedReleaseElementStyles || {})) {
+        if (!persistedNodes.includes(nodeId)) persistedNodes.push(nodeId)
+      }
+    }
+    if (hasReleaseContent) {
+      for (const node of payload.nodes) {
+        if (!node.explicitContent || !RELEASE_NODE_IDS.has(node.id)) continue
+        if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
+      }
+      for (const k of Object.keys(releaseContentPatch)) {
+        if (!persistedFields.includes(k)) persistedFields.push(k)
       }
     }
 
+    const liveSectionPatch: Record<string, unknown> = {}
+    const liveBgNode = payload.nodes.find((node) => node.id === "live-section-bg-image")
+    if (liveBgNode?.explicitContent) {
+      const src = typeof liveBgNode.content?.src === "string" ? liveBgNode.content.src.trim() : ""
+      const { imageField, skippedReason } = resolveSanityImagePatch("live-section-bg-image", src, projectId, dataset)
+      if (skippedReason) {
+        skippedNodes.push(skippedReason)
+      } else if (imageField) {
+        liveSectionPatch.backgroundImage = imageField
+        if (!persistedFields.includes("liveSection.backgroundImage")) persistedFields.push("liveSection.backgroundImage")
+        if (!persistedNodes.includes("live-section-bg-image")) persistedNodes.push("live-section-bg-image")
+      }
+    }
+    const hasLiveLayout = mergedLiveElementStyles !== null && Object.keys(mergedLiveElementStyles).length > 0
+    if (hasLiveLayout) liveSectionPatch.elementStyles = mergedLiveElementStyles
+
+    let liveSectionDocumentId: string | null = null
+    if (Object.keys(liveSectionPatch).length > 0) {
+      const liveSetPayload: Record<string, unknown> & { _id?: string; _type?: string } = {
+        updatedAt: new Date().toISOString(),
+        ...liveSectionPatch,
+      }
+      if (existingLiveSection?._id) {
+        const livePatchResponse = await writeClient
+          .patch(toPublishedDocumentId(existingLiveSection._id))
+          .set(liveSetPayload)
+          .commit()
+        liveSectionDocumentId = livePatchResponse._id
+      } else {
+        const liveCreatePayload: Record<string, unknown> & { _id: string; _type: string } = {
+          ...liveSetPayload,
+          _id: LIVE_SECTION_DOCUMENT_ID,
+          _type: SANITY_DOC_LIVE_SECTION,
+        }
+        const liveCreateResponse = await writeClient.createOrReplace(liveCreatePayload)
+        liveSectionDocumentId = liveCreateResponse._id
+      }
+      steps.push({
+        step: "saving",
+        ok: true,
+        message: `Live section saved: ${liveSectionDocumentId}`,
+      })
+      if (hasLiveLayout) {
+        if (!persistedFields.includes("liveSection.elementStyles")) persistedFields.push("liveSection.elementStyles")
+        for (const nodeId of Object.keys(mergedLiveElementStyles || {})) {
+          if (!persistedNodes.includes(nodeId)) persistedNodes.push(nodeId)
+        }
+      }
+    }
+
+    const liveConcertPatches = collectLiveConcertPatches(payload.nodes)
+    const liveConcertDocumentIds: string[] = []
+    for (const [editorId, concertPatch] of liveConcertPatches.entries()) {
+      const concertDocumentId = `concert-${editorId}`
+      const concertPayload = {
+        _id: concertDocumentId,
+        _type: SANITY_DOC_CONCERT,
+        ...concertPatch,
+      }
+      const concertResponse = await writeClient.createOrReplace(concertPayload)
+      liveConcertDocumentIds.push(concertResponse._id)
+      if (!persistedFields.includes("concert.fields")) persistedFields.push("concert.fields")
+      for (const node of payload.nodes) {
+        const parsed = parseLiveConcertNodeId(node.id)
+        if (parsed?.editorId === editorId && node.explicitContent && !persistedNodes.includes(node.id)) {
+          persistedNodes.push(node.id)
+        }
+      }
+    }
+    if (liveConcertDocumentIds.length > 0) {
+      steps.push({
+        step: "saving",
+        ok: true,
+        message: `Live concert fields saved: ${liveConcertDocumentIds.length} document(s).`,
+      })
+    }
+
+    // ========== Band Members Materialization ==========
+    let bandMembersElementStyles: Record<string, Record<string, unknown>> = {}
+    let hasBandMembersChanges = false
+
+    for (const node of payload.nodes) {
+      if (!isBandMembersNodeId(node.id)) continue
+      const hasScale = node.explicitStyle && typeof node.style?.scale === "number"
+      if (!node.explicitPosition && !node.explicitSize && !node.explicitStyle && !hasScale) continue
+      const style: Record<string, unknown> = {}
+      mergeStableElementStyleFromNode(style, node)
+      if (Object.keys(style).length === 0) continue
+      bandMembersElementStyles[node.id] = style
+      hasBandMembersChanges = true
+    }
+
     let bandMembersDocumentId: string | null = null
-    if (hasBandMembersLayout) {
+    const bandMembersContentPatches = new Map<number, Record<string, unknown>>()
+    for (const node of payload.nodes) {
+      if (!node.explicitContent) continue
+      const parsed = parseBandMemberNodeId(node.id)
+      if (!parsed?.field) continue
+      const patch = bandMembersContentPatches.get(parsed.index) || {}
+      if (parsed.field === "name") {
+        const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        if (text) patch.fullName = text
+      } else if (parsed.field === "role") {
+        const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        if (text) patch.role = text
+      } else if (parsed.field === "image") {
+        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        const { imageField, skippedReason } = resolveSanityImagePatch(node.id, src, projectId, dataset)
+        if (skippedReason) {
+          skippedNodes.push(skippedReason)
+        } else if (imageField) {
+          patch.portraitImage = imageField
+        }
+      } else if (parsed.field === "number") {
+        skippedNodes.push(`${node.id}:number-is-derived-from-member-order`)
+      }
+      if (Object.keys(patch).length > 0) bandMembersContentPatches.set(parsed.index, patch)
+    }
+
+    const bandBackgroundNode = payload.nodes.find((node) => node.id === "band-members-bg")
+    const bandSettingsPatch: Record<string, unknown> = {}
+    if (bandBackgroundNode?.explicitContent) {
+      const src = typeof bandBackgroundNode.content?.src === "string" ? bandBackgroundNode.content.src.trim() : ""
+      const { imageField, skippedReason } = resolveSanityImagePatch("band-members-bg", src, projectId, dataset)
+      if (skippedReason) {
+        skippedNodes.push(skippedReason)
+      } else if (imageField) {
+        bandSettingsPatch.backgroundImage = imageField
+        if (!persistedFields.includes("bandMembersSettings.backgroundImage")) {
+          persistedFields.push("bandMembersSettings.backgroundImage")
+        }
+        if (!persistedNodes.includes("band-members-bg")) persistedNodes.push("band-members-bg")
+        hasBandMembersChanges = true
+      }
+    }
+
+    if (hasBandMembersChanges) {
       const existingBandSettings = await writeClient.fetch<{
         _id: string
-        elementStyles?: Record<string, Record<string, unknown>>
+        elementStyles?: unknown
       } | null>(
         `*[_type == $bandType][0]{ _id, elementStyles }`,
         { bandType: SANITY_DOC_BAND_MEMBERS }
       )
 
-      if (existingBandSettings?._id) {
-        // Merge with existing styles
-        const priorStyles = existingBandSettings.elementStyles || {}
-        const mergedBandStyles: Record<string, Record<string, unknown>> = { ...priorStyles }
-        for (const [nodeId, styles] of Object.entries(bandMembersElementStyles)) {
-          mergedBandStyles[nodeId] = { ...(mergedBandStyles[nodeId] || {}), ...styles }
-        }
+      const priorStyles = normalizeStoredElementStyles(existingBandSettings?.elementStyles)
+      const mergedBandStyles: Record<string, Record<string, unknown>> = { ...priorStyles }
+      for (const [nodeId, styles] of Object.entries(bandMembersElementStyles)) {
+        mergedBandStyles[nodeId] = { ...(mergedBandStyles[nodeId] || {}), ...styles }
+      }
 
-        const bandPatch = { elementStyles: JSON.stringify(mergedBandStyles) }
+      if (existingBandSettings?._id) {
+        const bandPatch = { ...bandSettingsPatch, elementStyles: mergedBandStyles, updatedAt: new Date().toISOString() }
         await writeClient.patch(toPublishedDocumentId(existingBandSettings._id)).set(bandPatch).commit()
 
         bandMembersDocumentId = existingBandSettings._id
@@ -1331,12 +2014,14 @@ export async function POST(request: Request) {
           message: `Band Members settings layout updated: ${bandMembersDocumentId}`,
         })
       } else {
-        // Create new band members settings document
-        const bandCreatePayload: Record<string, unknown> & { _type: string } = {
+        const bandCreatePayload: Record<string, unknown> & { _id: string; _type: string } = {
+          _id: BAND_MEMBERS_DOCUMENT_ID,
           _type: SANITY_DOC_BAND_MEMBERS,
-          elementStyles: JSON.stringify(bandMembersElementStyles),
+          ...bandSettingsPatch,
+          elementStyles: mergedBandStyles,
+          updatedAt: new Date().toISOString(),
         }
-        const bandResponse = await writeClient.create(bandCreatePayload)
+        const bandResponse = await writeClient.createOrReplace(bandCreatePayload)
         bandMembersDocumentId = bandResponse._id
         log("band-members settings created", { docId: bandMembersDocumentId })
         steps.push({
@@ -1346,11 +2031,189 @@ export async function POST(request: Request) {
         })
       }
 
-      // Track persisted fields and nodes
-      persistedFields.push("bandMembersSettings.elementStyles")
+      if (!persistedFields.includes("bandMembersSettings.elementStyles")) {
+        persistedFields.push("bandMembersSettings.elementStyles")
+      }
       for (const nodeId of Object.keys(bandMembersElementStyles)) {
         if (!persistedNodes.includes(nodeId)) persistedNodes.push(nodeId)
       }
+    }
+
+    if (bandMembersContentPatches.size > 0) {
+      const existingBandMembers = await writeClient.fetch<Array<{
+        _id: string
+        order?: number
+        fullName?: string
+        role?: string
+        portraitImage?: { asset?: { _ref?: string; _id?: string } }
+      }>>(
+        `*[_type == "bandMember"] | order(order asc){ _id, order, fullName, role, portraitImage{asset->{_id}} }`
+      )
+
+      for (const [index, patch] of bandMembersContentPatches.entries()) {
+        const target = existingBandMembers[index]
+        if (!target?._id) {
+          skippedNodes.push(`member-item-${index}:missing-band-member-doc`)
+          continue
+        }
+        const patchWithTimestamp = { ...patch, updatedAt: new Date().toISOString() }
+        await writeClient.patch(toPublishedDocumentId(target._id)).set(patchWithTimestamp).commit()
+        if (!persistedFields.includes("bandMember.fields")) persistedFields.push("bandMember.fields")
+        for (const field of Object.keys(patch)) {
+          const nodeId = field === "fullName"
+            ? `member-item-${index}-name`
+            : field === "role"
+              ? `member-item-${index}-role`
+              : field === "portraitImage"
+                ? `member-item-${index}-image`
+                : `member-item-${index}`
+          if (!persistedNodes.includes(nodeId)) persistedNodes.push(nodeId)
+        }
+      }
+
+      steps.push({
+        step: "saving",
+        ok: true,
+        message: `Band Members fields saved: ${bandMembersContentPatches.size} member patch(es).`,
+      })
+    }
+
+    // ========== Contact Materialization ==========
+    const contactPatch: Record<string, unknown> = buildContactContentPatch(payload.nodes, existingContact || {})
+    const contactElementStyles: Record<string, Record<string, unknown>> = {}
+
+    for (const node of payload.nodes) {
+      if (!CONTACT_NODE_IDS.has(node.id)) continue
+      const hasScale = node.explicitStyle && typeof node.style?.scale === "number"
+      if (!node.explicitPosition && !node.explicitSize && !node.explicitStyle && !hasScale) continue
+      const style: Record<string, unknown> = {}
+      mergeStableElementStyleFromNode(style, node)
+      if (Object.keys(style).length === 0) continue
+      contactElementStyles[node.id] = style
+    }
+
+    const contactBgNode = payload.nodes.find((node) => node.id === "contact-bg-image")
+    if (contactBgNode?.explicitContent) {
+      const src = typeof contactBgNode.content?.src === "string" ? contactBgNode.content.src.trim() : ""
+      const { imageField, skippedReason } = resolveSanityImagePatch("contact-bg-image", src, projectId, dataset)
+      if (skippedReason) {
+        skippedNodes.push(skippedReason)
+      } else if (imageField) {
+        contactPatch.backgroundImage = imageField
+        if (!persistedFields.includes("contactSection.backgroundImage")) persistedFields.push("contactSection.backgroundImage")
+        if (!persistedNodes.includes("contact-bg-image")) persistedNodes.push("contact-bg-image")
+      }
+    }
+
+    if (Object.keys(contactElementStyles).length > 0) {
+      const priorContactStyles = normalizeStoredElementStyles(existingContact?.elementStyles)
+      const mergedContactStyles: Record<string, Record<string, unknown>> = { ...priorContactStyles }
+      for (const [nodeId, styles] of Object.entries(contactElementStyles)) {
+        mergedContactStyles[nodeId] = { ...(mergedContactStyles[nodeId] || {}), ...styles }
+      }
+      contactPatch.elementStyles = mergedContactStyles
+      if (!persistedFields.includes("contactSection.elementStyles")) persistedFields.push("contactSection.elementStyles")
+      for (const nodeId of Object.keys(contactElementStyles)) {
+        if (!persistedNodes.includes(nodeId)) persistedNodes.push(nodeId)
+      }
+    }
+
+    let contactDocumentId: string | null = null
+    if (Object.keys(contactPatch).length > 0) {
+      const patchWithTimestamp = { ...contactPatch, updatedAt: new Date().toISOString() }
+      if (existingContact?._id) {
+        const contactResponse = await writeClient.patch(toPublishedDocumentId(existingContact._id)).set(patchWithTimestamp).commit()
+        contactDocumentId = contactResponse._id
+      } else {
+        const contactPayload: Record<string, unknown> & { _id: string; _type: string } = {
+          _id: CONTACT_DOCUMENT_ID,
+          _type: SANITY_DOC_CONTACT,
+          ...patchWithTimestamp,
+        }
+        const contactResponse = await writeClient.createOrReplace(contactPayload)
+        contactDocumentId = contactResponse._id
+      }
+
+      for (const node of payload.nodes) {
+        if (CONTACT_NODE_IDS.has(node.id) && (node.explicitContent || node.explicitStyle || node.explicitPosition || node.explicitSize)) {
+          if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
+        }
+      }
+      steps.push({
+        step: "saving",
+        ok: true,
+        message: `Contact section saved: ${contactDocumentId}`,
+      })
+    }
+
+    // ========== Footer Materialization ==========
+    const footerPatch: Record<string, unknown> = buildFooterContentPatch(payload.nodes, existingFooter || {})
+    const footerElementStyles: Record<string, Record<string, unknown>> = {}
+
+    for (const node of payload.nodes) {
+      if (!FOOTER_NODE_IDS.has(node.id)) continue
+      const hasScale = node.explicitStyle && typeof node.style?.scale === "number"
+      if (!node.explicitPosition && !node.explicitSize && !node.explicitStyle && !hasScale) continue
+      const style: Record<string, unknown> = {}
+      mergeStableElementStyleFromNode(style, node)
+      if (Object.keys(style).length === 0) continue
+      footerElementStyles[node.id] = style
+    }
+
+    const footerLogoNode = payload.nodes.find((node) => node.id === "footer-logo")
+    if (footerLogoNode?.explicitContent) {
+      const src = typeof footerLogoNode.content?.src === "string" ? footerLogoNode.content.src.trim() : ""
+      const alt = typeof footerLogoNode.content?.alt === "string" ? footerLogoNode.content.alt.trim() : ""
+      const { imageField, skippedReason } = resolveSanityImagePatch("footer-logo", src, projectId, dataset)
+      if (skippedReason) {
+        skippedNodes.push(skippedReason)
+      } else if (imageField) {
+        footerPatch.logo = imageField
+        if (alt) footerPatch.logoAlt = alt
+        if (!persistedFields.includes("footerSection.logo")) persistedFields.push("footerSection.logo")
+        if (!persistedNodes.includes("footer-logo")) persistedNodes.push("footer-logo")
+      }
+    }
+
+    if (Object.keys(footerElementStyles).length > 0) {
+      const priorFooterStyles = normalizeStoredElementStyles(existingFooter?.elementStyles)
+      const mergedFooterStyles: Record<string, Record<string, unknown>> = { ...priorFooterStyles }
+      for (const [nodeId, styles] of Object.entries(footerElementStyles)) {
+        mergedFooterStyles[nodeId] = { ...(mergedFooterStyles[nodeId] || {}), ...styles }
+      }
+      footerPatch.elementStyles = mergedFooterStyles
+      if (!persistedFields.includes("footerSection.elementStyles")) persistedFields.push("footerSection.elementStyles")
+      for (const nodeId of Object.keys(footerElementStyles)) {
+        if (!persistedNodes.includes(nodeId)) persistedNodes.push(nodeId)
+      }
+    }
+
+    let footerDocumentId: string | null = null
+    if (Object.keys(footerPatch).length > 0) {
+      const patchWithTimestamp = { ...footerPatch, updatedAt: new Date().toISOString() }
+      if (existingFooter?._id) {
+        const footerResponse = await writeClient.patch(toPublishedDocumentId(existingFooter._id)).set(patchWithTimestamp).commit()
+        footerDocumentId = footerResponse._id
+      } else {
+        const footerPayload: Record<string, unknown> & { _id: string; _type: string } = {
+          _id: FOOTER_DOCUMENT_ID,
+          _type: SANITY_DOC_FOOTER,
+          ...patchWithTimestamp,
+        }
+        const footerResponse = await writeClient.createOrReplace(footerPayload)
+        footerDocumentId = footerResponse._id
+      }
+
+      for (const node of payload.nodes) {
+        if (FOOTER_NODE_IDS.has(node.id) && (node.explicitContent || node.explicitStyle || node.explicitPosition || node.explicitSize)) {
+          if (!persistedNodes.includes(node.id)) persistedNodes.push(node.id)
+        }
+      }
+      steps.push({
+        step: "saving",
+        ok: true,
+        message: `Footer section saved: ${footerDocumentId}`,
+      })
     }
 
     let homeEditorStateDocumentId: string | null = null
@@ -1392,7 +2255,6 @@ export async function POST(request: Request) {
         if (typeof styles === 'object' && styles !== null) {
           // Skip legacy nodes even if they appear in payload
           if (LEGACY_HERO_NODES.has(targetId)) {
-            log("[HERO-LEGACY-FILTER][incoming-payload]", { filtered: targetId })
             continue
           }
           heroElementStyles[targetId] = styles
@@ -1411,7 +2273,6 @@ export async function POST(request: Request) {
         // Purge legacy nodes from prior before merging
         for (const legacyNodeId of LEGACY_HERO_NODES) {
           if (legacyNodeId in prior) {
-            log("[HERO-LEGACY-PURGE]", { purged: legacyNodeId, wasInPrior: true })
             delete prior[legacyNodeId]
           }
         }
@@ -1423,7 +2284,18 @@ export async function POST(request: Request) {
               merged[targetId] && typeof merged[targetId] === "object"
                 ? (merged[targetId] as Record<string, unknown>)
                 : {}
-            merged[targetId] = { ...prevTarget, ...(incoming as Record<string, unknown>) }
+            const nextTarget = { ...prevTarget, ...(incoming as Record<string, unknown>) }
+            if (HERO_TEXT_NODE_IDS.has(targetId)) {
+              delete nextTarget.minHeight
+              delete nextTarget.paddingTop
+              delete nextTarget.paddingBottom
+              if (!isUsableHeroTextElementStyle(nextTarget)) {
+                for (const geometryKey of ["x", "y", "width", "height", "scale"]) {
+                  delete nextTarget[geometryKey]
+                }
+              }
+            }
+            merged[targetId] = nextTarget
           }
         }
         heroPatch.elementStyles = merged
@@ -1469,8 +2341,8 @@ export async function POST(request: Request) {
         token: sanityToken,
         perspective: "published",
       })
-      const verifyQuery = `*[_type == $type][0]{ title, titleHighlight, elementStyles }`
-      const verified = await readClient.fetch<{ title?: string; titleHighlight?: string; elementStyles?: Record<string, unknown> } | null>(
+      const verifyQuery = `*[_type == $type][0]{ title, titleHighlight, scrollLabel, elementStyles }`
+      const verified = await readClient.fetch<{ title?: string; titleHighlight?: string; scrollLabel?: string; elementStyles?: Record<string, unknown> } | null>(
         verifyQuery,
         { type: SANITY_DOC_TYPE }
       )
@@ -1483,24 +2355,6 @@ export async function POST(request: Request) {
           read: Object.keys(verified?.elementStyles || {}).length,
           nodeIds: Object.keys(verified?.elementStyles || {})
         }
-      })
-
-      // Hero gradient trace for debugging
-      const heroTitleStyle = verified?.elementStyles?.["hero-title"] as Record<string, unknown> | undefined
-      const heroSubtitleStyle = verified?.elementStyles?.["hero-subtitle"] as Record<string, unknown> | undefined
-      if (heroTitleStyle || heroSubtitleStyle) {
-        log("[HERO-GRADIENT][sanity-readback]", {
-          "hero-title": heroTitleStyle ? { gradientEnabled: heroTitleStyle.gradientEnabled, gradientStart: heroTitleStyle.gradientStart, gradientEnd: heroTitleStyle.gradientEnd } : "(not found)",
-          "hero-subtitle": heroSubtitleStyle ? { gradientEnabled: heroSubtitleStyle.gradientEnabled, gradientStart: heroSubtitleStyle.gradientStart, gradientEnd: heroSubtitleStyle.gradientEnd } : "(not found)"
-        })
-      }
-
-      // Hero scroll indicator readback
-      const heroScrollStyle = verified?.elementStyles?.["hero-scroll-indicator"] as Record<string, unknown> | undefined
-      const verifiedAny = verified as any
-      log("[HERO-SCROLL][sanity-readback]", {
-        scrollLabel: verifiedAny?.scrollLabel || "(not found)",
-        layout: heroScrollStyle ? { x: heroScrollStyle.x, y: heroScrollStyle.y, width: heroScrollStyle.width, height: heroScrollStyle.height } : "(not found)"
       })
 
       // Validation: check critical fields
@@ -1571,16 +2425,17 @@ export async function POST(request: Request) {
     }
 
     // Changed-node read-back verification (persisted means verified on read, not just attempted write).
-    const [heroReadback, navReadback, introReadback, homeStateReadback] = await Promise.all([
+    const [heroReadback, navReadback, introReadback, releaseReadback, liveReadback, concertReadback, bandSettingsReadback, bandMembersReadback, contactReadback, footerReadback, homeStateReadback] = await Promise.all([
       writeClient.fetch<{
         elementStyles?: Record<string, Record<string, unknown>>
         title?: string
         titleHighlight?: string
         subtitle?: string
+        scrollLabel?: string
         backgroundImage?: { asset?: { _ref?: string; _id?: string } }
         logo?: { asset?: { _ref?: string; _id?: string } }
       } | null>(
-        `*[_type == $type][0]{ title, titleHighlight, subtitle, elementStyles, backgroundImage{asset->{_id}}, logo{asset->{_id}} }`,
+        `*[_type == $type][0]{ title, titleHighlight, subtitle, scrollLabel, elementStyles, backgroundImage{asset->{_id}}, logo{asset->{_id}} }`,
         { type: SANITY_DOC_TYPE }
       ),
       writeClient.fetch<{
@@ -1605,6 +2460,78 @@ export async function POST(request: Request) {
       } | null>(
         `*[_type == $type][0]{ elementStyles, bannerText, gifUrl, bookLabel, bookHref, pressLabel, pressHref }`,
         { type: SANITY_DOC_INTRO }
+      ),
+      writeClient.fetch<{
+        elementStyles?: Record<string, Record<string, unknown>>
+        title?: string
+        subtitle?: string
+        youtubeId?: string
+        ctaButtons?: Array<{ label?: string; href?: string }>
+      } | null>(
+        `*[_type == $type][0]{ elementStyles, title, subtitle, youtubeId, ctaButtons[]{ label, href } }`,
+        { type: SANITY_DOC_LATEST_RELEASE }
+      ),
+      writeClient.fetch<{
+        elementStyles?: Record<string, Record<string, unknown>>
+        backgroundImage?: { asset?: { _ref?: string; _id?: string } }
+      } | null>(
+        `*[_type == $type][0]{ elementStyles, backgroundImage{asset->{_id}} }`,
+        { type: SANITY_DOC_LIVE_SECTION }
+      ),
+      writeClient.fetch<Array<{
+        editorId?: number
+        venue?: string
+        city?: string
+        country?: string
+        date?: string
+        time?: string
+        status?: string
+        genre?: string
+        capacity?: string
+        price?: number
+        ticketUrl?: string
+      }>>(
+        `*[_type == $type]{ editorId, venue, city, country, date, time, status, genre, capacity, price, ticketUrl }`,
+        { type: SANITY_DOC_CONCERT }
+      ),
+      writeClient.fetch<{
+        elementStyles?: Record<string, Record<string, unknown>>
+        backgroundImage?: { asset?: { _ref?: string; _id?: string } }
+      } | null>(
+        `*[_type == $type][0]{ elementStyles, backgroundImage{asset->{_id}} }`,
+        { type: SANITY_DOC_BAND_MEMBERS }
+      ),
+      writeClient.fetch<Array<{
+        fullName?: string
+        role?: string
+        portraitImage?: { asset?: { _ref?: string; _id?: string } }
+      }>>(
+        `*[_type == "bandMember"] | order(order asc){ fullName, role, portraitImage{asset->{_id}} }`
+      ),
+      writeClient.fetch<{
+        elementStyles?: Record<string, Record<string, unknown>>
+        eyebrow?: string
+        title?: string
+        description?: string
+        middleText?: string
+        contactMethods?: Array<{ title?: string; description?: string; href?: string; label?: string; contactName?: string }>
+        backgroundImage?: { asset?: { _ref?: string; _id?: string } }
+      } | null>(
+        `*[_type == $type][0]{ elementStyles, eyebrow, title, description, middleText, contactMethods[]{ title, description, href, label, contactName }, backgroundImage{asset->{_id}} }`,
+        { type: SANITY_DOC_CONTACT }
+      ),
+      writeClient.fetch<{
+        elementStyles?: Record<string, Record<string, unknown>>
+        logo?: { asset?: { _ref?: string; _id?: string } }
+        logoAlt?: string
+        description?: string
+        ctaLabel?: string
+        ctaHref?: string
+        copyright?: string
+        socialLinks?: Array<{ id?: string; name?: string; href?: string }>
+      } | null>(
+        `*[_type == $type][0]{ elementStyles, logo{asset->{_id}}, logoAlt, description, ctaLabel, ctaHref, copyright, socialLinks[]{ id, name, href } }`,
+        { type: SANITY_DOC_FOOTER }
       ),
       writeClient.fetch<{ nodesJson?: string } | null>(
         `*[_type == $homeType && _id == $homeId][0]{ nodesJson }`,
@@ -1683,38 +2610,26 @@ export async function POST(request: Request) {
         nodeId === "hero-subtitle" ||
         nodeId === "hero-logo" ||
         nodeId === "hero-scroll-indicator" ||
+        nodeId === "hero-scroll-label" ||
         nodeId === "hero-buttons"
       const isNavLayoutIdChanged = isNavLayoutId(nodeId)
       const isIntroLayoutIdChanged = INTRO_LAYOUT_IDS.has(nodeId)
+      const isReleaseLayoutIdChanged = RELEASE_NODE_IDS.has(nodeId)
+      const isLiveLayoutIdChanged = isLiveNodeId(nodeId)
+      const isBandMembersLayoutIdChanged = isBandMembersNodeId(nodeId)
+      const isContactNodeIdChanged = CONTACT_NODE_IDS.has(nodeId)
+      const isFooterNodeIdChanged = FOOTER_NODE_IDS.has(nodeId)
       const shouldVerifyHomeState = shouldVerifyInHomeEditorState(node)
 
       const expectedScale =
-        node.explicitStyle && typeof node.style.scale === "number"
+        !HERO_TEXT_NODE_IDS.has(nodeId) && node.explicitStyle && typeof node.style.scale === "number"
           ? Math.round(node.style.scale * 1000) / 1000
           : undefined
-
-      if (nodeId === "hero-title" && node.explicitContent && node.type === "text") {
-        storageTarget = "heroSection.fields"
-        const titleText = typeof node.content?.text === "string" ? node.content.text.trim() : ""
-        if (titleText) expected.title = titleText
-        // When hero-title is single text node, titleHighlight should be cleared
-        expected.titleHighlight = ""
-        readBack.title = heroReadback?.title
-        readBack.titleHighlight = heroReadback?.titleHighlight
-      } else if (nodeId === "hero-subtitle" && node.explicitContent) {
-        storageTarget = "heroSection.fields"
-        const expectedText = typeof node.content.text === "string" ? node.content.text.trim() : ""
-        expected.subtitle = expectedText
-        readBack.subtitle = heroReadback?.subtitle
-      } else if (nodeId === "hero-bg-image" && node.explicitContent && writeContentKeys.has("src")) {
-        storageTarget = "heroSection.fields"
-        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
-        expected.backgroundImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
-        readBack.backgroundImageRef = heroReadback?.backgroundImage?.asset?._ref ?? heroReadback?.backgroundImage?.asset?._id
-      } else if (isHeroLayoutId && (node.explicitPosition || node.explicitSize || expectedScale !== undefined)) {
-        storageTarget = "heroSection.elementStyles"
+      const addHeroLayoutReadback = () => {
         const heroStyle = heroReadback?.elementStyles?.[nodeId] || {}
-        if (node.explicitPosition) {
+        const isHeroTextNode = HERO_TEXT_NODE_IDS.has(nodeId)
+        const hasUsableHeroTextGeometry = isHeroTextNode && isUsableHeroTextGeometryInput(node)
+        if ((!isHeroTextNode || hasUsableHeroTextGeometry) && node.explicitPosition) {
           expected.x = roundLayoutPx(node.geometry.x)
           expected.y = roundLayoutPx(node.geometry.y)
           const readX = (heroStyle as Record<string, unknown>).x
@@ -1722,7 +2637,7 @@ export async function POST(request: Request) {
           readBack.x = typeof readX === "number" ? roundLayoutPx(readX) : readX
           readBack.y = typeof readY === "number" ? roundLayoutPx(readY) : readY
         }
-        if (node.explicitSize) {
+        if ((!isHeroTextNode || hasUsableHeroTextGeometry) && node.explicitSize) {
           expected.width = roundLayoutPx(node.geometry.width)
           expected.height = roundLayoutPx(node.geometry.height)
           const readWidth = (heroStyle as Record<string, unknown>).width
@@ -1734,7 +2649,293 @@ export async function POST(request: Request) {
           expected.scale = expectedScale
           readBack.scale = (heroStyle as Record<string, unknown>).scale
         }
-      } else if (isNavLayoutIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined)) {
+        if (node.explicitStyle) {
+          const st = node.style as Record<string, unknown>
+          if (HERO_TEXT_NODE_IDS.has(nodeId)) {
+            if (writeStyleKeys.has("color")) {
+              expected.color = st.color
+              readBack.color = (heroStyle as Record<string, unknown>).color
+            }
+            if (writeStyleKeys.has("fontSize")) {
+              expected.fontSize = parsePxNumber(st.fontSize as string | undefined)
+              readBack.fontSize = (heroStyle as Record<string, unknown>).fontSize
+            }
+            if (writeStyleKeys.has("fontWeight")) {
+              const fw = st.fontWeight
+              const parsedFw = typeof fw === "number" ? fw : (typeof fw === "string" ? parseInt(fw, 10) : undefined)
+              expected.fontWeight = Number.isNaN(parsedFw as number) ? undefined : parsedFw
+              readBack.fontWeight = (heroStyle as Record<string, unknown>).fontWeight
+            }
+            if (writeStyleKeys.has("opacity")) {
+              expected.opacity = normalizeComparableValue(st.opacity)
+              readBack.opacity = normalizeComparableValue((heroStyle as Record<string, unknown>).opacity)
+            }
+            if (writeStyleKeys.has("fontStyle")) {
+              expected.italic = st.fontStyle === "italic"
+              readBack.italic = (heroStyle as Record<string, unknown>).italic
+            }
+            if (writeStyleKeys.has("textDecoration")) {
+              expected.underline = st.textDecoration === "underline"
+              readBack.underline = (heroStyle as Record<string, unknown>).underline
+            }
+            if (writeStyleKeys.has("textShadowEnabled")) {
+              expected.textShadowEnabled = st.textShadowEnabled
+              readBack.textShadowEnabled = (heroStyle as Record<string, unknown>).textShadowEnabled
+            }
+            if (writeStyleKeys.has("gradientEnabled")) {
+              expected.gradientEnabled = st.gradientEnabled
+              readBack.gradientEnabled = (heroStyle as Record<string, unknown>).gradientEnabled
+            }
+            if (writeStyleKeys.has("gradientStart")) {
+              expected.gradientStart = st.gradientStart
+              readBack.gradientStart = (heroStyle as Record<string, unknown>).gradientStart
+            }
+            if (writeStyleKeys.has("gradientEnd")) {
+              expected.gradientEnd = st.gradientEnd
+              readBack.gradientEnd = (heroStyle as Record<string, unknown>).gradientEnd
+            }
+          }
+          if (HERO_IMAGE_NODE_IDS.has(nodeId)) {
+            for (const key of ["opacity", "contrast", "saturation", "brightness", "negative"]) {
+              if (writeStyleKeys.has(key)) {
+                expected[key] = normalizeHeroEffectComparableValue(st[key])
+                readBack[key] = normalizeHeroEffectComparableValue((heroStyle as Record<string, unknown>)[key])
+              }
+            }
+          }
+        }
+      }
+      const addReleaseLayoutReadback = () => {
+        const releaseStyle = releaseReadback?.elementStyles?.[nodeId] || {}
+        if (node.explicitPosition) {
+          expected.x = roundLayoutPx(node.geometry.x)
+          expected.y = roundLayoutPx(node.geometry.y)
+          readBack.x = (releaseStyle as Record<string, unknown>).x
+          readBack.y = (releaseStyle as Record<string, unknown>).y
+        }
+        if (node.explicitSize) {
+          expected.width = roundLayoutPx(node.geometry.width)
+          expected.height = roundLayoutPx(node.geometry.height)
+          readBack.width = (releaseStyle as Record<string, unknown>).width
+          readBack.height = (releaseStyle as Record<string, unknown>).height
+        }
+        if (expectedScale !== undefined) {
+          expected.scale = expectedScale
+          readBack.scale = (releaseStyle as Record<string, unknown>).scale
+        }
+        if (node.explicitStyle) {
+          if (writeStyleKeys.has("color")) {
+            expected.color = node.style.color
+            readBack.color = (releaseStyle as Record<string, unknown>).color
+          }
+          if (writeStyleKeys.has("fontSize")) {
+            expected.fontSize = parsePxNumber(node.style.fontSize)
+            readBack.fontSize = (releaseStyle as Record<string, unknown>).fontSize
+          }
+          if (writeStyleKeys.has("fontWeight")) {
+            const fw = node.style.fontWeight
+            const parsedFw = typeof fw === "number" ? fw : (typeof fw === "string" ? parseInt(fw, 10) : undefined)
+            expected.fontWeight = Number.isNaN(parsedFw as number) ? undefined : parsedFw
+            readBack.fontWeight = (releaseStyle as Record<string, unknown>).fontWeight
+          }
+        }
+      }
+      const addLiveLayoutReadback = () => {
+        const liveStyle = liveReadback?.elementStyles?.[nodeId] || {}
+        if (node.explicitPosition) {
+          expected.x = roundLayoutPx(node.geometry.x)
+          expected.y = roundLayoutPx(node.geometry.y)
+          readBack.x = (liveStyle as Record<string, unknown>).x
+          readBack.y = (liveStyle as Record<string, unknown>).y
+        }
+        if (node.explicitSize) {
+          expected.width = roundLayoutPx(node.geometry.width)
+          expected.height = roundLayoutPx(node.geometry.height)
+          readBack.width = (liveStyle as Record<string, unknown>).width
+          readBack.height = (liveStyle as Record<string, unknown>).height
+        }
+        if (expectedScale !== undefined) {
+          expected.scale = expectedScale
+          readBack.scale = (liveStyle as Record<string, unknown>).scale
+        }
+        if (node.explicitStyle) {
+          if (writeStyleKeys.has("color")) {
+            expected.color = node.style.color
+            readBack.color = (liveStyle as Record<string, unknown>).color
+          }
+          if (writeStyleKeys.has("fontSize")) {
+            expected.fontSize = parsePxNumber(node.style.fontSize)
+            readBack.fontSize = (liveStyle as Record<string, unknown>).fontSize
+          }
+          if (writeStyleKeys.has("fontWeight")) {
+            const fw = node.style.fontWeight
+            const parsedFw = typeof fw === "number" ? fw : (typeof fw === "string" ? parseInt(fw, 10) : undefined)
+            expected.fontWeight = Number.isNaN(parsedFw as number) ? undefined : parsedFw
+            readBack.fontWeight = (liveStyle as Record<string, unknown>).fontWeight
+          }
+        }
+      }
+      const addBandMembersLayoutReadback = () => {
+        const bandStyle = bandSettingsReadback?.elementStyles?.[nodeId] || {}
+        if (node.explicitPosition) {
+          expected.x = roundLayoutPx(node.geometry.x)
+          expected.y = roundLayoutPx(node.geometry.y)
+          readBack.x = (bandStyle as Record<string, unknown>).x
+          readBack.y = (bandStyle as Record<string, unknown>).y
+        }
+        if (node.explicitSize) {
+          expected.width = roundLayoutPx(node.geometry.width)
+          expected.height = roundLayoutPx(node.geometry.height)
+          readBack.width = (bandStyle as Record<string, unknown>).width
+          readBack.height = (bandStyle as Record<string, unknown>).height
+        }
+        if (expectedScale !== undefined) {
+          expected.scale = expectedScale
+          readBack.scale = (bandStyle as Record<string, unknown>).scale
+        }
+        if (node.explicitStyle) {
+          if (writeStyleKeys.has("color")) {
+            expected.color = node.style.color
+            readBack.color = (bandStyle as Record<string, unknown>).color
+          }
+          if (writeStyleKeys.has("fontSize")) {
+            expected.fontSize = parsePxNumber(node.style.fontSize)
+            readBack.fontSize = (bandStyle as Record<string, unknown>).fontSize
+          }
+          if (writeStyleKeys.has("fontWeight")) {
+            const fw = node.style.fontWeight
+            const parsedFw = typeof fw === "number" ? fw : (typeof fw === "string" ? parseInt(fw, 10) : undefined)
+            expected.fontWeight = Number.isNaN(parsedFw as number) ? undefined : parsedFw
+            readBack.fontWeight = (bandStyle as Record<string, unknown>).fontWeight
+          }
+          for (const key of ["opacity", "contrast", "saturation", "brightness", "negative"]) {
+            if (writeStyleKeys.has(key)) {
+              expected[key] = normalizeComparableValue(node.style[key as keyof DeployNodePayload["style"]])
+              readBack[key] = normalizeComparableValue((bandStyle as Record<string, unknown>)[key])
+            }
+          }
+        }
+      }
+      const addContactLayoutReadback = () => {
+        const contactStyle = contactReadback?.elementStyles?.[nodeId] || {}
+        if (node.explicitPosition) {
+          expected.x = roundLayoutPx(node.geometry.x)
+          expected.y = roundLayoutPx(node.geometry.y)
+          readBack.x = (contactStyle as Record<string, unknown>).x
+          readBack.y = (contactStyle as Record<string, unknown>).y
+        }
+        if (node.explicitSize) {
+          expected.width = roundLayoutPx(node.geometry.width)
+          expected.height = roundLayoutPx(node.geometry.height)
+          readBack.width = (contactStyle as Record<string, unknown>).width
+          readBack.height = (contactStyle as Record<string, unknown>).height
+        }
+        if (expectedScale !== undefined) {
+          expected.scale = expectedScale
+          readBack.scale = (contactStyle as Record<string, unknown>).scale
+        }
+        if (node.explicitStyle) {
+          if (writeStyleKeys.has("color")) {
+            expected.color = node.style.color
+            readBack.color = (contactStyle as Record<string, unknown>).color
+          }
+          if (writeStyleKeys.has("fontSize")) {
+            expected.fontSize = parsePxNumber(node.style.fontSize)
+            readBack.fontSize = (contactStyle as Record<string, unknown>).fontSize
+          }
+          if (writeStyleKeys.has("fontWeight")) {
+            const fw = node.style.fontWeight
+            const parsedFw = typeof fw === "number" ? fw : (typeof fw === "string" ? parseInt(fw, 10) : undefined)
+            expected.fontWeight = Number.isNaN(parsedFw as number) ? undefined : parsedFw
+            readBack.fontWeight = (contactStyle as Record<string, unknown>).fontWeight
+          }
+          for (const key of ["opacity", "contrast", "saturation", "brightness", "negative"]) {
+            if (writeStyleKeys.has(key)) {
+              expected[key] = normalizeComparableValue(node.style[key as keyof DeployNodePayload["style"]])
+              readBack[key] = normalizeComparableValue((contactStyle as Record<string, unknown>)[key])
+            }
+          }
+        }
+      }
+      const addFooterLayoutReadback = () => {
+        const footerStyle = footerReadback?.elementStyles?.[nodeId] || {}
+        if (node.explicitPosition) {
+          expected.x = roundLayoutPx(node.geometry.x)
+          expected.y = roundLayoutPx(node.geometry.y)
+          readBack.x = (footerStyle as Record<string, unknown>).x
+          readBack.y = (footerStyle as Record<string, unknown>).y
+        }
+        if (node.explicitSize) {
+          expected.width = roundLayoutPx(node.geometry.width)
+          expected.height = roundLayoutPx(node.geometry.height)
+          readBack.width = (footerStyle as Record<string, unknown>).width
+          readBack.height = (footerStyle as Record<string, unknown>).height
+        }
+        if (expectedScale !== undefined) {
+          expected.scale = expectedScale
+          readBack.scale = (footerStyle as Record<string, unknown>).scale
+        }
+        if (node.explicitStyle) {
+          if (writeStyleKeys.has("color")) {
+            expected.color = node.style.color
+            readBack.color = (footerStyle as Record<string, unknown>).color
+          }
+          if (writeStyleKeys.has("fontSize")) {
+            expected.fontSize = parsePxNumber(node.style.fontSize)
+            readBack.fontSize = (footerStyle as Record<string, unknown>).fontSize
+          }
+          if (writeStyleKeys.has("fontWeight")) {
+            const fw = node.style.fontWeight
+            const parsedFw = typeof fw === "number" ? fw : (typeof fw === "string" ? parseInt(fw, 10) : undefined)
+            expected.fontWeight = Number.isNaN(parsedFw as number) ? undefined : parsedFw
+            readBack.fontWeight = (footerStyle as Record<string, unknown>).fontWeight
+          }
+          for (const key of ["opacity", "contrast", "saturation", "brightness", "negative"]) {
+            if (writeStyleKeys.has(key)) {
+              expected[key] = normalizeComparableValue(node.style[key as keyof DeployNodePayload["style"]])
+              readBack[key] = normalizeComparableValue((footerStyle as Record<string, unknown>)[key])
+            }
+          }
+        }
+      }
+
+      if (nodeId === "hero-title" && node.explicitContent && node.type === "text") {
+        storageTarget = "heroSection.fields"
+        const titleText = typeof node.content?.text === "string" ? node.content.text.trim() : ""
+        if (titleText) expected.title = titleText
+        // When hero-title is single text node, titleHighlight should be cleared
+        expected.titleHighlight = ""
+        readBack.title = heroReadback?.title
+        readBack.titleHighlight = heroReadback?.titleHighlight
+        addHeroLayoutReadback()
+      } else if (nodeId === "hero-subtitle" && node.explicitContent) {
+        storageTarget = "heroSection.fields"
+        const expectedText = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        expected.subtitle = expectedText
+        readBack.subtitle = heroReadback?.subtitle
+        addHeroLayoutReadback()
+      } else if ((nodeId === "hero-scroll-label" || nodeId === "hero-scroll-indicator") && node.explicitContent) {
+        storageTarget = "heroSection.fields"
+        const expectedText = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        expected.scrollLabel = expectedText
+        readBack.scrollLabel = heroReadback?.scrollLabel
+        addHeroLayoutReadback()
+      } else if (nodeId === "hero-bg-image" && node.explicitContent && writeContentKeys.has("src")) {
+        storageTarget = "heroSection.fields"
+        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        expected.backgroundImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        readBack.backgroundImageRef = heroReadback?.backgroundImage?.asset?._ref ?? heroReadback?.backgroundImage?.asset?._id
+        addHeroLayoutReadback()
+      } else if (nodeId === "hero-logo" && node.explicitContent && writeContentKeys.has("src")) {
+        storageTarget = "heroSection.fields"
+        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        expected.logoRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        readBack.logoRef = heroReadback?.logo?.asset?._ref ?? heroReadback?.logo?.asset?._id
+        addHeroLayoutReadback()
+      } else if (isHeroLayoutId && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
+        storageTarget = "heroSection.elementStyles"
+        addHeroLayoutReadback()
+      } else if (isNavLayoutIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
         storageTarget = "navigation.elementStyles"
         const navStyle = navReadback?.elementStyles?.[nodeId] || {}
         if (node.explicitPosition) {
@@ -1756,6 +2957,33 @@ export async function POST(request: Request) {
         if (expectedScale !== undefined) {
           expected.scale = expectedScale
           readBack.scale = (navStyle as Record<string, unknown>).scale
+        }
+        if (node.explicitStyle) {
+          const st = node.style as Record<string, unknown>
+          if (NAVBAR_TEXT_NODE_IDS.has(nodeId) || isNavbarButtonPatternNodeId(nodeId)) {
+            if (writeStyleKeys.has("textShadowEnabled")) {
+              expected.textShadowEnabled = st.textShadowEnabled
+              readBack.textShadowEnabled = (navStyle as Record<string, unknown>).textShadowEnabled
+            }
+            if (writeStyleKeys.has("gradientEnabled")) {
+              expected.gradientEnabled = st.gradientEnabled
+              readBack.gradientEnabled = (navStyle as Record<string, unknown>).gradientEnabled
+            }
+            if (writeStyleKeys.has("gradientStart")) {
+              expected.gradientStart = st.gradientStart
+              readBack.gradientStart = (navStyle as Record<string, unknown>).gradientStart
+            }
+            if (writeStyleKeys.has("gradientEnd")) {
+              expected.gradientEnd = st.gradientEnd
+              readBack.gradientEnd = (navStyle as Record<string, unknown>).gradientEnd
+            }
+          }
+          if (isNavbarBoxPatternNodeId(nodeId)) {
+            if (typeof st.backgroundColor === "string") {
+              expected.backgroundColor = st.backgroundColor
+              readBack.backgroundColor = (navStyle as Record<string, unknown>).backgroundColor
+            }
+          }
         }
       } else if (nodeId === "nav-brand-name" && node.explicitContent) {
         storageTarget = "navigation.fields"
@@ -1856,6 +3084,202 @@ export async function POST(request: Request) {
           expected.pressHref = typeof node.content.href === "string" ? node.content.href.trim() : ""
           readBack.pressHref = introReadback?.pressHref
         }
+      } else if (nodeId === "latest-release-title" && node.explicitContent) {
+        storageTarget = "latestRelease.fields"
+        expected.title = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.title = releaseReadback?.title
+        addReleaseLayoutReadback()
+      } else if (nodeId === "latest-release-subtitle" && node.explicitContent) {
+        storageTarget = "latestRelease.fields"
+        expected.subtitle = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.subtitle = releaseReadback?.subtitle
+        addReleaseLayoutReadback()
+      } else if (nodeId === "latest-release-bg" && node.explicitContent) {
+        storageTarget = "latestRelease.fields"
+        const source =
+          typeof node.content.videoUrl === "string" && node.content.videoUrl.trim()
+            ? node.content.videoUrl
+            : typeof node.content.src === "string"
+              ? node.content.src
+              : ""
+        expected.youtubeId = parseYouTubeId(source)
+        readBack.youtubeId = releaseReadback?.youtubeId
+        addReleaseLayoutReadback()
+      } else if ((nodeId === "latest-release-watch-button" || nodeId === "latest-release-shows-button") && node.explicitContent) {
+        storageTarget = "latestRelease.fields"
+        const buttonIndex = nodeId === "latest-release-watch-button" ? 0 : 1
+        const button = releaseReadback?.ctaButtons?.[buttonIndex]
+        if (writeContentKeys.has("text")) {
+          expected[`ctaButtons[${buttonIndex}].label`] = typeof node.content.text === "string" ? node.content.text.trim() : ""
+          readBack[`ctaButtons[${buttonIndex}].label`] = button?.label
+        }
+        if (writeContentKeys.has("href")) {
+          expected[`ctaButtons[${buttonIndex}].href`] = typeof node.content.href === "string" ? node.content.href.trim() : ""
+          readBack[`ctaButtons[${buttonIndex}].href`] = button?.href
+        }
+        addReleaseLayoutReadback()
+      } else if (isReleaseLayoutIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
+        storageTarget = "latestRelease.elementStyles"
+        addReleaseLayoutReadback()
+      } else if (nodeId === "live-section-bg-image" && node.explicitContent && writeContentKeys.has("src")) {
+        storageTarget = "liveSection.fields"
+        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        expected.backgroundImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        readBack.backgroundImageRef = liveReadback?.backgroundImage?.asset?._ref ?? liveReadback?.backgroundImage?.asset?._id
+        addLiveLayoutReadback()
+      } else if (parseLiveConcertNodeId(nodeId) && node.explicitContent) {
+        storageTarget = "concert.fields"
+        const parsed = parseLiveConcertNodeId(nodeId)
+        const concert = concertReadback.find((item) => item.editorId === parsed?.editorId)
+        const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        if (parsed?.field === "price") {
+          expected.price = normalizeConcertPriceForSanity(text)
+          readBack.price = concert?.price
+        } else if (parsed?.field === "locationUrl") {
+          expected.ticketUrl = typeof node.content.href === "string" ? node.content.href.trim() : text
+          readBack.ticketUrl = concert?.ticketUrl
+        } else if (parsed?.field) {
+          expected[parsed.field] = text
+          readBack[parsed.field] = concert?.[parsed.field as keyof typeof concert]
+        }
+        addLiveLayoutReadback()
+      } else if (isLiveLayoutIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
+        storageTarget = "liveSection.elementStyles"
+        addLiveLayoutReadback()
+      } else if (nodeId === "band-members-bg" && node.explicitContent && writeContentKeys.has("src")) {
+        storageTarget = "bandMembersSettings.fields"
+        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        expected.backgroundImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        readBack.backgroundImageRef = bandSettingsReadback?.backgroundImage?.asset?._ref ?? bandSettingsReadback?.backgroundImage?.asset?._id
+        addBandMembersLayoutReadback()
+      } else if (parseBandMemberNodeId(nodeId)?.field && node.explicitContent) {
+        storageTarget = "bandMember.fields"
+        const parsed = parseBandMemberNodeId(nodeId)
+        const member = typeof parsed?.index === "number" ? bandMembersReadback[parsed.index] : undefined
+        if (parsed?.field === "name") {
+          expected.fullName = typeof node.content.text === "string" ? node.content.text.trim() : ""
+          readBack.fullName = member?.fullName
+        } else if (parsed?.field === "role") {
+          expected.role = typeof node.content.text === "string" ? node.content.text.trim() : ""
+          readBack.role = member?.role
+        } else if (parsed?.field === "image") {
+          const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+          expected.portraitImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+          readBack.portraitImageRef = member?.portraitImage?.asset?._ref ?? member?.portraitImage?.asset?._id
+        }
+        addBandMembersLayoutReadback()
+      } else if (isBandMembersLayoutIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
+        storageTarget = "bandMembersSettings.elementStyles"
+        addBandMembersLayoutReadback()
+      } else if (nodeId === "contact-bg-image" && node.explicitContent && writeContentKeys.has("src")) {
+        storageTarget = "contactSection.fields"
+        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        expected.backgroundImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        readBack.backgroundImageRef = contactReadback?.backgroundImage?.asset?._ref ?? contactReadback?.backgroundImage?.asset?._id
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-header-eyebrow" && node.explicitContent) {
+        storageTarget = "contactSection.fields"
+        expected.eyebrow = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.eyebrow = contactReadback?.eyebrow
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-header-title" && node.explicitContent) {
+        storageTarget = "contactSection.fields"
+        expected.title = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.title = contactReadback?.title
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-header-description" && node.explicitContent) {
+        storageTarget = "contactSection.fields"
+        expected.description = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.description = contactReadback?.description
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-middle-text" && node.explicitContent) {
+        storageTarget = "contactSection.fields"
+        expected.middleText = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.middleText = contactReadback?.middleText
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-email" && node.explicitContent && writeContentKeys.has("href")) {
+        storageTarget = "contactSection.contactMethods[0]"
+        expected.href = typeof node.content.href === "string" ? node.content.href.trim() : ""
+        readBack.href = contactReadback?.contactMethods?.[0]?.href
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-email-title" && node.explicitContent) {
+        storageTarget = "contactSection.contactMethods[0]"
+        expected.title = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.title = contactReadback?.contactMethods?.[0]?.title
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-email-description" && node.explicitContent) {
+        storageTarget = "contactSection.contactMethods[0]"
+        expected.description = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.description = contactReadback?.contactMethods?.[0]?.description
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-email-address" && node.explicitContent) {
+        storageTarget = "contactSection.contactMethods[0]"
+        const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        expected.label = text
+        expected.href = `mailto:${text}`
+        readBack.label = contactReadback?.contactMethods?.[0]?.label
+        readBack.href = contactReadback?.contactMethods?.[0]?.href
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-telegram" && node.explicitContent && writeContentKeys.has("href")) {
+        storageTarget = "contactSection.contactMethods[1]"
+        expected.href = typeof node.content.href === "string" ? node.content.href.trim() : ""
+        readBack.href = contactReadback?.contactMethods?.[1]?.href
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-telegram-title" && node.explicitContent) {
+        storageTarget = "contactSection.contactMethods[1]"
+        expected.title = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.title = contactReadback?.contactMethods?.[1]?.title
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-telegram-description" && node.explicitContent) {
+        storageTarget = "contactSection.contactMethods[1]"
+        expected.description = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.description = contactReadback?.contactMethods?.[1]?.description
+        addContactLayoutReadback()
+      } else if (nodeId === "contact-telegram-handle" && node.explicitContent) {
+        storageTarget = "contactSection.contactMethods[1]"
+        expected.label = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.label = contactReadback?.contactMethods?.[1]?.label
+        addContactLayoutReadback()
+      } else if (isContactNodeIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
+        storageTarget = "contactSection.elementStyles"
+        addContactLayoutReadback()
+      } else if (nodeId === "footer-logo" && node.explicitContent && writeContentKeys.has("src")) {
+        storageTarget = "footerSection.fields"
+        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+        expected.logoRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        readBack.logoRef = footerReadback?.logo?.asset?._ref ?? footerReadback?.logo?.asset?._id
+        addFooterLayoutReadback()
+      } else if (nodeId === "footer-description" && node.explicitContent) {
+        storageTarget = "footerSection.fields"
+        expected.description = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        readBack.description = footerReadback?.description
+        addFooterLayoutReadback()
+      } else if (nodeId === "footer-copyright" && node.explicitContent) {
+        storageTarget = "footerSection.fields"
+        const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        expected.copyright = text.replace(/^©\s*/, "")
+        readBack.copyright = footerReadback?.copyright
+        addFooterLayoutReadback()
+      } else if (nodeId === "footer-cta" && node.explicitContent) {
+        storageTarget = "footerSection.fields"
+        if (writeContentKeys.has("text")) {
+          expected.ctaLabel = typeof node.content.text === "string" ? node.content.text.trim() : ""
+          readBack.ctaLabel = footerReadback?.ctaLabel
+        }
+        if (writeContentKeys.has("href")) {
+          expected.ctaHref = typeof node.content.href === "string" ? node.content.href.trim() : ""
+          readBack.ctaHref = footerReadback?.ctaHref
+        }
+        addFooterLayoutReadback()
+      } else if (FOOTER_SOCIAL_IDS.has(nodeId) && node.explicitContent && writeContentKeys.has("href")) {
+        storageTarget = "footerSection.socialLinks"
+        const socialLink = footerReadback?.socialLinks?.find((link) => link.id === nodeId)
+        expected.href = typeof node.content.href === "string" ? node.content.href.trim() : ""
+        readBack.href = socialLink?.href
+        addFooterLayoutReadback()
+      } else if (isFooterNodeIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
+        storageTarget = "footerSection.elementStyles"
+        addFooterLayoutReadback()
       } else if (shouldVerifyHomeState) {
         storageTarget = "homeEditorState.nodesJson"
         const homeStateNodes = (() => {
@@ -1943,6 +3367,11 @@ export async function POST(request: Request) {
     const heroPatched = Object.keys(heroPatch).length > 0
     const navPatched = navigationDocumentId != null
     const introPatched = introDocumentId != null
+    const latestReleasePatched = latestReleaseDocumentId != null
+    const livePatched = liveSectionDocumentId != null || liveConcertDocumentIds.length > 0
+    const bandMembersPatched = bandMembersDocumentId != null || bandMembersContentPatches.size > 0
+    const contactPatched = contactDocumentId != null
+    const footerPatched = footerDocumentId != null
     const homeStatePatched = homeEditorStateDocumentId != null
     const publicPropagationConfigured = !!PUBLIC_REVALIDATE_URL || !!VERCEL_DEPLOY_HOOK
     const publicPropagationOk = publicRevalidate.ok || vercelDeploy.ok
@@ -1951,6 +3380,11 @@ export async function POST(request: Request) {
     if (heroPatched) parts.push("Hero")
     if (navPatched) parts.push("Navigation")
     if (introPatched) parts.push("Intro banner")
+    if (latestReleasePatched) parts.push("Latest Release")
+    if (livePatched) parts.push("Live")
+    if (bandMembersPatched) parts.push("Band Members")
+    if (contactPatched) parts.push("Contact")
+    if (footerPatched) parts.push("Footer")
     if (homeStatePatched) parts.push("Home editor state")
     const baseMessage = parts.length > 0
       ? `${parts.join(", ")} updated in Sanity`
@@ -1978,6 +3412,9 @@ export async function POST(request: Request) {
       publishedDocumentType: SANITY_DOC_TYPE,
       navigationDocumentId: navigationDocumentId ?? undefined,
       introDocumentId: introDocumentId ?? undefined,
+      latestReleaseDocumentId: latestReleaseDocumentId ?? undefined,
+      liveSectionDocumentId: liveSectionDocumentId ?? undefined,
+      liveConcertDocumentIds,
       homeEditorStateDocumentId: homeEditorStateDocumentId ?? undefined,
       targetSection: TARGET_SECTION,
       heroTitleMode,

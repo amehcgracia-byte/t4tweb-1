@@ -1,4 +1,4 @@
-export type HomeEditorNodeType = "section" | "background" | "card" | "text" | "button" | "image"
+export type HomeEditorNodeType = "section" | "background" | "card" | "text" | "button" | "image" | "overlay"
 
 export interface HomeEditorNodeGeometry {
   x: number
@@ -20,6 +20,10 @@ export interface HomeEditorNodeStyle {
   fontWeight?: string
   fontStyle?: string
   textDecoration?: string
+  textShadowEnabled?: boolean
+  gradientEnabled?: boolean
+  gradientStart?: string
+  gradientEnd?: string
   textAlign?: "left" | "center" | "right"
   scale?: number
   minHeight?: string
@@ -73,6 +77,9 @@ export interface HomeEditorNodeContent {
   time?: string
   capacity?: string
   locationUrl?: string
+  extraNodeType?: "text" | "button" | "card" | "overlay"
+  parentSection?: string
+  label?: string
 }
 
 export interface HomeEditorNodeOverride {

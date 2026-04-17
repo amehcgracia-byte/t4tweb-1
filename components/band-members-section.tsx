@@ -1,28 +1,31 @@
 "use client"
 
-import { useRef, useState, useEffect, CSSProperties } from "react"
+import { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
-import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import { useVisualEditor } from "@/components/visual-editor"
+import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { BandMemberData } from "@/lib/sanity/band-members-loader"
 
 interface BandMembersSectionProps {
   initialMembers: BandMemberData[]
+  backgroundImageUrl?: string
   elementStyles?: Record<string, Record<string, unknown>>
 }
 
-export function BandMembersSection({ initialMembers, elementStyles = {} }: BandMembersSectionProps) {
+export function BandMembersSection({
+  initialMembers,
+  backgroundImageUrl = "/images/sections/band-section.jpg",
+  elementStyles = {},
+}: BandMembersSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const [activeIndex, setActiveIndex] = useState<number>(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [members] = useState<BandMemberData[]>(initialMembers)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
-  const resolvedBandMembersBackgroundSrc = useHomeEditorImageSrc("band-members-bg", "/images/sections/band-section.jpg")
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024)
@@ -36,14 +39,14 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
       const custom = event as CustomEvent<{ index?: number }>
       const index = custom.detail?.index
       if (typeof index !== "number" || Number.isNaN(index)) return
-      if (index < 0 || index >= members.length) return
+      if (index < 0 || index >= initialMembers.length) return
       setActiveIndex(index)
     }
     window.addEventListener("editor-band-member-focus", onEditorBandMemberFocus as EventListener)
     return () => {
       window.removeEventListener("editor-band-member-focus", onEditorBandMemberFocus as EventListener)
     }
-  }, [members.length])
+  }, [initialMembers.length])
 
   const handleMemberClick = (index: number) => {
     setActiveIndex(index)
@@ -52,7 +55,7 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
     }
   }
 
-  const displayedMembers = members.map((member, index) => ({
+  const displayedMembers = initialMembers.map((member, index) => ({
     ...member,
     number: String(member.id).padStart(2, "0"),
     fullName: member.fullName,
@@ -61,6 +64,7 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
   }))
   const activeMember = displayedMembers[activeIndex]
   const activeImage = activeMember?.image || initialMembers[0]?.image || ""
+  const headerLayoutStyle = getElementLayoutStyle(elementStyles, "band-members-header")
 
   return (
     <section
@@ -69,7 +73,7 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
       data-editor-node-type="section"
       data-editor-node-label="Sección Miembros de la Banda"
       className="relative isolate min-h-screen w-full overflow-hidden bg-black"
-      style={elementStyles["band-members-section"] as CSSProperties}
+      style={getElementLayoutStyle(elementStyles, "band-members-section")}
     >
       {/* Fondo full width */}
       <div
@@ -78,10 +82,10 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo banda"
         className="absolute inset-0 z-0"
-        style={elementStyles["band-members-bg"] as CSSProperties}
+        style={getElementLayoutStyle(elementStyles, "band-members-bg")}
       >
         <Image
-          src={resolvedBandMembersBackgroundSrc}
+          src={backgroundImageUrl}
           alt="Band background"
           fill
           className="object-cover"
@@ -98,8 +102,11 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
-            style={isEditing ? undefined : { opacity, y }}
+            style={isEditing ? headerLayoutStyle : { ...headerLayoutStyle, opacity, y }}
             className="mb-8 md:mb-12 lg:mb-16 text-center"
+            data-editor-node-id="band-members-header"
+            data-editor-node-type="card"
+            data-editor-node-label="Encabezado Miembros"
           >
           <SectionHeader
             eyebrow="The Musicians"
@@ -107,6 +114,7 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
             description="Five musicians from diverse backgrounds, united by a passion for rhythm and groove."
             dataEditId="band-members-header"
             dataEditLabel="Encabezado Miembros"
+            elementStyles={elementStyles}
           />
         </motion.div>
 
@@ -124,7 +132,14 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
                 transition={{ duration: 0.6, ease: "easeInOut" }}
                 className="absolute inset-0"
               >
-                <div className="absolute inset-0">
+                <div
+                  className="absolute inset-0"
+                  data-editor-node-id={`member-item-${index}-image`}
+                  data-editor-node-type="image"
+                  data-editor-node-label={`${member.fullName} photo`}
+                  data-editor-media-kind="image"
+                  style={getElementLayoutStyle(elementStyles, `member-item-${index}-image`)}
+                >
                   <Image
                     src={member.image}
                     alt={member.fullName}
@@ -162,6 +177,7 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
                 role="button"
                 tabIndex={0}
                 aria-label={`${member.fullName} card`}
+                style={getElementLayoutStyle(elementStyles, `member-item-${index}`)}
                 className={`group flex min-h-[62px] w-full touch-manipulation items-center justify-between rounded-xl border p-3.5 text-left transition-all duration-300 md:min-h-[88px] md:rounded-2xl md:p-6
                   ${
                     activeIndex === index
@@ -171,7 +187,11 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
               >
                 <div className="min-w-0 flex-1">
                   <h4
+                    data-editor-node-id={`member-item-${index}-name`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`${member.fullName} name`}
                     data-member-name-index={index}
+                    style={getElementLayoutStyle(elementStyles, `member-item-${index}-name`)}
                     className={`text-base md:text-xl font-medium transition-colors truncate ${
                       activeIndex === index ? "text-white" : "text-white/80 group-hover:text-white"
                     }`}
@@ -179,7 +199,11 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
                     {member.fullName}
                   </h4>
                   <p
+                    data-editor-node-id={`member-item-${index}-role`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`${member.fullName} role`}
                     data-member-role-index={index}
+                    style={getElementLayoutStyle(elementStyles, `member-item-${index}-role`)}
                     className={`text-xs md:text-sm mt-0.5 md:mt-1 transition-colors ${
                       activeIndex === index ? "text-orange-400" : "text-white/50"
                     }`}
@@ -189,7 +213,11 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
                 </div>
 
                 <div
+                  data-editor-node-id={`member-item-${index}-number`}
+                  data-editor-node-type="text"
+                  data-editor-node-label={`${member.fullName} number`}
                   data-member-number-index={index}
+                  style={getElementLayoutStyle(elementStyles, `member-item-${index}-number`)}
                   className={`w-7 h-7 md:w-8 md:h-8 shrink-0 ml-3 rounded-full flex items-center justify-center text-xs font-mono border transition-all ${
                     activeIndex === index
                       ? "border-orange-500 text-orange-400 bg-orange-950"
@@ -223,12 +251,14 @@ export function BandMembersSection({ initialMembers, elementStyles = {} }: BandM
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative w-full" style={{ aspectRatio: '3/4' }}>
-                <img
+                <Image
                   src={activeImage}
                   alt={activeMember.fullName}
+                  fill
                   className="absolute inset-0 w-full h-full object-cover"
                   style={{ zIndex: 1 }}
                   draggable={false}
+                  sizes="22rem"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" style={{ zIndex: 2 }} />
                 <div className="absolute bottom-0 left-0 right-0 p-6" style={{ zIndex: 3 }}>

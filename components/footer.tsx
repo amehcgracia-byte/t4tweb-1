@@ -3,11 +3,14 @@
 import { useRef, useEffect } from "react"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
-import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
+import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import type { FooterData } from "@/lib/sanity/footer-loader"
 
-interface FooterProps {}
+interface FooterProps {
+  data: FooterData
+}
 
-export function Footer({}: FooterProps) {
+export function Footer({ data }: FooterProps) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const footerRef = useRef<HTMLElement>(null)
   const logoRef = useRef<HTMLDivElement>(null)
@@ -16,10 +19,6 @@ export function Footer({}: FooterProps) {
   const socialGroupRef = useRef<HTMLDivElement>(null)
   const dividerRef = useRef<HTMLDivElement>(null)
   const copyrightRef = useRef<HTMLParagraphElement>(null)
-  const resolvedFooterLogoSrc = useHomeEditorImageSrc(
-    "footer-logo",
-    "/images/t4tPics/logo-white.png"
-  )
 
   useEffect(() => {
     if (!isEditing) return
@@ -131,75 +130,16 @@ export function Footer({}: FooterProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing])
 
-  const streamingPlatforms = [
-    {
-      name: "Spotify",
-      href: "https://open.spotify.com/intl-es/artist/0FHjK3O0k8HQMrJsF7KQwF",
-      icon: SpotifyIcon,
-    },
-    {
-      name: "Apple Music",
-      href: "https://music.apple.com/us/artist/tales-for-the-tillerman/1819840222",
-      icon: AppleMusicIcon,
-    },
-    {
-      name: "YouTube Music",
-      href: "https://music.youtube.com/channel/UCiSLr9s4NLC1kzHBqJirsrQ",
-      icon: YouTubeIcon,
-    },
-    {
-      name: "Amazon Music",
-      href: "https://music.amazon.co.uk/artists/B0FCNWCSZC/tales-for-the-tillerman",
-      icon: AmazonIcon,
-    },
-    {
-      name: "Bandcamp",
-      href: "https://talesforthetillerman.bandcamp.com/",
-      icon: BandcampIcon,
-    },
-    {
-      name: "Bandsintown",
-      href: "https://www.bandsintown.com/a/15468933-tales-for-the-tillerman",
-      icon: BandsinTownIcon,
-    },
-  ]
+  const elementStyles = data.elementStyles
+  const footerCopyright = data.copyright.startsWith("©") ? data.copyright : `© ${data.copyright}`
 
-  const socialLinks = [
-    {
-      id: "footer-social-instagram",
-      name: "Instagram",
-      href: "https://www.instagram.com/tales4tillerman",
-      icon: InstagramIcon,
-    },
-    {
-      id: "footer-social-youtube",
-      name: "YouTube",
-      href: "https://www.youtube.com/channel/UCiSLr9s4NLC1kzHBqJirsrQ",
-      icon: YouTubeIcon,
-    },
-    {
-      id: "footer-social-telegram",
-      name: "Telegram",
-      href: "https://t.me/talesforthetillerman",
-      icon: TelegramIcon,
-    },
-    {
-      id: "footer-social-linktree",
-      name: "Linktree",
-      href: "https://linktr.ee/tales4tillerman",
-      icon: LinktreeIcon,
-    },
-  ]
-  const footerDescription = "Tales for the Tillerman is a Berlin-based collective blending world music, funk, soul, and reggae. Join us on social media and streaming platforms."
-  const footerCtaLabel = "Book the Band"
-  const footerCtaHref = "https://www.bandsintown.com/e/108124718-tales-for-the-tillerman-at-mauerpark?came_from=250&utm_medium=web&utm_source=artist_page&utm_campaign=search_bar"
-  const footerCopyright = "© 2025 Tales for the Tillerman. All rights reserved."
   return (
     <footer 
       ref={footerRef}
       data-editor-node-id="footer-section"
       data-editor-node-type="section"
       data-editor-node-label="Footer Section"
+      style={getElementLayoutStyle(elementStyles, "footer-section")}
       className="bg-black">
       <div className="h-8 bg-gradient-to-b from-black/30 to-black sm:h-10 sm:from-black/20 md:h-12" />
       
@@ -210,10 +150,11 @@ export function Footer({}: FooterProps) {
           data-editor-node-id="footer-logo"
           data-editor-node-type="image"
           data-editor-node-label="Footer Logo"
+          style={getElementLayoutStyle(elementStyles, "footer-logo")}
           className="mb-4 sm:mb-6">
           <Image
-            src={resolvedFooterLogoSrc}
-            alt="Tales for the Tillerman"
+            src={data.logoUrl}
+            alt={data.logoAlt}
             width={160}
             height={160}
             className="mx-auto h-auto w-[clamp(6rem,24vw,9.5rem)] object-contain"
@@ -225,8 +166,9 @@ export function Footer({}: FooterProps) {
           data-editor-node-id="footer-description"
           data-editor-node-type="text"
           data-editor-node-label="Footer Description"
+          style={getElementLayoutStyle(elementStyles, "footer-description")}
           className="mx-auto mb-5 max-w-2xl px-2 text-sm text-white/70 sm:mb-6 sm:text-lg">
-          {footerDescription}
+          {data.description}
         </p>
 
         <div className="mb-7 px-2">
@@ -235,9 +177,10 @@ export function Footer({}: FooterProps) {
             data-editor-node-id="footer-cta"
             data-editor-node-type="button"
             data-editor-node-label="Book the Band"
-            href={footerCtaHref}
+            href={data.ctaHref}
+            style={getElementLayoutStyle(elementStyles, "footer-cta")}
             className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-7 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#FF8C21]/30 transition-all hover:shadow-xl hover:shadow-[#FF8C21]/40 sm:w-auto sm:px-8 sm:py-3 sm:text-base">
-            {footerCtaLabel}
+            {data.ctaLabel}
           </a>
         </div>
 
@@ -248,23 +191,28 @@ export function Footer({}: FooterProps) {
           data-editor-node-label="Footer Social Links"
           data-editor-grouped="true"
           data-link-group-summary="Footer Social Links"
+          style={getElementLayoutStyle(elementStyles, "footer-social-group")}
           className="mb-7 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-          {socialLinks.map((link) => (
-            <a
-              key={link.id}
-              data-editor-node-id={link.id}
-              data-editor-node-type="button"
-              data-editor-node-label={`Footer ${link.name}`}
-              data-link-item="true"
-              data-link-item-name={link.name}
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={link.name}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-primary sm:h-12 sm:w-12">
-              <link.icon />
-            </a>
-          ))}
+          {data.socialLinks.map((link) => {
+            const Icon = getFooterIcon(link.name, link.id)
+            return (
+              <a
+                key={link.id}
+                data-editor-node-id={link.id}
+                data-editor-node-type="button"
+                data-editor-node-label={`Footer ${link.name}`}
+                data-link-item="true"
+                data-link-item-name={link.name}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={link.name}
+                style={getElementLayoutStyle(elementStyles, link.id)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-primary sm:h-12 sm:w-12">
+                <Icon />
+              </a>
+            )
+          })}
         </div>
 
         <div 
@@ -272,12 +220,14 @@ export function Footer({}: FooterProps) {
           data-editor-node-id="footer-divider"
           data-editor-node-type="card"
           data-editor-node-label="Footer Divider"
+          style={getElementLayoutStyle(elementStyles, "footer-divider")}
           className="flex flex-col items-center border-t border-white/10 pt-6 sm:pt-8 gap-4 w-full">
           <p 
             ref={copyrightRef}
             data-editor-node-id="footer-copyright"
             data-editor-node-type="text"
             data-editor-node-label="Footer Copyright"
+            style={getElementLayoutStyle(elementStyles, "footer-copyright")}
             className="text-white/40 text-sm text-center max-w-full">
             {footerCopyright}
           </p>
@@ -285,6 +235,19 @@ export function Footer({}: FooterProps) {
       </div>
     </footer>
   )
+}
+
+function getFooterIcon(name: string, id: string) {
+  const key = `${id} ${name}`.toLowerCase()
+  if (key.includes("instagram")) return InstagramIcon
+  if (key.includes("telegram")) return TelegramIcon
+  if (key.includes("linktree")) return LinktreeIcon
+  if (key.includes("spotify")) return SpotifyIcon
+  if (key.includes("apple")) return AppleMusicIcon
+  if (key.includes("amazon")) return AmazonIcon
+  if (key.includes("bandcamp")) return BandcampIcon
+  if (key.includes("bandsintown")) return BandsinTownIcon
+  return YouTubeIcon
 }
 
 function SpotifyIcon() {

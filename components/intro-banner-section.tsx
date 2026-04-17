@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { useVisualEditor } from "@/components/visual-editor"
+import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { IntroBannerData } from "@/lib/sanity/intro-banner-loader"
 
 export function IntroBannerSection({ data }: { data: IntroBannerData }) {
@@ -100,6 +101,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
       data-editor-node-type="section"
       data-editor-node-label="Intro Section"
       className="relative -mt-20 z-20 flex min-h-[52vh] min-h-[52dvh] flex-col items-center justify-center gap-4 px-3 pb-12 pt-8 sm:min-h-[58vh] sm:min-h-[58dvh] sm:px-4 sm:pb-16 sm:pt-28 md:-mt-24 lg:-mt-28"
+      style={getElementLayoutStyle(data.elementStyles, "intro-section")}
     >
       <div
         ref={bannerGifRef}
@@ -107,6 +109,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
         data-editor-node-type="image"
         data-editor-node-label="Banner GIF"
         className="absolute left-0 top-0 z-0 h-full w-full overflow-hidden opacity-30"
+        style={getElementLayoutStyle(data.elementStyles, "intro-banner-gif")}
       >
         <img
           src={resolvedIntroGifSrc}
@@ -121,6 +124,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
           data-editor-node-type="text"
           data-editor-node-label="Banner Text"
           className="max-w-2xl px-3 text-center text-[0.95rem] leading-relaxed text-white/90 sm:px-4 sm:text-lg md:text-xl"
+          style={getElementLayoutStyle(data.elementStyles, "intro-banner-text")}
         >
           {data.bannerText}
         </p>
@@ -132,6 +136,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
             data-editor-node-type="button"
             data-editor-node-label="Book Band Button"
             className="btn-primary w-full sm:w-auto"
+            style={getElementLayoutStyle(data.elementStyles, "intro-book-button")}
           >
             {data.bookLabel}
           </a>
@@ -143,6 +148,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
             data-editor-node-type="button"
             data-editor-node-label="Press Kit Button"
             className="btn-secondary w-full sm:w-auto"
+            style={getElementLayoutStyle(data.elementStyles, "intro-press-button")}
           >
             {data.pressLabel}
           </a>

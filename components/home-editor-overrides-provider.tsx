@@ -19,6 +19,11 @@ const DOC_DRIVEN_IMAGE_NODE_IDS = new Set<string>([
   "intro-banner-gif",
 ])
 
+const HERO_DOC_DRIVEN_IMAGE_NODE_IDS = new Set<string>([
+  "hero-bg-image",
+  "hero-logo",
+])
+
 function isValidPersistedSrc(value: unknown): value is string {
   if (typeof value !== "string") return false
   const src = value.trim()
@@ -76,11 +81,20 @@ export function HomeEditorOverridesProvider({ nodes, children }: { nodes: HomeEd
       }
 
       const nodeOverridesMap: Record<string, typeof normalizedNodes[0]> = {}
+      const skippedDocDrivenHeroImages: string[] = []
       normalizedNodes.forEach((node) => {
+        if (HERO_DOC_DRIVEN_IMAGE_NODE_IDS.has(node.nodeId)) {
+          skippedDocDrivenHeroImages.push(node.nodeId)
+          return
+        }
         nodeOverridesMap[node.nodeId] = node;
       });
       (window as any).__HOME_EDITOR_NODE_OVERRIDES__ = nodeOverridesMap;
-      console.log("[EDITOR-REHYDRATE][provider-normalized-count]", { count: normalizedNodes.length, nodeIds: normalizedNodes.map(n => n.nodeId) });
+      console.log("[EDITOR-REHYDRATE][provider-normalized-count]", {
+        count: Object.keys(nodeOverridesMap).length,
+        nodeIds: Object.keys(nodeOverridesMap),
+        skippedDocDrivenHeroImages,
+      });
     } catch (err) {
       console.error("[EDITOR-REHYDRATE][provider-invalid-input]", { error: "window write failed", message: err instanceof Error ? err.message : String(err) });
       (window as any).__HOME_EDITOR_NODE_OVERRIDES__ = {};
