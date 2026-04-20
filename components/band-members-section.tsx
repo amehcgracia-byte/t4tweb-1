@@ -1,36 +1,21 @@
 "use client"
 
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState, useEffect, type CSSProperties } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
-<<<<<<< HEAD
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
-
-import { client } from "@/lib/sanity/client"
-import { bandMembersQuery } from "@/lib/sanity/queries"
-
-const FALLBACK_MEMBERS = [
-  { id: 1, fullName: "Janosch Puhe", role: "Main Vocals", image: "/images/members/Janosch Puhe2.JPG" },
-  { id: 2, fullName: "J.Ma Garcia Lopez", role: "Keys and Synth", image: "/images/members/J.Ma Garcia Lopez2.JPG" },
-  { id: 3, fullName: "Otto Lorenz Contreras", role: "Drums", image: "/images/members/Otto Lorenz Contreras.JPG" },
-  { id: 4, fullName: "Robii Crowford", role: "Electric Guitar", image: "/images/members/Robii Crowford.JPG" },
-  { id: 5, fullName: "Tarik Benatmane", role: "Electric Bass", image: "/images/members/Tarik Benatmane.JPG" },
-]
-=======
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
+import type { BandMemberData } from "@/lib/sanity/band-members-loader"
+import { getTraceNodeId } from "@/lib/sanity/env"
 
 interface BandMembersSectionProps {
   initialMembers: BandMemberData[]
   overrides?: Record<string, HomeEditorNodeOverride>
 }
 
-<<<<<<< HEAD
-export function BandMembersSection({ overrides = {} }: BandMembersSectionProps) {
-=======
 function buildInlineStyleFromOverride(
   override: HomeEditorNodeOverride | undefined,
   includeGeometry: boolean
@@ -137,7 +122,6 @@ function buildInlineImageStyleFromOverride(override: HomeEditorNodeOverride | un
 }
 
 export function BandMembersSection({ initialMembers, overrides = {} }: BandMembersSectionProps) {
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
   const sectionRef = useRef<HTMLElement>(null)
   const [activeIndex, setActiveIndex] = useState<number>(0)
   const [modalOpen, setModalOpen] = useState(false)
@@ -145,6 +129,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
   const [members] = useState<BandMemberData[]>(initialMembers)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
+  const traceNodeId = getTraceNodeId()
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024)
@@ -174,10 +159,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
     }
   }
 
-<<<<<<< HEAD
-  const activeMember = members[activeIndex]
-  const activeImage = activeMember?.image || FALLBACK_MEMBERS[0]?.image || ""
-=======
   const displayedMembers = members.map((member, index) => ({
     ...member,
     number: resolveMemberNumberOverride(overrides[`member-item-${index}-number`], String(member.id).padStart(2, "0")),
@@ -193,7 +174,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
   const activeMember = displayedMembers[activeIndex]
   const activeImage = activeMember?.image || initialMembers[0]?.image || ""
   const activeImageStyle = buildInlineImageStyleFromOverride(overrides[`member-item-${activeIndex}-image`])
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
 
   useEffect(() => {
     if (process.env.NODE_ENV === "production" || !traceNodeId) return
@@ -257,13 +237,8 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
 
         <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-2 lg:gap-14">
           {/* Desktop photo - hidden on mobile */}
-<<<<<<< HEAD
-          <div className="hidden lg:block relative aspect-[3/4] rounded-3xl overflow-hidden bg-zinc-950 shadow-2xl">
-            {members.map((member, index) => (
-=======
-          <div className="relative hidden max-h-[78vh] max-h-[78dvh] min-h-[420px] overflow-hidden rounded-3xl bg-zinc-950 shadow-2xl lg:block lg:aspect-[3/4]">
+          <div className="relative hidden max-h-[78vh] min-h-[420px] overflow-hidden rounded-3xl bg-zinc-950 shadow-2xl lg:block lg:aspect-[3/4]">
             {displayedMembers.map((member, index) => (
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
               <motion.div
                 key={member.id}
                 initial={false}
@@ -297,16 +272,10 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
             ))}
           </div>
 
-<<<<<<< HEAD
-          <div className="space-y-3 md:space-y-4">
-            {members.map((member, index) => (
-              <motion.button
-                type="button"
-=======
+
           <div className="space-y-2.5 md:space-y-4">
             {displayedMembers.map((member, index) => (
               <motion.div
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
                 key={member.id}
                 onClick={() => handleMemberClick(index)}
                 onMouseEnter={() => (!isEditing && !isMobile) && setActiveIndex(index)}
@@ -316,14 +285,10 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                 data-editor-node-type="card"
                 data-editor-node-label={member.fullName}
                 data-editor-grouped="true"
-<<<<<<< HEAD
-                className={`group w-full text-left p-4 md:p-6 rounded-xl md:rounded-2xl border transition-all duration-300 flex justify-between items-center min-h-[64px] md:min-h-[88px] touch-manipulation
-=======
                 role="button"
                 tabIndex={0}
                 aria-label={`${member.fullName} card`}
                 className={`group flex min-h-[62px] w-full touch-manipulation items-center justify-between rounded-xl border p-3.5 text-left transition-all duration-300 md:min-h-[88px] md:rounded-2xl md:p-6
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
                   ${
                     activeIndex === index
                       ? "border-orange-500 bg-zinc-900/80"
@@ -359,7 +324,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                 >
                   {String(member.id).padStart(2, "0")}
                 </div>
-              </motion.button>
+              </motion.div>
             ))}
           </div>
         </div>

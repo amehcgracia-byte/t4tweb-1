@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
+import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
 type NodeType = "section" | "background" | "card" | "text" | "button" | "image"
 
@@ -196,17 +197,15 @@ function parseGrouped(value: string | null): boolean {
   return value === "true"
 }
 
-<<<<<<< HEAD
-=======
 function parseDatasetNumber(value: string | undefined): number | null {
   if (!value) return null
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
 }
 
-function readHydratedNodeOverride(nodeId: string): HydratedNodeOverride | null {
+function readHydratedNodeOverride(nodeId: string): HomeEditorNodeOverride | null {
   if (typeof window === "undefined") return null
-  const bag = (window as Window & { __HOME_EDITOR_NODE_OVERRIDES__?: Record<string, HydratedNodeOverride> }).__HOME_EDITOR_NODE_OVERRIDES__
+  const bag = (window as Window & { __HOME_EDITOR_NODE_OVERRIDES__?: Record<string, HomeEditorNodeOverride> }).__HOME_EDITOR_NODE_OVERRIDES__
   if (!bag || typeof bag !== "object") return null
   const value = bag[nodeId]
   return value && typeof value === "object" ? value : null
@@ -229,13 +228,12 @@ function extractBandMemberIndex(nodeId: string | null | undefined): number | nul
   return Number.isFinite(index) ? index : null
 }
 
-function getConcertFieldFromNodeContent(node: EditorNode | null, field: ConcertField): string {
-  if (!node) return ""
-  const value = node.content[field as keyof EditorNode["content"]]
-  return typeof value === "string" ? value : ""
-}
+// function getConcertFieldFromNodeContent(node: EditorNode | null, field: ConcertField): string {
+//   if (!node) return ""
+//   const value = node.content[field as keyof EditorNode["content"]]
+//   return typeof value === "string" ? value : ""
+// }
 
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
 function rgbToHex(rgb: string): string {
   if (!rgb) return "#ffffff"
   if (rgb.startsWith("#")) return rgb
@@ -245,8 +243,6 @@ function rgbToHex(rgb: string): string {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
 }
 
-<<<<<<< HEAD
-=======
 function parseCssColor(input: string | undefined): { r: number; g: number; b: number; a: number } | null {
   if (!input) return null
   const color = input.trim()
@@ -300,7 +296,6 @@ function isPersistableImageSrc(value: string | undefined): boolean {
   return src.startsWith("http://") || src.startsWith("https://") || src.startsWith("/")
 }
 
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
 const VisualEditorContext = createContext<VisualEditorContextType>({
   isEditing: false,
   setIsEditing: () => {},
@@ -694,11 +689,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             let isContentEdit = !!n.explicitContent
             let isStyleEdit = !!n.explicitStyle
             Object.entries(command.patch).forEach(([k, v]) => {
-<<<<<<< HEAD
-              if (["text", "textSegments", "href", "src", "alt", "videoUrl"].includes(k)) {
-=======
               if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl"].includes(k)) {
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
                 isContentEdit = true;
                 (content as Record<string, unknown>)[k] = v
               }
@@ -725,12 +716,6 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             setSelectedId(null)
             setOpenPanel(false)
           }
-<<<<<<< HEAD
-=======
-          next.delete(command.nodeId)
-          setSelectedId((current) => (current === command.nodeId ? null : current))
-          setOpenPanel((current) => (current ? false : current))
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
           break
         case "COPY_NODE": {
           const node = next.get(command.nodeId)
@@ -751,12 +736,6 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             setSelectedId(null)
             setOpenPanel(false)
           }
-<<<<<<< HEAD
-=======
-          next.delete(command.nodeId)
-          setSelectedId((current) => (current === command.nodeId ? null : current))
-          setOpenPanel((current) => (current ? false : current))
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
           break
         }
         case "PASTE_NODE": {
@@ -1012,12 +991,9 @@ export function VisualEditorOverlay() {
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
-<<<<<<< HEAD
-=======
   const heroTitleSegments = selectedNode?.id === "hero-title"
-    ? (selectedNode.content.titleSegments || selectedNode.content.textSegments || [])
+    ? (selectedNode.content.textSegments || [])
     : []
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
   const selectedBandMemberIndex = selectedNode?.id.startsWith("member-item-")
     ? Number(selectedNode.id.replace("member-item-", ""))
     : null
@@ -1225,29 +1201,30 @@ export function VisualEditorOverlay() {
       if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]") || target.closest("[data-editor-deploy-modal]")) return
       const hit = getEditableAtPosition(e.clientX, e.clientY)
       if (hit) {
-        if (multiModifier) {
-          e.preventDefault()
-          e.stopPropagation()
-          const current = selectedIdsRef.current
-          let next: string[]
-          if (current.includes(hit.id)) {
-            next = current.filter((id) => id !== hit.id)
-            if (next.length === 0) {
-              dispatch({ type: "DESELECT_NODE" })
-            } else {
-              dispatch({ type: "SELECT_NODE", nodeId: next[0] })
-            }
-          } else {
-            next = [...current, hit.id]
-            dispatch({ type: "SELECT_NODE", nodeId: hit.id })
-          }
-          setSelectedIds(next)
-          const bandMemberIndex = extractBandMemberIndex(hit.id)
-          if (bandMemberIndex !== null) {
-            window.dispatchEvent(new CustomEvent("editor-band-member-focus", { detail: { index: bandMemberIndex } }))
-          }
-          return
-        }
+        // Multi-selection feature commented out for now
+        // if (multiModifier) {
+        //   e.preventDefault()
+        //   e.stopPropagation()
+        //   const current = selectedIdsRef.current
+        //   let next: string[]
+        //   if (current.includes(hit.id)) {
+        //     next = current.filter((id) => id !== hit.id)
+        //     if (next.length === 0) {
+        //       dispatch({ type: "DESELECT_NODE" })
+        //     } else {
+        //       dispatch({ type: "SELECT_NODE", nodeId: next[0] })
+        //     }
+        //   } else {
+        //     next = [...current, hit.id]
+        //     dispatch({ type: "SELECT_NODE", nodeId: hit.id })
+        //   }
+        //   setSelectedIds(next)
+        //   const bandMemberIndex = extractBandMemberIndex(hit.id)
+        //   if (bandMemberIndex !== null) {
+        //     window.dispatchEvent(new CustomEvent("editor-band-member-focus", { detail: { index: bandMemberIndex } }))
+        //   }
+        //   return
+        // }
         e.preventDefault()
         e.stopPropagation()
         dispatch({ type: "SELECT_NODE", nodeId: hit.id })
@@ -1263,13 +1240,14 @@ export function VisualEditorOverlay() {
           lastGeometry: n ? { ...n.geometry } : null,
         })
       } else {
-        if (multiModifier) {
-          marqueeRef.current = { active: true, start: { x: e.clientX, y: e.clientY } }
-          setMarqueeRect({ x: e.clientX, y: e.clientY, width: 0, height: 0 })
-          return
-        }
+        // Multi-selection feature commented out for now
+        // if (multiModifier) {
+        //   marqueeRef.current = { active: true, start: { x: e.clientX, y: e.clientY } }
+        //   setMarqueeRect({ x: e.clientX, y: e.clientY, width: 0, height: 0 })
+        //   return
+        // }
         dispatch({ type: "DESELECT_NODE" })
-        setSelectedIds([])
+        // setSelectedIds([])
       }
     }
 
@@ -1415,11 +1393,7 @@ export function VisualEditorOverlay() {
       window.removeEventListener("keydown", onKeyDown)
       document.body.removeAttribute("data-editor-mode")
     }
-<<<<<<< HEAD
   }, [isEditing, dispatch, selectedId, nodes, undo, redo, getEditableAtPosition])
-=======
-  }, [isEditing, dispatch, selectedId, selectedIds, undo, redo, getEditableAtPosition, marqueeRect, registry])
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
 
   if (!isEditing) {
     return null
@@ -1666,7 +1640,6 @@ export function VisualEditorOverlay() {
                     type="button"
                     className="rounded border px-2 py-1 text-xs"
                     onClick={() => {
-<<<<<<< HEAD
                       const next = [
                         ...(selectedNode.content.textSegments || []),
                         {
@@ -1682,10 +1655,6 @@ export function VisualEditorOverlay() {
                         },
                       ]
                       dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
-=======
-                      const next = [...heroTitleSegments, { text: "New phrase", color: "#ffffff", bold: true, italic: false, underline: false, opacity: 1 }]
-                      dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
                     }}
                   >
                     Add phrase
@@ -1694,11 +1663,7 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-<<<<<<< HEAD
             {(selectedNode.type === "text" || selectedNode.type === "button") && !(selectedNode.type === "text" && selectedNode.id === "hero-title" && Array.isArray(selectedNode.content.textSegments)) && (
-=======
-            {(selectedNode.type === "text" || selectedNode.type === "button") && !(selectedNode.type === "text" && selectedNode.id === "hero-title" && heroTitleSegments.length > 0) && (
->>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
               <>
                 <label className="text-xs font-semibold">Content</label>
                 <textarea
@@ -1774,9 +1739,9 @@ export function VisualEditorOverlay() {
                   step={0.05}
                   className="w-full"
                   value={readColorOpacity(selectedNode.style.backgroundColor)}
-                  onChange={(e) => {
-                    dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: buildBoxOpacityPatch(selectedNode.id, Number(e.target.value)) })
-                  }}
+                   onChange={(e) => {
+                     dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) / 100 } })
+                   }}
                 />
                 <label className="text-xs font-semibold">Link</label>
                 <input
