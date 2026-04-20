@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
+import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
+import { getTraceNodeId } from "@/lib/sanity/env"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
 interface Concert {
@@ -18,6 +20,54 @@ interface Concert {
   genre: string
   capacity: string
   price: string
+  locationUrl: string
+}
+type ConcertEditableField = "date" | "venue" | "city" | "country" | "genre" | "price" | "status" | "time" | "capacity" | "locationUrl"
+
+interface LiveSectionProps {
+  overrides?: Record<string, HomeEditorNodeOverride>
+}
+
+function buildInlineStyleFromOverride(override?: HomeEditorNodeOverride): CSSProperties | undefined {
+  if (!override) return undefined
+  const style: CSSProperties = {}
+  const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
+  if (override.explicitPosition || (override.explicitStyle && scale !== 1)) {
+    style.transform = scale !== 1
+      ? `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px) scale(${scale})`
+      : `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px)`
+    style.transformOrigin = "top left"
+  }
+  if (override.explicitSize) {
+    style.width = `${Math.max(8, Math.round(override.geometry.width))}px`
+    style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
+  }
+  if (override.explicitStyle) {
+    if (override.style.opacity !== undefined) style.opacity = override.style.opacity
+    if (override.style.backgroundColor) style.backgroundColor = override.style.backgroundColor
+    if (override.style.color) style.color = override.style.color
+    if (override.style.fontSize) style.fontSize = override.style.fontSize
+    if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
+    if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
+    if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
+    if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
+    if (override.style.minHeight) style.minHeight = override.style.minHeight
+    if (override.style.paddingTop) style.paddingTop = override.style.paddingTop
+    if (override.style.paddingBottom) style.paddingBottom = override.style.paddingBottom
+  }
+  return Object.keys(style).length > 0 ? style : undefined
+}
+
+function resolveTextOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const text = node.content.text?.trim()
+  return text ? text : fallback
+}
+
+function resolveHrefOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const href = node.content.href?.trim()
+  return href ? href : fallback
 }
 
 function formatDate(dateStr: string): string {
@@ -33,13 +83,14 @@ interface LiveSectionProps {
   overrides?: Record<string, HomeEditorNodeOverride>
 }
 
-export function LiveSection({ overrides = {} }: LiveSectionProps) {
+export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
-  const [concerts, setConcerts] = useState<Concert[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [concerts, setConcerts] = useState<Concert[]>(initialConcerts)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
+  const resolvedLiveBackgroundSrc = useHomeEditorImageSrc("live-section-bg-image", "/images/sections/live-bg.jpg")
+  const sectionStyle = buildInlineStyleFromOverride(overrides["live-section"])
+  const sectionBackgroundStyle = buildInlineStyleFromOverride(overrides["live-section-bg-image"])
 
   useEffect(() => {
     if (!isEditing) return
@@ -85,6 +136,7 @@ export function LiveSection({ overrides = {} }: LiveSectionProps) {
             genre: values[6] || "",
             capacity: values[7] || "",
             price: values[8] || "Free",
+            locationUrl: values[9] || "",
           }
         })
         const sorted = parsed.sort((a, b) =>
@@ -102,8 +154,57 @@ export function LiveSection({ overrides = {} }: LiveSectionProps) {
     fetchConcerts()
   }, [])
 
+  useEffect(() => {
+    const onConcertFieldUpdate = (event: Event) => {
+      const custom = event as CustomEvent<{ cardId?: string; field?: ConcertEditableField; value?: string }>
+      const cardId = custom.detail?.cardId || ""
+      const field = custom.detail?.field
+      const value = custom.detail?.value ?? ""
+      const match = /^live-(upcoming|history)-event-(\d+)$/.exec(cardId)
+      if (!match || !field) return
+
+      const listType = match[1]
+      const listIndex = Number(match[2])
+      if (Number.isNaN(listIndex)) return
+
+      setConcerts((prev) => {
+        const sorted = [...prev].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        const filteredIndices: number[] = []
+        sorted.forEach((item, i) => {
+          const isUpcoming = item.status === "Upcoming"
+          if ((listType === "upcoming" && isUpcoming) || (listType === "history" && !isUpcoming)) {
+            filteredIndices.push(i)
+          }
+        })
+        const targetOriginalIndex = filteredIndices[listIndex]
+        if (targetOriginalIndex === undefined) return prev
+        const next = [...sorted]
+        const current = next[targetOriginalIndex]
+        next[targetOriginalIndex] = { ...current, [field]: value }
+        return next
+      })
+    }
+
+    window.addEventListener("editor-live-concert-update", onConcertFieldUpdate as EventListener)
+    return () => {
+      window.removeEventListener("editor-live-concert-update", onConcertFieldUpdate as EventListener)
+    }
+  }, [])
+
   const upcomingConcerts = concerts.filter(c => c.status === "Upcoming")
   const historyConcerts = concerts.filter(c => c.status === "Completed")
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" || !traceNodeId) return
+    if (!traceNodeId.startsWith("live-")) return
+    console.info("[live][trace]", {
+      traceNodeId,
+      hasOverride: !!overrides[traceNodeId],
+      override: overrides[traceNodeId] || null,
+      upcomingCount: upcomingConcerts.length,
+      historyCount: historyConcerts.length,
+    })
+  }, [traceNodeId, overrides, upcomingConcerts.length, historyConcerts.length])
 
   const platforms = [
     { name: "Spotify", href: "https://open.spotify.com/artist/0FHjK3O0k8HQMrJsF7KQwF", icon: SpotifyIcon, color: "hover:bg-[#1DB954]", category: "streaming" },
@@ -119,6 +220,49 @@ export function LiveSection({ overrides = {} }: LiveSectionProps) {
     { name: "TikTok", href: "https://www.tiktok.com/@tales.40.tilllerman", icon: TikTokIcon, color: "hover:bg-[#000000]", category: "social" },
     { name: "Facebook", href: "https://www.facebook.com/profile.php?id=61575566232586", icon: FacebookIcon, color: "hover:bg-[#1877F2]", category: "social" },
   ]
+
+  const resolveConcertDateText = (cardId: string, fallbackDate: string): string => {
+    const dateNode = overrides[`${cardId}-date`]
+    if (dateNode?.explicitContent && dateNode.content.text?.trim()) return dateNode.content.text.trim()
+    const cardNode = overrides[cardId]
+    if (cardNode?.explicitContent && cardNode.content.date) return formatDate(cardNode.content.date)
+    return formatDate(fallbackDate)
+  }
+
+  const resolveConcertVenueText = (cardId: string, fallback: string): string => {
+    const venueNode = overrides[`${cardId}-venue`]
+    if (venueNode?.explicitContent && venueNode.content.text?.trim()) return venueNode.content.text.trim()
+    const cardNode = overrides[cardId]
+    if (cardNode?.explicitContent && cardNode.content.venue?.trim()) return cardNode.content.venue.trim()
+    return fallback
+  }
+
+  const resolveConcertLocationText = (cardId: string, fallbackCity: string, fallbackCountry: string): string => {
+    const locationNode = overrides[`${cardId}-city`]
+    if (locationNode?.explicitContent && locationNode.content.text?.trim()) return locationNode.content.text.trim()
+    const cardNode = overrides[cardId]
+    if (cardNode?.explicitContent) {
+      const city = cardNode.content.city?.trim() || fallbackCity
+      const country = cardNode.content.country?.trim() || fallbackCountry
+      return `${city}, ${country}`.replace(/^,\s*/, "").replace(/,\s*$/, "")
+    }
+    return `${fallbackCity}, ${fallbackCountry}`
+  }
+
+  const resolveConcertSimpleField = (
+    cardId: string,
+    suffix: "genre" | "price" | "time",
+    fallback: string
+  ): string => {
+    const childNode = overrides[`${cardId}-${suffix}`]
+    if (childNode?.explicitContent && childNode.content.text?.trim()) return childNode.content.text.trim()
+    const cardNode = overrides[cardId]
+    if (cardNode?.explicitContent) {
+      const fromCard = cardNode.content[suffix]
+      if (typeof fromCard === "string" && fromCard.trim()) return fromCard.trim()
+    }
+    return fallback
+  }
 
   return (
     <section ref={sectionRef} data-editor-node-id="live-section" data-editor-node-type="section" data-editor-node-label="Live Section" className="relative min-h-screen overflow-hidden">
@@ -163,6 +307,7 @@ export function LiveSection({ overrides = {} }: LiveSectionProps) {
   target="_blank"
   rel="noopener noreferrer"
   className="inline-flex items-center gap-3 px-8 py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl min-h-[48px]"
+  style={buildInlineStyleFromOverride(overrides["live-section-see-shows-button"])}
 >
   <BandsinTownIcon />
   Bandsintown
@@ -273,7 +418,14 @@ export function LiveSection({ overrides = {} }: LiveSectionProps) {
               )}
 
               {!loading && !error && upcomingConcerts.length > 0 && (
-                <div className="space-y-3">
+                <div
+                  data-editor-node-id="live-upcoming-list"
+                  data-editor-node-type="card"
+                  data-editor-node-label="Live Upcoming List"
+                  data-editor-grouped="true"
+                  className="space-y-3"
+                  style={buildInlineStyleFromOverride(overrides["live-upcoming-list"])}
+                >
                   {upcomingConcerts.map((concert, index) => (
                     <motion.div
                       key={`upcoming-${index}`}
@@ -286,6 +438,7 @@ export function LiveSection({ overrides = {} }: LiveSectionProps) {
                       data-editor-node-label={`Upcoming Event ${index + 1}`}
                       data-editor-grouped="true"
                       className="min-h-[80px] p-5 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all duration-300 group shadow-lg hover:shadow-xl flex items-center"
+                      style={buildInlineStyleFromOverride(overrides[cardId])}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
                         <div data-editor-node-id={`live-upcoming-event-${index}-date`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Date`} className="shrink-0 text-primary font-medium min-w-[100px]">{formatDate(concert.date)}</div>
@@ -304,8 +457,22 @@ export function LiveSection({ overrides = {} }: LiveSectionProps) {
               )}
 
               {!loading && !error && upcomingConcerts.length === 0 && (
-                <div className="text-center py-8 px-6 bg-secondary/20 border border-border rounded-xl">
-                  <p className="text-muted-foreground">No upcoming shows scheduled.</p>
+                <div
+                  data-editor-node-id="live-upcoming-empty"
+                  data-editor-node-type="card"
+                  data-editor-node-label="Live Upcoming Empty State"
+                  className="text-center py-8 px-6 bg-secondary/20 border border-border rounded-xl"
+                  style={buildInlineStyleFromOverride(overrides["live-upcoming-empty"])}
+                >
+                  <p
+                    data-editor-node-id="live-upcoming-empty-text"
+                    data-editor-node-type="text"
+                    data-editor-node-label="Live Upcoming Empty Text"
+                    className="text-muted-foreground"
+                    style={buildInlineStyleFromOverride(overrides["live-upcoming-empty-text"])}
+                  >
+                    {resolveTextOverride(overrides["live-upcoming-empty-text"], "No upcoming shows scheduled.")}
+                  </p>
                 </div>
               )}
             </motion.div>
@@ -327,7 +494,14 @@ export function LiveSection({ overrides = {} }: LiveSectionProps) {
               </h3>
 
               {!loading && !error && historyConcerts.length > 0 && (
-                <div className="space-y-3">
+                <div
+                  data-editor-node-id="live-history-list"
+                  data-editor-node-type="card"
+                  data-editor-node-label="Live History List"
+                  data-editor-grouped="true"
+                  className="space-y-3"
+                  style={buildInlineStyleFromOverride(overrides["live-history-list"])}
+                >
                   {historyConcerts.map((concert, index) => (
                     <motion.div
                       key={`history-${index}`}
@@ -340,6 +514,7 @@ export function LiveSection({ overrides = {} }: LiveSectionProps) {
                       data-editor-node-label={`History Event ${index + 1}`}
                       data-editor-grouped="true"
                       className="min-h-[80px] p-5 bg-secondary/30 rounded-xl border border-border/50 hover:border-primary/20 transition-all duration-300 group shadow-lg hover:shadow-xl flex items-center"
+                      style={buildInlineStyleFromOverride(overrides[cardId])}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
                         <div data-editor-node-id={`live-history-event-${index}-date`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Date`} className="shrink-0 text-muted-foreground font-medium min-w-[100px]">{formatDate(concert.date)}</div>
@@ -348,12 +523,58 @@ export function LiveSection({ overrides = {} }: LiveSectionProps) {
                           <div data-editor-node-id={`live-history-event-${index}-city`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Location`} className="text-muted-foreground/70 text-sm">{concert.city}, {concert.country}</div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground/70 sm:ml-auto">
-                          <span className="px-3 py-1 bg-secondary/50 rounded-full text-xs">{concert.genre}</span>
-                          <span>{concert.price === "Free" ? "Free" : `€${concert.price}`}</span>
+                          <span
+                            data-editor-node-id={`${cardId}-genre`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`History Event ${index + 1} Genre`}
+                            data-concert-field="genre"
+                            className="px-3 py-1 bg-secondary/50 rounded-full text-xs"
+                            style={buildInlineStyleFromOverride(overrides[`${cardId}-genre`])}
+                          >
+                            {resolveConcertSimpleField(cardId, "genre", concert.genre)}
+                          </span>
+                          <span
+                            data-editor-node-id={`${cardId}-price`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`History Event ${index + 1} Price`}
+                            data-concert-field="price"
+                            style={buildInlineStyleFromOverride(overrides[`${cardId}-price`])}
+                          >
+                            {priceLabel}
+                          </span>
+                          <span
+                            data-editor-node-id={`${cardId}-time`}
+                            data-editor-node-type="text"
+                            data-editor-node-label={`History Event ${index + 1} Time`}
+                            data-concert-field="time"
+                            className="text-xs"
+                            style={buildInlineStyleFromOverride(overrides[`${cardId}-time`])}
+                          >
+                            {resolveConcertSimpleField(cardId, "time", concert.time)}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
                   ))}
+                </div>
+              )}
+              {!loading && !error && historyConcerts.length === 0 && (
+                <div
+                  data-editor-node-id="live-history-empty"
+                  data-editor-node-type="card"
+                  data-editor-node-label="Live History Empty State"
+                  className="text-center py-8 px-6 bg-secondary/20 border border-border rounded-xl"
+                  style={buildInlineStyleFromOverride(overrides["live-history-empty"])}
+                >
+                  <p
+                    data-editor-node-id="live-history-empty-text"
+                    data-editor-node-type="text"
+                    data-editor-node-label="Live History Empty Text"
+                    className="text-muted-foreground"
+                    style={buildInlineStyleFromOverride(overrides["live-history-empty-text"])}
+                  >
+                    {resolveTextOverride(overrides["live-history-empty-text"], "No past shows available.")}
+                  </p>
                 </div>
               )}
             </motion.div>

@@ -4,8 +4,10 @@ import { useRef, useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
+import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
+<<<<<<< HEAD
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
 import { client } from "@/lib/sanity/client"
@@ -18,17 +20,129 @@ const FALLBACK_MEMBERS = [
   { id: 4, fullName: "Robii Crowford", role: "Electric Guitar", image: "/images/members/Robii Crowford.JPG" },
   { id: 5, fullName: "Tarik Benatmane", role: "Electric Bass", image: "/images/members/Tarik Benatmane.JPG" },
 ]
+=======
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
 
 interface BandMembersSectionProps {
+  initialMembers: BandMemberData[]
   overrides?: Record<string, HomeEditorNodeOverride>
 }
 
+<<<<<<< HEAD
 export function BandMembersSection({ overrides = {} }: BandMembersSectionProps) {
+=======
+function buildInlineStyleFromOverride(
+  override: HomeEditorNodeOverride | undefined,
+  includeGeometry: boolean
+): CSSProperties | undefined {
+  if (!override) return undefined
+  const style: CSSProperties = {}
+  const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
+  if (includeGeometry && (override.explicitPosition || (override.explicitStyle && scale !== 1))) {
+    style.transform = scale !== 1
+      ? `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px) scale(${scale})`
+      : `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px)`
+    style.transformOrigin = "top left"
+  }
+  if (includeGeometry && override.explicitSize) {
+    style.width = `${Math.max(8, Math.round(override.geometry.width))}px`
+    style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
+  }
+  if (override.explicitStyle) {
+    if (override.style.opacity !== undefined) style.opacity = override.style.opacity
+    if (override.content.gradientEnabled) {
+      style.background = `linear-gradient(135deg, ${override.content.gradientStart || "#111111"}, ${override.content.gradientEnd || "#000000"})`
+    } else if (override.style.backgroundColor) {
+      style.backgroundColor = override.style.backgroundColor
+    }
+    if (override.style.color) style.color = override.style.color
+    if (override.style.fontSize) style.fontSize = override.style.fontSize
+    if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
+    if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
+    if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
+    if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
+    if (override.style.minHeight) style.minHeight = override.style.minHeight
+    if (override.style.paddingTop) style.paddingTop = override.style.paddingTop
+    if (override.style.paddingBottom) style.paddingBottom = override.style.paddingBottom
+  }
+  return Object.keys(style).length > 0 ? style : undefined
+}
+
+function resolveTextOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const text = node.content.text?.trim()
+  return text ? text : fallback
+}
+
+function resolveMemberNameOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const text = node.content.text?.trim()
+  return text ? text : fallback
+}
+
+function resolveMemberRoleOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const text = node.content.text?.trim()
+  return text ? text : fallback
+}
+
+function resolveMemberNumberOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const text = node.content.text?.trim()
+  return text ? text : fallback
+}
+
+function buildInlineTextStyleFromOverride(
+  override: HomeEditorNodeOverride | undefined,
+  fallbackColor: string
+): CSSProperties | undefined {
+  if (!override) return undefined
+  const style: CSSProperties = {}
+  const gradientEnabled = !!override.content.gradientEnabled
+  const gradientStart = override.content.gradientStart || "#FFB15A"
+  const gradientEnd = override.content.gradientEnd || "#FF6C00"
+
+  if (gradientEnabled) {
+    style.background = `linear-gradient(90deg, ${gradientStart}, ${gradientEnd})`
+    style.WebkitBackgroundClip = "text"
+    style.backgroundClip = "text"
+    style.WebkitTextFillColor = "transparent"
+  } else {
+    style.color = override.style.color || fallbackColor
+  }
+
+  if (override.style.opacity !== undefined) style.opacity = override.style.opacity
+  if (override.style.fontSize) style.fontSize = override.style.fontSize
+  if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
+  if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
+  if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
+  if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
+  if (override.style.textAlign) style.textAlign = override.style.textAlign as CSSProperties["textAlign"]
+
+  return Object.keys(style).length > 0 ? style : undefined
+}
+
+function buildInlineImageStyleFromOverride(override: HomeEditorNodeOverride | undefined): CSSProperties | undefined {
+  if (!override) return undefined
+  const style: CSSProperties = {}
+  if (override.explicitStyle) {
+    const contrast = override.style.contrast ?? 100
+    const saturation = override.style.saturation ?? 100
+    const brightness = override.style.brightness ?? 100
+    const negative = override.style.negative ?? false
+    style.filter = `contrast(${contrast}%) saturate(${saturation}%) brightness(${brightness}%)${negative ? " invert(1)" : ""}`
+    if (override.style.opacity !== undefined) style.opacity = override.style.opacity
+  }
+  return Object.keys(style).length > 0 ? style : undefined
+}
+
+export function BandMembersSection({ initialMembers, overrides = {} }: BandMembersSectionProps) {
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
   const sectionRef = useRef<HTMLElement>(null)
   const [activeIndex, setActiveIndex] = useState<number>(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [members, setMembers] = useState(FALLBACK_MEMBERS)
+  const [members] = useState<BandMemberData[]>(initialMembers)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
 
@@ -40,17 +154,18 @@ export function BandMembersSection({ overrides = {} }: BandMembersSectionProps) 
   }, [])
 
   useEffect(() => {
-    client.fetch(bandMembersQuery).then((data) => {
-      if (data && data.length > 0) {
-        setMembers(data.map((m: any, i: number) => ({
-          id: i + 1,
-          fullName: m.fullName,
-          role: m.role,
-          image: m.imageUrl || FALLBACK_MEMBERS[i]?.image || FALLBACK_MEMBERS[0]?.image || "",
-        })))
-      }
-    }).catch(() => {})
-  }, [])
+    const onEditorBandMemberFocus = (event: Event) => {
+      const custom = event as CustomEvent<{ index?: number }>
+      const index = custom.detail?.index
+      if (typeof index !== "number" || Number.isNaN(index)) return
+      if (index < 0 || index >= members.length) return
+      setActiveIndex(index)
+    }
+    window.addEventListener("editor-band-member-focus", onEditorBandMemberFocus as EventListener)
+    return () => {
+      window.removeEventListener("editor-band-member-focus", onEditorBandMemberFocus as EventListener)
+    }
+  }, [members.length])
 
   const handleMemberClick = (index: number) => {
     setActiveIndex(index)
@@ -59,8 +174,40 @@ export function BandMembersSection({ overrides = {} }: BandMembersSectionProps) 
     }
   }
 
+<<<<<<< HEAD
   const activeMember = members[activeIndex]
   const activeImage = activeMember?.image || FALLBACK_MEMBERS[0]?.image || ""
+=======
+  const displayedMembers = members.map((member, index) => ({
+    ...member,
+    number: resolveMemberNumberOverride(overrides[`member-item-${index}-number`], String(member.id).padStart(2, "0")),
+    fullName: resolveMemberNameOverride(
+      overrides[`member-item-${index}-name`] ?? overrides[`member-item-${index}`],
+      member.fullName
+    ),
+    role: resolveMemberRoleOverride(overrides[`member-item-${index}-role`], member.role),
+    image: overrides[`member-item-${index}-image`]?.explicitContent && overrides[`member-item-${index}-image`]?.content.src
+      ? (overrides[`member-item-${index}-image`]?.content.src as string)
+      : member.image,
+  }))
+  const activeMember = displayedMembers[activeIndex]
+  const activeImage = activeMember?.image || initialMembers[0]?.image || ""
+  const activeImageStyle = buildInlineImageStyleFromOverride(overrides[`member-item-${activeIndex}-image`])
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" || !traceNodeId) return
+    if (!traceNodeId.startsWith("member-item-") && !traceNodeId.startsWith("band-members-")) return
+    console.info("[band-members][trace]", {
+      traceNodeId,
+      hasOverride: !!overrides[traceNodeId],
+      override: overrides[traceNodeId] || null,
+      activeIndex,
+      activeMember: activeMember
+        ? { id: activeMember.id, fullName: activeMember.fullName, role: activeMember.role, image: activeMember.image }
+        : null,
+    })
+  }, [traceNodeId, overrides, activeIndex, activeMember])
 
   return (
     <section
@@ -108,10 +255,15 @@ export function BandMembersSection({ overrides = {} }: BandMembersSectionProps) 
           />
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-6 md:gap-10 lg:gap-16 items-start">
+        <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-2 lg:gap-14">
           {/* Desktop photo - hidden on mobile */}
+<<<<<<< HEAD
           <div className="hidden lg:block relative aspect-[3/4] rounded-3xl overflow-hidden bg-zinc-950 shadow-2xl">
             {members.map((member, index) => (
+=======
+          <div className="relative hidden max-h-[78vh] max-h-[78dvh] min-h-[420px] overflow-hidden rounded-3xl bg-zinc-950 shadow-2xl lg:block lg:aspect-[3/4]">
+            {displayedMembers.map((member, index) => (
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
               <motion.div
                 key={member.id}
                 initial={false}
@@ -145,10 +297,16 @@ export function BandMembersSection({ overrides = {} }: BandMembersSectionProps) 
             ))}
           </div>
 
+<<<<<<< HEAD
           <div className="space-y-3 md:space-y-4">
             {members.map((member, index) => (
               <motion.button
                 type="button"
+=======
+          <div className="space-y-2.5 md:space-y-4">
+            {displayedMembers.map((member, index) => (
+              <motion.div
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
                 key={member.id}
                 onClick={() => handleMemberClick(index)}
                 onMouseEnter={() => (!isEditing && !isMobile) && setActiveIndex(index)}
@@ -158,7 +316,14 @@ export function BandMembersSection({ overrides = {} }: BandMembersSectionProps) 
                 data-editor-node-type="card"
                 data-editor-node-label={member.fullName}
                 data-editor-grouped="true"
+<<<<<<< HEAD
                 className={`group w-full text-left p-4 md:p-6 rounded-xl md:rounded-2xl border transition-all duration-300 flex justify-between items-center min-h-[64px] md:min-h-[88px] touch-manipulation
+=======
+                role="button"
+                tabIndex={0}
+                aria-label={`${member.fullName} card`}
+                className={`group flex min-h-[62px] w-full touch-manipulation items-center justify-between rounded-xl border p-3.5 text-left transition-all duration-300 md:min-h-[88px] md:rounded-2xl md:p-6
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
                   ${
                     activeIndex === index
                       ? "border-orange-500 bg-zinc-900/80"
@@ -208,14 +373,14 @@ export function BandMembersSection({ overrides = {} }: BandMembersSectionProps) 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:hidden"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3.5 lg:hidden"
             onClick={() => setModalOpen(false)}
           >
             <div className="absolute inset-0 bg-black/80" />
             
             <div
-              className="relative w-[90vw] max-w-sm rounded-2xl overflow-hidden shadow-2xl"
-              style={{ maxHeight: '80vh' }}
+              className="relative w-full max-w-[22rem] overflow-hidden rounded-2xl shadow-2xl"
+              style={{ maxHeight: "82dvh" }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative w-full" style={{ aspectRatio: '3/4' }}>

@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
+import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 import {
   buildHeroScrollIndicatorLayoutStyle,
@@ -86,12 +87,14 @@ export function HeroSection({ data }: { data: HeroData }) {
   const heroSectionRef = useRef<HTMLElement>(null)
   const heroBgRef = useRef<HTMLDivElement>(null)
   const heroLogoRef = useRef<HTMLDivElement>(null)
-  const heroTitleRef = useRef<HTMLHeadingElement>(null)
+  const heroTitleMainRef = useRef<HTMLSpanElement>(null)
+  const heroTitleAccentRef = useRef<HTMLSpanElement>(null)
   const heroSubtitleRef = useRef<HTMLParagraphElement>(null)
   const heroButtonsRef = useRef<HTMLDivElement>(null)
   const heroScrollRef = useRef<HTMLDivElement>(null)
 
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
+  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
 
   // Sync debug mode from query param (client-side only after hydration)
   useEffect(() => {
@@ -146,17 +149,31 @@ export function HeroSection({ data }: { data: HeroData }) {
         })
       }
 
-      if (heroTitleRef.current) {
-        const existing = getElementById('hero-title')
+      if (heroTitleMainRef.current) {
+        const existing = getElementById('hero-title-main')
         registerEditable({
-          id: 'hero-title',
+          id: 'hero-title-main',
           type: 'text',
-          label: 'Hero Title',
+          label: 'Hero Title Main',
           parentId: null,
-          element: heroTitleRef.current,
-          originalRect: heroTitleRef.current.getBoundingClientRect(),
+          element: heroTitleMainRef.current,
+          originalRect: heroTitleMainRef.current.getBoundingClientRect(),
           transform: existing?.transform || { x: 0, y: 0 },
-          dimensions: existing?.dimensions || { width: heroTitleRef.current.offsetWidth, height: heroTitleRef.current.offsetHeight },
+          dimensions: existing?.dimensions || { width: heroTitleMainRef.current.offsetWidth, height: heroTitleMainRef.current.offsetHeight },
+        })
+      }
+
+      if (heroTitleAccentRef.current) {
+        const existing = getElementById('hero-title-accent')
+        registerEditable({
+          id: 'hero-title-accent',
+          type: 'text',
+          label: 'Hero Title Accent',
+          parentId: null,
+          element: heroTitleAccentRef.current,
+          originalRect: heroTitleAccentRef.current.getBoundingClientRect(),
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: heroTitleAccentRef.current.offsetWidth, height: heroTitleAccentRef.current.offsetHeight },
         })
       }
 
@@ -209,7 +226,8 @@ export function HeroSection({ data }: { data: HeroData }) {
       unregisterEditable('hero-section')
       unregisterEditable('hero-bg-image')
       unregisterEditable('hero-logo')
-      unregisterEditable('hero-title')
+      unregisterEditable('hero-title-main')
+      unregisterEditable('hero-title-accent')
       unregisterEditable('hero-subtitle')
       unregisterEditable('hero-buttons')
       unregisterEditable('hero-scroll-indicator')
@@ -228,7 +246,7 @@ export function HeroSection({ data }: { data: HeroData }) {
   const content = data
   const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
   const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
-  const scrollLayoutSaved = scrollIndicatorHasLayout(content.elementStyles)
+  const scrollLayoutSaved = allowGeometryOverrides && scrollIndicatorHasLayout(content.elementStyles)
   const heroTitleMode: "legacy" | "segmented" = Array.isArray(content.titleSegments) && content.titleSegments.length > 0 ? "segmented" : "legacy"
   const normalizedTitleSegments = useMemo(() => {
     if (heroTitleMode !== "segmented") return []
@@ -255,8 +273,9 @@ export function HeroSection({ data }: { data: HeroData }) {
       }
     }
 
-    return deduped
-  }, [content.titleSegments, heroTitleMode])
+  const content = data || FALLBACK
+  const mainTitleText = content.title || FALLBACK.title
+  const accentTitleText = content.titleHighlight || FALLBACK.titleHighlight
 
   return (
     <section
@@ -268,8 +287,8 @@ export function HeroSection({ data }: { data: HeroData }) {
       data-editor-node-id="hero-section"
       data-editor-node-type="section"
       data-editor-node-label="Hero Section"
-      className="relative flex min-h-screen w-full items-stretch overflow-hidden bg-black"
-      style={getElementStyle(content.elementStyles, "hero-section")}
+      className="relative flex min-h-screen min-h-[100dvh] w-full items-stretch overflow-hidden bg-black"
+      style={getElementStyle(content.elementStyles, "hero-section", { includeGeometry: allowGeometryOverrides })}
     >
       <div className="absolute inset-0 z-0">
         <motion.div
@@ -283,7 +302,7 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-media-kind="image"
             data-editor-node-label="Hero Background"
             className="absolute inset-0"
-            style={getElementStyle(content.elementStyles, "hero-bg-image")}
+            style={getElementStyle(content.elementStyles, "hero-bg-image", { includeGeometry: allowGeometryOverrides })}
           >
             <Image
               src={resolvedHeroBgSrc}
@@ -309,55 +328,29 @@ export function HeroSection({ data }: { data: HeroData }) {
         className="absolute inset-0 z-[1] bg-gradient-to-r from-transparent via-[#FF8C21]/21 to-transparent"
       />
 
-      <div className="relative z-10 flex min-h-screen w-full flex-col justify-end px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center text-center pb-8 pt-16">
+      <div className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col justify-end px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center pb-7 pt-16 text-center sm:pb-10 sm:pt-20">
           <h1 
-            ref={heroTitleRef}
-            data-editor-node-id="hero-title"
-            data-editor-node-type="text"
-            data-editor-node-label="Título Principal"
-            data-editor-title-mode={heroTitleMode}
-            data-editor-title-segments={heroTitleMode === "segmented" ? JSON.stringify(normalizedTitleSegments) : ""}
             className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6"
-            style={getElementStyle(data.elementStyles, "hero-title")}
           >
-            {heroTitleMode === "segmented"
-              ? normalizedTitleSegments.map((segment, index) => (
-                <span
-                  key={`hero-segment-${index}`}
-                  data-editor-segment-index={index}
-                  data-editor-gradient-enabled={segment.gradientEnabled ? "true" : "false"}
-                  data-editor-gradient-start={segment.gradientStart || ""}
-                  data-editor-gradient-end={segment.gradientEnd || ""}
-                  style={{
-                    ...(segment.gradientEnabled
-                      ? {
-                          background: `linear-gradient(90deg, ${segment.gradientStart || "#FFB15A"}, ${segment.gradientEnd || "#FF6C00"})`,
-                          WebkitBackgroundClip: "text",
-                          WebkitTextFillColor: "transparent",
-                          backgroundClip: "text",
-                        }
-                      : { color: segment.color || "#ffffff" }),
-                    fontWeight: segment.bold ? "700" : "400",
-                    fontStyle: segment.italic ? "italic" : "normal",
-                    textDecoration: segment.underline ? "underline" : "none",
-                    opacity: segment.opacity ?? 1,
-                    fontSize: segment.fontSize,
-                    fontFamily: segment.fontFamily,
-                    marginRight: "0.25em",
-                  }}
-                >
-                  {segment.text}
-                </span>
-              ))
-              : (
-                <>
-                  {content.title}{" "}
-                  <span className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent">
-                    {content.titleHighlight}
-                  </span>
-                </>
-              )}
+            <span
+              ref={heroTitleMainRef}
+              data-editor-node-id="hero-title-main"
+              data-editor-node-type="text"
+              data-editor-node-label="Hero Title Main"
+              className="mr-[0.25em]"
+            >
+              {mainTitleText}
+            </span>
+            <span
+              ref={heroTitleAccentRef}
+              data-editor-node-id="hero-title-accent"
+              data-editor-node-type="text"
+              data-editor-node-label="Hero Title Accent"
+              className="bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent"
+            >
+              {accentTitleText}
+            </span>
           </h1>
 
           <div className="flex flex-col items-center">
@@ -367,7 +360,11 @@ export function HeroSection({ data }: { data: HeroData }) {
               data-editor-node-type="image"
               data-editor-node-label="Hero Logo"
               className="relative"
-              style={{ width: 141, height: 141, ...getElementStyle(data.elementStyles, "hero-logo") }}
+              style={{
+                width: "clamp(6rem, 22vw, 8.8125rem)",
+                height: "clamp(6rem, 22vw, 8.8125rem)",
+                ...getElementStyle(data.elementStyles, "hero-logo", { includeGeometry: allowGeometryOverrides }),
+              }}
             >
               <Image
                 src={resolvedHeroLogoSrc}
@@ -383,8 +380,8 @@ export function HeroSection({ data }: { data: HeroData }) {
               data-editor-node-id="hero-subtitle"
               data-editor-node-type="text"
               data-editor-node-label="Subtítulo"
-              className="mt-3 text-sm font-semibold uppercase tracking-[0.38em] text-[#ffd3a3]"
-              style={getElementStyle(data.elementStyles, "hero-subtitle")}
+              className="mt-2.5 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ffd3a3] sm:text-sm sm:tracking-[0.3em]"
+              style={getElementStyle(data.elementStyles, "hero-subtitle", { includeGeometry: allowGeometryOverrides })}
             >
               {content.subtitle}
             </p>

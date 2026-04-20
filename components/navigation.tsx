@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
+import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { NavigationData } from "@/lib/sanity/navigation-loader"
 
@@ -11,6 +12,7 @@ export function Navigation({ data }: { data: NavigationData }) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
 
   // Refs for editable elements
   const navRef = useRef<HTMLDivElement>(null)
@@ -171,13 +173,10 @@ export function Navigation({ data }: { data: NavigationData }) {
       data-editor-node-label="Navigation"
       className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 ${
         isScrolled
-          ? "bg-black/80 backdrop-blur-2xl border-b border-white/10 shadow-xl shadow-black/25"
+          ? "backdrop-blur-2xl border-b border-white/10 shadow-xl shadow-black/25"
           : "bg-transparent"
       }`}
-        style={{
-          boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none",
-          ...getElementLayoutStyle(data.elementStyles, "navigation"),
-        }}
+        style={{ boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none" }}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center md:h-[5.5rem]">
@@ -186,12 +185,11 @@ export function Navigation({ data }: { data: NavigationData }) {
             data-editor-node-type="card"
             data-editor-node-label="Navigation Inner Container"
             className="flex h-16 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 md:h-[4.5rem] md:px-4"
-            style={getElementLayoutStyle(data.elementStyles, "navigation-inner")}
           >
             <a
               ref={logoLinkRef}
               href="#top"
-              className="inline-flex h-12 shrink-0 items-center justify-center gap-3 rounded-full p-0 transition-transform duration-300 hover:-translate-y-0.5 md:h-14"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full p-0 transition-transform duration-300 hover:-translate-y-0.5 sm:h-12 sm:gap-3 md:h-14"
             >
               <div
                 ref={logoRef}
@@ -200,9 +198,9 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-label="Logo Image"
                 className="relative h-full w-auto rounded-full shadow-lg shadow-black/30 overflow-hidden"
                 style={{
-                  width: 56,
-                  height: 56,
-                  ...getElementLayoutStyle(data.elementStyles, "nav-logo"),
+                  width: "clamp(2.75rem, 9vw, 3.5rem)",
+                  height: "clamp(2.75rem, 9vw, 3.5rem)",
+                  ...getElementLayoutStyle(data.elementStyles, "nav-logo", { includeGeometry: allowGeometryOverrides }),
                 }}
               >
                 <Image
@@ -218,7 +216,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-id="nav-brand-name"
                 data-editor-node-type="text"
                 data-editor-node-label="Brand Name"
-                style={getElementLayoutStyle(data.elementStyles, "nav-brand-name")}
+                style={getElementLayoutStyle(data.elementStyles, "nav-brand-name", { includeGeometry: allowGeometryOverrides })}
               >
                 {data.brandName}
               </span>
@@ -234,7 +232,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id={`nav-link-${index}`}
                   data-editor-node-type="button"
                   data-editor-node-label={`Nav Link: ${link.label}`}
-                  style={getElementLayoutStyle(data.elementStyles, `nav-link-${index}`)}
+                  style={getElementLayoutStyle(data.elementStyles, `nav-link-${index}`, { includeGeometry: allowGeometryOverrides })}
                 >
                   {link.label}
                 </a>
@@ -246,7 +244,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-type="button"
                 data-editor-node-label="Book Button"
                 className={`${primaryCtaClass} ml-2 shrink-0 lg:ml-3`}
-                style={getElementLayoutStyle(data.elementStyles, "nav-book-button")}
+                style={getElementLayoutStyle(data.elementStyles, "nav-book-button", { includeGeometry: allowGeometryOverrides })}
               >
                 {data.ctaLabel || "Book"}
               </a>
@@ -256,7 +254,7 @@ export function Navigation({ data }: { data: NavigationData }) {
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 text-foreground transition-colors hover:bg-white/20"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-foreground transition-colors hover:bg-white/20 sm:h-11 sm:w-11"
                 aria-label="Toggle menu"
                 aria-expanded={isMobileMenuOpen}
                 aria-controls="mobile-nav-panel"
@@ -274,7 +272,11 @@ export function Navigation({ data }: { data: NavigationData }) {
         </div>
 
         {isMobileMenuOpen && (
-          <div id="mobile-nav-panel" className="border-t border-white/10 pb-6 pt-3 md:hidden">
+          <div
+            id="mobile-nav-panel"
+            className="max-h-[calc(100dvh-4.5rem)] overflow-y-auto border-t border-white/10 pb-5 pt-2.5 md:hidden"
+            style={{ maxHeight: "calc(100vh - 4.5rem)" }}
+          >
             <div className="rounded-xl border border-white/10 bg-black/95 px-2 backdrop-blur-sm">
               {navLinks.map((link, index) => (
                 <a
@@ -286,7 +288,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id={`nav-mobile-link-${index}`}
                   data-editor-node-type="button"
                   data-editor-node-label={`Mobile Nav: ${link.label}`}
-                  style={getElementLayoutStyle(data.elementStyles, `nav-mobile-link-${index}`)}
+                  style={getElementLayoutStyle(data.elementStyles, `nav-mobile-link-${index}`, { includeGeometry: allowGeometryOverrides })}
                 >
                   {link.label}
                 </a>
@@ -300,7 +302,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id="nav-mobile-book-button"
                   data-editor-node-type="button"
                   data-editor-node-label="Mobile Book Button"
-                  style={getElementLayoutStyle(data.elementStyles, "nav-mobile-book-button")}
+                  style={getElementLayoutStyle(data.elementStyles, "nav-mobile-book-button", { includeGeometry: allowGeometryOverrides })}
                 >
                   {data.ctaLabel || "Book the band"}
                 </a>

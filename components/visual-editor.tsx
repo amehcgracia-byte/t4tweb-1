@@ -4,11 +4,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
-import {
-  applyScrollIndicatorLayoutToElement,
-  clearScrollIndicatorLayoutFromElement,
-  roundLayoutPx,
-} from "@/lib/hero-layout-styles"
 
 type NodeType = "section" | "background" | "card" | "text" | "button" | "image"
 
@@ -29,6 +24,17 @@ interface TextSegment {
   gradientEnabled?: boolean
   gradientStart?: string
   gradientEnd?: string
+}
+
+interface TextSegment {
+  text: string
+  color: string
+  bold: boolean
+  italic: boolean
+  underline: boolean
+  opacity: number
+  fontSize?: string
+  fontFamily?: string
 }
 
 interface NodeGeometry {
@@ -190,6 +196,46 @@ function parseGrouped(value: string | null): boolean {
   return value === "true"
 }
 
+<<<<<<< HEAD
+=======
+function parseDatasetNumber(value: string | undefined): number | null {
+  if (!value) return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function readHydratedNodeOverride(nodeId: string): HydratedNodeOverride | null {
+  if (typeof window === "undefined") return null
+  const bag = (window as Window & { __HOME_EDITOR_NODE_OVERRIDES__?: Record<string, HydratedNodeOverride> }).__HOME_EDITOR_NODE_OVERRIDES__
+  if (!bag || typeof bag !== "object") return null
+  const value = bag[nodeId]
+  return value && typeof value === "object" ? value : null
+}
+
+function extractConcertCardId(nodeId: string | null | undefined): string | null {
+  if (!nodeId) return null
+  const direct = nodeId.match(/^live-(upcoming|history)-event-(\d+)$/)
+  if (direct) return nodeId
+  const nested = nodeId.match(/^live-(upcoming|history)-event-(\d+)-/)
+  if (!nested) return null
+  return `live-${nested[1]}-event-${nested[2]}`
+}
+
+function extractBandMemberIndex(nodeId: string | null | undefined): number | null {
+  if (!nodeId) return null
+  const match = /^member-item-(\d+)(?:-(name|role|number|image))?$/.exec(nodeId)
+  if (!match) return null
+  const index = Number(match[1])
+  return Number.isFinite(index) ? index : null
+}
+
+function getConcertFieldFromNodeContent(node: EditorNode | null, field: ConcertField): string {
+  if (!node) return ""
+  const value = node.content[field as keyof EditorNode["content"]]
+  return typeof value === "string" ? value : ""
+}
+
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
 function rgbToHex(rgb: string): string {
   if (!rgb) return "#ffffff"
   if (rgb.startsWith("#")) return rgb
@@ -199,6 +245,62 @@ function rgbToHex(rgb: string): string {
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
 }
 
+<<<<<<< HEAD
+=======
+function parseCssColor(input: string | undefined): { r: number; g: number; b: number; a: number } | null {
+  if (!input) return null
+  const color = input.trim()
+  if (!color) return null
+  if (color.startsWith("#")) {
+    const hex = color.slice(1)
+    if (hex.length === 3) {
+      const r = Number.parseInt(hex[0] + hex[0], 16)
+      const g = Number.parseInt(hex[1] + hex[1], 16)
+      const b = Number.parseInt(hex[2] + hex[2], 16)
+      return { r, g, b, a: 1 }
+    }
+    if (hex.length === 6 || hex.length === 8) {
+      const r = Number.parseInt(hex.slice(0, 2), 16)
+      const g = Number.parseInt(hex.slice(2, 4), 16)
+      const b = Number.parseInt(hex.slice(4, 6), 16)
+      const a = hex.length === 8 ? Number.parseInt(hex.slice(6, 8), 16) / 255 : 1
+      return { r, g, b, a }
+    }
+    return null
+  }
+  const rgbaMatch = color.match(/rgba?\(([^)]+)\)/i)
+  if (!rgbaMatch) return null
+  const parts = rgbaMatch[1].split(",").map((part) => part.trim())
+  if (parts.length < 3) return null
+  const r = Number(parts[0])
+  const g = Number(parts[1])
+  const b = Number(parts[2])
+  const a = parts[3] !== undefined ? Number(parts[3]) : 1
+  if (![r, g, b, a].every((value) => Number.isFinite(value))) return null
+  return { r, g, b, a: Math.max(0, Math.min(1, a)) }
+}
+
+function withColorOpacity(input: string, opacity: number): string {
+  const parsed = parseCssColor(input)
+  if (!parsed) return input
+  const alpha = Math.max(0, Math.min(1, opacity))
+  return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${alpha.toFixed(3)})`
+}
+
+function readColorOpacity(input: string | undefined): number {
+  const parsed = parseCssColor(input)
+  return parsed?.a ?? 1
+}
+
+function isPersistableImageSrc(value: string | undefined): boolean {
+  if (!value) return false
+  const src = value.trim()
+  if (!src) return false
+  if (src.startsWith("blob:") || src.startsWith("data:") || src.startsWith("javascript:")) return false
+  return src.startsWith("http://") || src.startsWith("https://") || src.startsWith("/")
+}
+
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
 const VisualEditorContext = createContext<VisualEditorContextType>({
   isEditing: false,
   setIsEditing: () => {},
@@ -259,6 +361,8 @@ function scanRegistry(): Map<string, RuntimeEntry> {
 function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const el = entry.element
   const content: EditorNode["content"] = {}
+  const isStructuredConcertCard =
+    entry.type === "card" && (el.dataset.concertCard === "true" || Boolean(el.querySelector("[data-concert-field]")))
   if (entry.type === "text" || entry.type === "button" || entry.type === "card") {
     content.text = el.textContent?.trim() || ""
     if (entry.id === "hero-title") {
@@ -286,13 +390,6 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
           const childText = childEl.textContent?.trim()
           if (!childText) return
           const childStyle = getComputedStyle(childEl)
-          const fromData = childEl.dataset.editorGradientEnabled === "true"
-          const gradientStart = childEl.dataset.editorGradientStart || childEl.dataset.gradientStart
-          const gradientEnd = childEl.dataset.editorGradientEnd || childEl.dataset.gradientEnd
-          const bgImage = childStyle.backgroundImage || ""
-          const looksLikeGradient =
-            fromData ||
-            (bgImage.includes("gradient") && (childStyle.webkitBackgroundClip === "text" || childStyle.backgroundClip === "text"))
           segments.push({
             text: childText,
             color: rgbToHex(childStyle.color),
@@ -302,9 +399,6 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
             opacity: Number(childStyle.opacity || "1"),
             fontSize: childStyle.fontSize,
             fontFamily: childStyle.fontFamily,
-            gradientEnabled: looksLikeGradient,
-            gradientStart: gradientStart || "#FFB15A",
-            gradientEnd: gradientEnd || "#FF6C00",
           })
         }
       })
@@ -419,29 +513,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const hasManagedTransform = el.dataset.editorManagedTransform === "true"
     const hasManagedSize = el.dataset.editorManagedSize === "true"
     const nodeScale = Math.max(0.1, node.style.scale ?? 1)
-    const gx = roundLayoutPx(g.x)
-    const gy = roundLayoutPx(g.y)
-
-    /** Scroll: same transform model as public page (`left: 50%` + `translate(calc(-50% + x), y)`). */
-    if (node.id === "hero-scroll-indicator") {
-      if (node.explicitPosition || node.explicitSize || (node.explicitStyle && nodeScale !== 1)) {
-        applyScrollIndicatorLayoutToElement(el, { x: gx, y: gy, width: g.width, height: g.height }, nodeScale)
-        el.dataset.editorManagedTransform = "true"
-      } else {
-        if (hasManagedTransform) {
-          clearScrollIndicatorLayoutFromElement(el)
-          delete el.dataset.editorManagedTransform
-        }
-        if (hasManagedSize) {
-          el.style.removeProperty("width")
-          el.style.removeProperty("height")
-          delete el.dataset.editorManagedSize
-        }
-      }
-    } else if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
+    if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
       el.style.transform = nodeScale !== 1
-        ? `translate(${gx}px, ${gy}px) scale(${nodeScale})`
-        : `translate(${gx}px, ${gy}px)`
+        ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})`
+        : `translate(${g.x}px, ${g.y}px)`
       el.style.transformOrigin = "top left"
       el.dataset.editorManagedTransform = "true"
     } else {
@@ -451,15 +526,16 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         delete el.dataset.editorManagedTransform
       }
     }
-
     if (node.explicitSize) {
-      el.style.width = `${Math.max(8, roundLayoutPx(g.width))}px`
-      el.style.height = `${Math.max(8, roundLayoutPx(g.height))}px`
+      el.style.width = `${Math.max(8, g.width)}px`
+      el.style.height = `${Math.max(8, g.height)}px`
       el.dataset.editorManagedSize = "true"
-    } else if (hasManagedSize) {
-      el.style.removeProperty("width")
-      el.style.removeProperty("height")
-      delete el.dataset.editorManagedSize
+    } else {
+      if (hasManagedSize) {
+        el.style.removeProperty("width")
+        el.style.removeProperty("height")
+        delete el.dataset.editorManagedSize
+      }
     }
 
     if (node.explicitStyle && node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
@@ -467,21 +543,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (node.explicitContent) {
         if (node.id === "hero-title" && Array.isArray(node.content.textSegments) && node.content.textSegments.length > 0) {
           el.innerHTML = ""
-          node.content.textSegments.forEach((segment, segIndex) => {
+          node.content.textSegments.forEach((segment) => {
             const span = document.createElement("span")
             span.textContent = segment.text
-            span.dataset.editorGradientEnabled = segment.gradientEnabled ? "true" : "false"
-            if (segment.gradientStart) span.dataset.editorGradientStart = segment.gradientStart
-            if (segment.gradientEnd) span.dataset.editorGradientEnd = segment.gradientEnd
-            span.dataset.editorSegmentIndex = String(segIndex)
-            if (segment.gradientEnabled) {
-              span.style.background = `linear-gradient(90deg, ${segment.gradientStart || "#FFB15A"}, ${segment.gradientEnd || "#FF6C00"})`
-              span.style.webkitBackgroundClip = "text"
-              span.style.backgroundClip = "text"
-              span.style.webkitTextFillColor = "transparent"
-            } else {
-              span.style.color = segment.color
-            }
+            span.style.color = segment.color
             span.style.fontWeight = segment.bold ? "700" : "400"
             span.style.fontStyle = segment.italic ? "italic" : "normal"
             span.style.textDecoration = segment.underline ? "underline" : "none"
@@ -629,7 +694,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             let isContentEdit = !!n.explicitContent
             let isStyleEdit = !!n.explicitStyle
             Object.entries(command.patch).forEach(([k, v]) => {
+<<<<<<< HEAD
               if (["text", "textSegments", "href", "src", "alt", "videoUrl"].includes(k)) {
+=======
+              if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl"].includes(k)) {
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
                 isContentEdit = true;
                 (content as Record<string, unknown>)[k] = v
               }
@@ -656,6 +725,12 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             setSelectedId(null)
             setOpenPanel(false)
           }
+<<<<<<< HEAD
+=======
+          next.delete(command.nodeId)
+          setSelectedId((current) => (current === command.nodeId ? null : current))
+          setOpenPanel((current) => (current ? false : current))
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
           break
         case "COPY_NODE": {
           const node = next.get(command.nodeId)
@@ -676,6 +751,12 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             setSelectedId(null)
             setOpenPanel(false)
           }
+<<<<<<< HEAD
+=======
+          next.delete(command.nodeId)
+          setSelectedId((current) => (current === command.nodeId ? null : current))
+          setOpenPanel((current) => (current ? false : current))
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
           break
         }
         case "PASTE_NODE": {
@@ -931,6 +1012,12 @@ export function VisualEditorOverlay() {
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
+<<<<<<< HEAD
+=======
+  const heroTitleSegments = selectedNode?.id === "hero-title"
+    ? (selectedNode.content.titleSegments || selectedNode.content.textSegments || [])
+    : []
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
   const selectedBandMemberIndex = selectedNode?.id.startsWith("member-item-")
     ? Number(selectedNode.id.replace("member-item-", ""))
     : null
@@ -1138,6 +1225,29 @@ export function VisualEditorOverlay() {
       if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]") || target.closest("[data-editor-deploy-modal]")) return
       const hit = getEditableAtPosition(e.clientX, e.clientY)
       if (hit) {
+        if (multiModifier) {
+          e.preventDefault()
+          e.stopPropagation()
+          const current = selectedIdsRef.current
+          let next: string[]
+          if (current.includes(hit.id)) {
+            next = current.filter((id) => id !== hit.id)
+            if (next.length === 0) {
+              dispatch({ type: "DESELECT_NODE" })
+            } else {
+              dispatch({ type: "SELECT_NODE", nodeId: next[0] })
+            }
+          } else {
+            next = [...current, hit.id]
+            dispatch({ type: "SELECT_NODE", nodeId: hit.id })
+          }
+          setSelectedIds(next)
+          const bandMemberIndex = extractBandMemberIndex(hit.id)
+          if (bandMemberIndex !== null) {
+            window.dispatchEvent(new CustomEvent("editor-band-member-focus", { detail: { index: bandMemberIndex } }))
+          }
+          return
+        }
         e.preventDefault()
         e.stopPropagation()
         dispatch({ type: "SELECT_NODE", nodeId: hit.id })
@@ -1153,7 +1263,13 @@ export function VisualEditorOverlay() {
           lastGeometry: n ? { ...n.geometry } : null,
         })
       } else {
+        if (multiModifier) {
+          marqueeRef.current = { active: true, start: { x: e.clientX, y: e.clientY } }
+          setMarqueeRect({ x: e.clientX, y: e.clientY, width: 0, height: 0 })
+          return
+        }
         dispatch({ type: "DESELECT_NODE" })
+        setSelectedIds([])
       }
     }
 
@@ -1299,11 +1415,31 @@ export function VisualEditorOverlay() {
       window.removeEventListener("keydown", onKeyDown)
       document.body.removeAttribute("data-editor-mode")
     }
+<<<<<<< HEAD
   }, [isEditing, dispatch, selectedId, nodes, undo, redo, getEditableAtPosition])
+=======
+  }, [isEditing, dispatch, selectedId, selectedIds, undo, redo, getEditableAtPosition, marqueeRect, registry])
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
 
   if (!isEditing) {
     return null
   }
+
+  const deployStatusColor =
+    deployStatus === "success" ? "text-emerald-300" :
+    deployStatus === "partial" ? "text-amber-300" :
+    deployStatus === "failed" ? "text-red-300" :
+    "text-slate-300"
+  const deployStatusTitle =
+    deployStatus === "success" ? "Success" :
+    deployStatus === "partial" ? "Partial" :
+    deployStatus === "failed" ? "Error / Failed" :
+    "Saving..."
+  const deployStatusMessage =
+    deployStatus === "success" ? "All changes were saved and propagated." :
+    deployStatus === "partial" ? "Some changes were saved, but propagation is incomplete." :
+    deployStatus === "failed" ? "Save/deploy failed. Review technical details." :
+    "Deploy is currently running."
 
   return (
     <>
@@ -1449,55 +1585,6 @@ export function VisualEditorOverlay() {
                           />
                         </div>
                       </div>
-                      <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-800">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-slate-300"
-                          checked={!!segment.gradientEnabled}
-                          onChange={(e) => {
-                            const next = [...(selectedNode.content.textSegments || [])]
-                            const cur = next[index]
-                            next[index] = {
-                              ...cur,
-                              gradientEnabled: e.target.checked,
-                              gradientStart: cur.gradientStart || "#FFB15A",
-                              gradientEnd: cur.gradientEnd || "#FF6C00",
-                            }
-                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
-                          }}
-                        />
-                        Gradient text (this phrase)
-                      </label>
-                      {segment.gradientEnabled && (
-                        <div className="mt-1 grid grid-cols-2 gap-2 rounded border border-orange-200 bg-orange-50/80 p-2">
-                          <div>
-                            <div className="mb-0.5 text-[10px] font-medium text-slate-600">Gradient start</div>
-                            <input
-                              type="color"
-                              className="h-8 w-full rounded border border-slate-200"
-                              value={segment.gradientStart || "#FFB15A"}
-                              onChange={(e) => {
-                                const next = [...(selectedNode.content.textSegments || [])]
-                                next[index] = { ...next[index], gradientStart: e.target.value }
-                                dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
-                              }}
-                            />
-                          </div>
-                          <div>
-                            <div className="mb-0.5 text-[10px] font-medium text-slate-600">Gradient end</div>
-                            <input
-                              type="color"
-                              className="h-8 w-full rounded border border-slate-200"
-                              value={segment.gradientEnd || "#FF6C00"}
-                              onChange={(e) => {
-                                const next = [...(selectedNode.content.textSegments || [])]
-                                next[index] = { ...next[index], gradientEnd: e.target.value }
-                                dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
                       <div className="mt-2 flex flex-wrap gap-2">
                         <button
                           type="button"
@@ -1579,6 +1666,7 @@ export function VisualEditorOverlay() {
                     type="button"
                     className="rounded border px-2 py-1 text-xs"
                     onClick={() => {
+<<<<<<< HEAD
                       const next = [
                         ...(selectedNode.content.textSegments || []),
                         {
@@ -1594,6 +1682,10 @@ export function VisualEditorOverlay() {
                         },
                       ]
                       dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
+=======
+                      const next = [...heroTitleSegments, { text: "New phrase", color: "#ffffff", bold: true, italic: false, underline: false, opacity: 1 }]
+                      dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { titleSegments: next, textSegments: next, text: next.map((s) => s.text).join(" ").trim() } })
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
                     }}
                   >
                     Add phrase
@@ -1602,7 +1694,11 @@ export function VisualEditorOverlay() {
               </>
             )}
 
+<<<<<<< HEAD
             {(selectedNode.type === "text" || selectedNode.type === "button") && !(selectedNode.type === "text" && selectedNode.id === "hero-title" && Array.isArray(selectedNode.content.textSegments)) && (
+=======
+            {(selectedNode.type === "text" || selectedNode.type === "button") && !(selectedNode.type === "text" && selectedNode.id === "hero-title" && heroTitleSegments.length > 0) && (
+>>>>>>> a0c65c98a234a7c04a5fda4caf7711f85fdd6526
               <>
                 <label className="text-xs font-semibold">Content</label>
                 <textarea
@@ -1670,6 +1766,18 @@ export function VisualEditorOverlay() {
 
             {selectedNode.type === "button" && (
               <>
+                <label className="text-[10px]">Button opacity ({readColorOpacity(selectedNode.style.backgroundColor).toFixed(2)})</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  className="w-full"
+                  value={readColorOpacity(selectedNode.style.backgroundColor)}
+                  onChange={(e) => {
+                    dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: buildBoxOpacityPatch(selectedNode.id, Number(e.target.value)) })
+                  }}
+                />
                 <label className="text-xs font-semibold">Link</label>
                 <input
                   className="w-full rounded border p-1 text-xs"
@@ -1679,43 +1787,6 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {selectedNode.type === "image" && selectedNode.id === "hero-logo" && (
-              <>
-                <label className="text-xs font-semibold">Hero Logo Position & Size</label>
-                <div className="space-y-2 text-xs">
-                  <div>
-                    <label>X Position (px)</label>
-                    <input
-                      type="number"
-                      className="w-full rounded border p-1 text-xs"
-                      value={selectedNode.geometry.x}
-                      onChange={(e) => dispatch({ type: "MOVE_NODE", nodeId: selectedNode.id, dx: Number(e.target.value) - selectedNode.geometry.x, dy: 0, transient: true })}
-                      onBlur={(e) => dispatch({ type: "MOVE_NODE", nodeId: selectedNode.id, dx: Number(e.target.value) - selectedNode.geometry.x, dy: 0 })}
-                    />
-                  </div>
-                  <div>
-                    <label>Y Position (px)</label>
-                    <input
-                      type="number"
-                      className="w-full rounded border p-1 text-xs"
-                      value={selectedNode.geometry.y}
-                      onChange={(e) => dispatch({ type: "MOVE_NODE", nodeId: selectedNode.id, dx: 0, dy: Number(e.target.value) - selectedNode.geometry.y, transient: true })}
-                      onBlur={(e) => dispatch({ type: "MOVE_NODE", nodeId: selectedNode.id, dx: 0, dy: Number(e.target.value) - selectedNode.geometry.y })}
-                    />
-                  </div>
-                  <div>
-                    <label>Width (px)</label>
-                    <input
-                      type="number"
-                      className="w-full rounded border p-1 text-xs"
-                      value={selectedNode.geometry.width}
-                      onChange={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value), height: selectedNode.geometry.height, transient: true })}
-                      onBlur={(e) => dispatch({ type: "RESIZE_NODE", nodeId: selectedNode.id, width: Number(e.target.value), height: selectedNode.geometry.height })}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
             {(selectedNode.type === "image" || (selectedNode.type === "background" && selectedNode.content.mediaKind !== "video")) && (
               <>
                 <label className="text-xs font-semibold">Asset</label>
@@ -1881,6 +1952,20 @@ export function VisualEditorOverlay() {
 
             {selectedNode.type === "section" && (
               <>
+                {selectedNode.id === "navigation" && (
+                  <>
+                    <label className="text-xs font-semibold">Scrolled background opacity ({(selectedNode.style.opacity ?? 0.8).toFixed(2)})</label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      className="w-full"
+                      value={selectedNode.style.opacity ?? 0.8}
+                      onChange={(e) => dispatch({ type: "UPDATE_SECTION", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
+                    />
+                  </>
+                )}
                 <label className="text-xs font-semibold">Min Height</label>
                 <input
                   className="w-full rounded border p-1 text-xs"
