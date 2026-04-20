@@ -1,41 +1,66 @@
 "use client"
 
-import { useRef, useEffect } from "react"
-import type { CSSProperties } from "react"
-import Image from "next/image"
-import { CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
+import { useRef, useEffect, useState, type CSSProperties } from "react"
+import { motion } from "framer-motion"
+import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { useVisualEditor } from "@/components/visual-editor"
-import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
-import type { LatestReleaseData, LatestReleaseVideoSource } from "@/lib/sanity/latest-release-loader"
+import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
+import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
-function getYouTubePreviewSrc(youtubeId: string): string {
-  return `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/hqdefault.jpg`
+interface LatestReleaseSectionProps {
+  overrides?: Record<string, HomeEditorNodeOverride>
 }
 
-function getYouTubeEmbedSrc(source: LatestReleaseVideoSource): string {
-  const youtubeId = encodeURIComponent(source.youtubeId)
-  return `https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&loop=1&playlist=${youtubeId}&controls=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3`
-}
-
-function getLatestReleaseBoxStyle(
-  elementStyles: LatestReleaseData["elementStyles"],
-  nodeId: string
-): CSSProperties {
-  const style = { ...getElementLayoutStyle(elementStyles, nodeId) }
-  const persistedStyle = elementStyles[nodeId]
-
-  delete style.opacity
-
-  if (typeof persistedStyle?.backgroundColor === "string" && persistedStyle.backgroundColor.trim()) {
-    style.backgroundColor = persistedStyle.backgroundColor
-    style.backgroundImage = "none"
+function buildInlineStyleFromOverride(
+  override: HomeEditorNodeOverride | undefined,
+  includeGeometry: boolean
+): CSSProperties | undefined {
+  if (!override) return undefined
+  const style: CSSProperties = {}
+  const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
+  if (includeGeometry && (override.explicitPosition || (override.explicitStyle && scale !== 1))) {
+    style.transform = scale !== 1
+      ? `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px) scale(${scale})`
+      : `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px)`
+    style.transformOrigin = "top left"
   }
-
-  return style
+  if (includeGeometry && override.explicitSize) {
+    style.width = `${Math.max(8, Math.round(override.geometry.width))}px`
+    style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
+  }
+  if (override.explicitStyle) {
+    if (override.style.opacity !== undefined) style.opacity = override.style.opacity
+    if (override.style.backgroundColor) style.backgroundColor = override.style.backgroundColor
+    if (override.style.color) style.color = override.style.color
+    if (override.style.fontSize) style.fontSize = override.style.fontSize
+    if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
+    if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
+    if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
+    if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
+    if (override.style.minHeight) style.minHeight = override.style.minHeight
+    if (override.style.paddingTop) style.paddingTop = override.style.paddingTop
+    if (override.style.paddingBottom) style.paddingBottom = override.style.paddingBottom
+  }
+  return Object.keys(style).length > 0 ? style : undefined
 }
 
-export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
+function resolveTextOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const text = node.content.text?.trim()
+  return text ? text : fallback
+}
+
+function resolveHrefOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const href = node.content.href?.trim()
+  return href ? href : fallback
+}
+
+export function LatestReleaseSection({ overrides = {} }: LatestReleaseSectionProps) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
+  const [isIosMobile, setIsIosMobile] = useState(false)
+  const [isAndroidMobile, setIsAndroidMobile] = useState(false)
+  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled()
 
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
@@ -44,22 +69,43 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
   const subtitleRef = useRef<HTMLParagraphElement>(null)
   const watchButtonRef = useRef<HTMLAnchorElement>(null)
   const showsButtonRef = useRef<HTMLAnchorElement>(null)
+  const sectionOverride = overrides["latest-release-section"]
+  const bgOverride = overrides["latest-release-bg"]
+  const cardOverride = overrides["latest-release-card"]
+  const titleOverride = overrides["latest-release-title"]
+  const subtitleOverride = overrides["latest-release-subtitle"]
+  const watchButtonOverride = overrides["latest-release-watch-button"]
+  const showsButtonOverride = overrides["latest-release-shows-button"]
 
-  const releaseTitle = data.releaseTitle
-  const releaseSubtitle = data.releaseSubtitle
-  const releaseWatchLabel = data.releaseCtaLabel
-  const releaseShowsLabel = data.showsCtaLabel
-  const releaseWatchHref = data.releaseCtaHref
-  const releaseShowsHref = data.showsCtaHref
-  const orderedVideoSources = [...data.videoSources]
-    .sort((a, b) => a.order - b.order)
-    .slice(0, 3)
-  const videoSources = orderedVideoSources.filter((source) => source.enabled)
-  const effectiveVideoSources = videoSources.length > 0 ? videoSources : orderedVideoSources
-  const activeVideoSource = effectiveVideoSources[0]
-  const posterSource = activeVideoSource || orderedVideoSources[0]
-  const youtubePosterSrc = posterSource ? getYouTubePreviewSrc(posterSource.youtubeId) : ""
-  const renderStaticCard = isEditing
+  const releaseTitle = resolveTextOverride(titleOverride, CAMPAIGN_CONTENT.releaseTitle)
+  const releaseSubtitle = resolveTextOverride(subtitleOverride, CAMPAIGN_CONTENT.releaseSubtitle)
+  const releaseWatchLabel = resolveTextOverride(watchButtonOverride, CAMPAIGN_CONTENT.releaseCtaLabel)
+  const releaseShowsLabel = resolveTextOverride(showsButtonOverride, CAMPAIGN_CONTENT.showsCtaLabel)
+  const releaseWatchHref = resolveHrefOverride(watchButtonOverride, CAMPAIGN_CONTENT.releaseCtaHref)
+  const releaseShowsHref = resolveHrefOverride(showsButtonOverride, CAMPAIGN_CONTENT.showsCtaHref)
+  const renderStaticCard = isEditing || !!(
+    cardOverride && (cardOverride.explicitPosition || cardOverride.explicitSize || cardOverride.explicitStyle)
+  )
+
+  useEffect(() => {
+    const userAgent = navigator.userAgent || ""
+    const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches
+    const ios = /iPhone|iPad|iPod/i.test(userAgent) || ((navigator.platform === "MacIntel" || navigator.platform === "MacPPC") && navigator.maxTouchPoints > 1)
+    const android = /Android/i.test(userAgent)
+
+    setIsIosMobile(ios && hasCoarsePointer)
+    setIsAndroidMobile(android && hasCoarsePointer)
+  }, [])
+
+  useEffect(() => {
+    const userAgent = navigator.userAgent || ""
+    const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches
+    const ios = /iPhone|iPad|iPod/i.test(userAgent) || ((navigator.platform === "MacIntel" || navigator.platform === "MacPPC") && navigator.maxTouchPoints > 1)
+    const android = /Android/i.test(userAgent)
+
+    setIsIosMobile(ios && hasCoarsePointer)
+    setIsAndroidMobile(android && hasCoarsePointer)
+  }, [])
 
   useEffect(() => {
     if (!isEditing) return
@@ -82,7 +128,7 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
       const existing = getElementById('latest-release-bg')
       registerEditable({
         id: 'latest-release-bg',
-        type: 'background',
+        type: 'image',
         label: 'Release Background',
         parentId: null,
         element: bgRef.current,
@@ -181,46 +227,38 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
       data-editor-node-type="section"
       data-editor-node-label="Release Section"
       className="relative overflow-hidden bg-black"
-      style={getLatestReleaseBoxStyle(data.elementStyles, "latest-release-section")}
+      style={buildInlineStyleFromOverride(sectionOverride, allowGeometryOverrides)}
     >
       <div 
         ref={bgRef}
         data-editor-node-id="latest-release-bg"
         data-editor-node-type="background"
         data-editor-media-kind="video"
-        data-editor-video-url={data.videoSources[0]?.url || ""}
-        data-editor-video-sources={JSON.stringify(data.videoSources)}
         data-editor-node-label="Fondo Video YouTube"
         className="absolute left-0 top-0 z-0 h-full w-full"
-        style={getElementLayoutStyle(data.elementStyles, "latest-release-bg")}
+        style={buildInlineStyleFromOverride(bgOverride, allowGeometryOverrides)}
       >
-        {youtubePosterSrc ? (
-          <Image
-            src={youtubePosterSrc}
+        {isIosMobile ? (
+          <img
+            src="https://i.ytimg.com/vi/xofflmVqYGs/maxresdefault.jpg"
             alt=""
             aria-hidden="true"
-            fill
-            unoptimized
-            sizes="100vw"
-            className="z-0 object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
           />
-        ) : null}
-        {!isEditing && activeVideoSource ? (
+        ) : (
           <iframe
-            key={activeVideoSource.youtubeId}
-            src={getYouTubeEmbedSrc(activeVideoSource)}
+            src="https://www.youtube.com/embed/xofflmVqYGs?autoplay=1&mute=1&loop=1&playlist=xofflmVqYGs&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
             title=""
             aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[125%] w-[125%] -translate-x-1/2 -translate-y-[40%]"
-            allow="autoplay; encrypted-media; picture-in-picture"
+            className={`pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 ${
+              isAndroidMobile
+                ? "h-[165%] w-[185%] -translate-y-1/2"
+                : "h-[125%] w-[125%] -translate-y-[40%]"
+            }`}
+            allow="autoplay; encrypted-media"
             allowFullScreen={false}
           />
-        ) : null}
-        {isEditing ? (
-          <div className="absolute bottom-4 left-1/2 z-10 w-[min(90vw,520px)] -translate-x-1/2 rounded-lg border border-white/20 bg-black/60 px-4 py-3 text-center text-xs font-semibold text-white shadow-lg backdrop-blur-sm">
-            Don&apos;t worry — enabled video sources will play on the public page.
-          </div>
-        ) : null}
+        )}
         <div className="section-photo-fade-top" />
         <div className="section-photo-fade-bottom" />
       </div>
@@ -234,8 +272,7 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
               data-editor-node-type="card"
               data-editor-node-label="Release Card"
               className="mx-auto flex w-full max-w-4xl flex-col items-center rounded-xl border border-primary/28 bg-black/24 p-4 text-center shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-6 md:p-8"
-              style={getLatestReleaseBoxStyle(data.elementStyles, "latest-release-card")}
-
+              style={buildInlineStyleFromOverride(cardOverride, allowGeometryOverrides)}
             >
               <h2 
                 ref={titleRef}
@@ -243,8 +280,7 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
                 data-editor-node-type="text"
                 data-editor-node-label="Título del Lanzamiento"
                 className="mb-[var(--spacing-sm)] w-full text-balance text-center font-serif text-[clamp(1.65rem,7.2vw,2.4rem)] leading-[1.1] text-foreground sm:text-[length:var(--text-h2)] sm:leading-[var(--line-height-tight)]"
-                style={getElementLayoutStyle(data.elementStyles, "latest-release-title")}
-
+                style={buildInlineStyleFromOverride(titleOverride, allowGeometryOverrides)}
               >
                 {releaseTitle}
               </h2>
@@ -255,8 +291,7 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
                 data-editor-node-type="text"
                 data-editor-node-label="Subtítulo del Lanzamiento"
                 className="mb-5 w-full max-w-3xl text-balance text-center text-sm leading-relaxed text-muted-foreground sm:mb-6 sm:text-[length:var(--text-body)]"
-                style={getElementLayoutStyle(data.elementStyles, "latest-release-subtitle")}
-
+                style={buildInlineStyleFromOverride(subtitleOverride, allowGeometryOverrides)}
               >
                 {releaseSubtitle}
               </p>
@@ -270,9 +305,8 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
                   data-editor-node-id="latest-release-watch-button"
                   data-editor-node-type="button"
                   data-editor-node-label="Watch Video Button"
-                  className={`inline-flex min-h-[46px] w-full items-center justify-center overflow-hidden rounded-xl px-5 py-2.5 text-center text-sm font-semibold leading-tight shadow-md sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
-                  style={getLatestReleaseBoxStyle(data.elementStyles, "latest-release-watch-button")}
-
+                  className={`min-h-[46px] w-full rounded-xl px-5 py-2.5 text-center text-sm font-semibold shadow-md sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
+                  style={buildInlineStyleFromOverride(watchButtonOverride, allowGeometryOverrides)}
                 >
                   {releaseWatchLabel}
                 </a>
@@ -284,22 +318,24 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
                   data-editor-node-id="latest-release-shows-button"
                   data-editor-node-type="button"
                   data-editor-node-label="See Shows Button"
-                  className="inline-flex min-h-[46px] w-full items-center justify-center overflow-hidden rounded-xl border border-primary/35 px-5 py-2.5 text-center text-sm font-semibold leading-tight text-primary transition-colors hover:bg-primary/10 sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base"
-                  style={getLatestReleaseBoxStyle(data.elementStyles, "latest-release-shows-button")}
-
+                  className="min-h-[46px] w-full rounded-xl border border-primary/35 px-5 py-2.5 text-center text-sm font-semibold text-primary transition-colors hover:bg-primary/10 sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base"
+                  style={buildInlineStyleFromOverride(showsButtonOverride, allowGeometryOverrides)}
                 >
                   {releaseShowsLabel}
                 </a>
               </div>
             </div>
           ) : (
-          <div
+          <motion.div
             ref={cardRef}
             data-editor-node-id="latest-release-card"
             data-editor-node-type="card"
             data-editor-node-label="Release Card"
-            className="mx-auto flex w-full max-w-4xl flex-col items-center rounded-2xl border border-primary/28 bg-black/24 p-6 text-center shadow-md backdrop-blur-sm md:p-8"
-            style={getLatestReleaseBoxStyle(data.elementStyles, "latest-release-card")}
+            initial={isEditing ? false : { opacity: 0, y: 10 }}
+            whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
+            viewport={isEditing ? undefined : { once: true, amount: 0.25 }}
+            transition={isEditing ? undefined : { duration: 0.45 }}
+            className="flex w-full max-w-4xl flex-col items-center rounded-2xl border border-primary/28 bg-black/24 p-6 text-center shadow-md backdrop-blur-sm md:p-8"
           >
             <h2 
               ref={titleRef}
@@ -307,8 +343,7 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
               data-editor-node-type="text"
               data-editor-node-label="Título del Lanzamiento"
               className="mb-[var(--spacing-sm)] w-full text-balance text-center font-serif text-[clamp(1.65rem,7.2vw,2.4rem)] leading-[1.1] text-foreground sm:text-[length:var(--text-h2)] sm:leading-[var(--line-height-tight)]"
-              style={getElementLayoutStyle(data.elementStyles, "latest-release-title")}
-
+              style={buildInlineStyleFromOverride(titleOverride, allowGeometryOverrides)}
             >
               {releaseTitle}
             </h2>
@@ -319,8 +354,7 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
               data-editor-node-type="text"
               data-editor-node-label="Subtítulo del Lanzamiento"
               className="mb-5 w-full max-w-3xl text-balance text-center text-sm leading-relaxed text-muted-foreground sm:mb-6 sm:text-[length:var(--text-body)]"
-              style={getElementLayoutStyle(data.elementStyles, "latest-release-subtitle")}
-
+              style={buildInlineStyleFromOverride(subtitleOverride, allowGeometryOverrides)}
             >
               {releaseSubtitle}
             </p>
@@ -334,9 +368,8 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
                 data-editor-node-id="latest-release-watch-button"
                 data-editor-node-type="button"
                 data-editor-node-label="Watch Video Button"
-                className={`inline-flex min-h-[46px] w-full items-center justify-center overflow-hidden rounded-xl px-5 py-2.5 text-center text-sm font-semibold leading-tight shadow-md sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
-                style={getLatestReleaseBoxStyle(data.elementStyles, "latest-release-watch-button")}
-
+                className={`min-h-[46px] w-full rounded-xl px-5 py-2.5 text-center text-sm font-semibold shadow-md sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
+                style={buildInlineStyleFromOverride(watchButtonOverride, allowGeometryOverrides)}
               >
                 {releaseWatchLabel}
               </a>
@@ -348,14 +381,13 @@ export function LatestReleaseSection({ data }: { data: LatestReleaseData }) {
                 data-editor-node-id="latest-release-shows-button"
                 data-editor-node-type="button"
                 data-editor-node-label="See Shows Button"
-                className="inline-flex min-h-[46px] w-full items-center justify-center overflow-hidden rounded-xl border border-primary/35 px-5 py-2.5 text-center text-sm font-semibold leading-tight text-primary transition-colors hover:bg-primary/10 sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base"
-                style={getLatestReleaseBoxStyle(data.elementStyles, "latest-release-shows-button")}
-
+                className="min-h-[46px] w-full rounded-xl border border-primary/35 px-5 py-2.5 text-center text-sm font-semibold text-primary transition-colors hover:bg-primary/10 sm:min-h-[48px] sm:w-auto sm:px-6 sm:py-3 sm:text-base"
+                style={buildInlineStyleFromOverride(showsButtonOverride, allowGeometryOverrides)}
               >
                 {releaseShowsLabel}
               </a>
             </div>
-          </div>
+          </motion.div>
           )}
         </div>
       </div>

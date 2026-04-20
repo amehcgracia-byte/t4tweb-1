@@ -1,52 +1,135 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import type { CSSProperties } from "react"
+import { useRef, useState, useEffect, type CSSProperties } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
+import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
-import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 import type { BandMemberData } from "@/lib/sanity/band-members-loader"
+import { getTraceNodeId } from "@/lib/sanity/env"
 
 interface BandMembersSectionProps {
   initialMembers: BandMemberData[]
-  backgroundImageUrl?: string
-  headerEyebrow?: string
-  headerTitle?: string
-  headerDescription?: string
-  elementStyles?: Record<string, Record<string, unknown>>
+  overrides?: Record<string, HomeEditorNodeOverride>
 }
 
-function getBandMemberCardStyle(
-  elementStyles: Record<string, Record<string, unknown>>,
-  nodeId: string
-): CSSProperties {
-  const style = { ...getElementLayoutStyle(elementStyles, nodeId) }
-  const rawStyle = elementStyles[nodeId]
-  delete style.opacity
-  if (typeof rawStyle?.backgroundColor === "string") {
-    style.backgroundColor = rawStyle.backgroundColor
-    style.backgroundImage = "none"
+function buildInlineStyleFromOverride(
+  override: HomeEditorNodeOverride | undefined,
+  includeGeometry: boolean
+): CSSProperties | undefined {
+  if (!override) return undefined
+  const style: CSSProperties = {}
+  const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
+  if (includeGeometry && (override.explicitPosition || (override.explicitStyle && scale !== 1))) {
+    style.transform = scale !== 1
+      ? `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px) scale(${scale})`
+      : `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px)`
+    style.transformOrigin = "top left"
   }
-  return style
+  if (includeGeometry && override.explicitSize) {
+    style.width = `${Math.max(8, Math.round(override.geometry.width))}px`
+    style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
+  }
+  if (override.explicitStyle) {
+    if (override.style.opacity !== undefined) style.opacity = override.style.opacity
+    if (override.content.gradientEnabled) {
+      style.background = `linear-gradient(135deg, ${override.content.gradientStart || "#111111"}, ${override.content.gradientEnd || "#000000"})`
+    } else if (override.style.backgroundColor) {
+      style.backgroundColor = override.style.backgroundColor
+    }
+    if (override.style.color) style.color = override.style.color
+    if (override.style.fontSize) style.fontSize = override.style.fontSize
+    if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
+    if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
+    if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
+    if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
+    if (override.style.minHeight) style.minHeight = override.style.minHeight
+    if (override.style.paddingTop) style.paddingTop = override.style.paddingTop
+    if (override.style.paddingBottom) style.paddingBottom = override.style.paddingBottom
+  }
+  return Object.keys(style).length > 0 ? style : undefined
 }
 
-export function BandMembersSection({
-  initialMembers,
-  backgroundImageUrl = "/images/sections/band-section.jpg",
-  headerEyebrow = "The Musicians",
-  headerTitle = "Meet the Band",
-  headerDescription = "Five musicians from diverse backgrounds, united by a passion for rhythm and groove.",
-  elementStyles = {},
-}: BandMembersSectionProps) {
+function resolveTextOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const text = node.content.text?.trim()
+  return text ? text : fallback
+}
+
+function resolveMemberNameOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const text = node.content.text?.trim()
+  return text ? text : fallback
+}
+
+function resolveMemberRoleOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const text = node.content.text?.trim()
+  return text ? text : fallback
+}
+
+function resolveMemberNumberOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
+  if (!node?.explicitContent) return fallback
+  const text = node.content.text?.trim()
+  return text ? text : fallback
+}
+
+function buildInlineTextStyleFromOverride(
+  override: HomeEditorNodeOverride | undefined,
+  fallbackColor: string
+): CSSProperties | undefined {
+  if (!override) return undefined
+  const style: CSSProperties = {}
+  const gradientEnabled = !!override.content.gradientEnabled
+  const gradientStart = override.content.gradientStart || "#FFB15A"
+  const gradientEnd = override.content.gradientEnd || "#FF6C00"
+
+  if (gradientEnabled) {
+    style.background = `linear-gradient(90deg, ${gradientStart}, ${gradientEnd})`
+    style.WebkitBackgroundClip = "text"
+    style.backgroundClip = "text"
+    style.WebkitTextFillColor = "transparent"
+  } else {
+    style.color = override.style.color || fallbackColor
+  }
+
+  if (override.style.opacity !== undefined) style.opacity = override.style.opacity
+  if (override.style.fontSize) style.fontSize = override.style.fontSize
+  if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
+  if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
+  if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
+  if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
+  if (override.style.textAlign) style.textAlign = override.style.textAlign as CSSProperties["textAlign"]
+
+  return Object.keys(style).length > 0 ? style : undefined
+}
+
+function buildInlineImageStyleFromOverride(override: HomeEditorNodeOverride | undefined): CSSProperties | undefined {
+  if (!override) return undefined
+  const style: CSSProperties = {}
+  if (override.explicitStyle) {
+    const contrast = override.style.contrast ?? 100
+    const saturation = override.style.saturation ?? 100
+    const brightness = override.style.brightness ?? 100
+    const negative = override.style.negative ?? false
+    style.filter = `contrast(${contrast}%) saturate(${saturation}%) brightness(${brightness}%)${negative ? " invert(1)" : ""}`
+    if (override.style.opacity !== undefined) style.opacity = override.style.opacity
+  }
+  return Object.keys(style).length > 0 ? style : undefined
+}
+
+export function BandMembersSection({ initialMembers, overrides = {} }: BandMembersSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const [activeIndex, setActiveIndex] = useState<number>(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [members] = useState<BandMemberData[]>(initialMembers)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
+  const traceNodeId = getTraceNodeId()
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024)
@@ -60,14 +143,14 @@ export function BandMembersSection({
       const custom = event as CustomEvent<{ index?: number }>
       const index = custom.detail?.index
       if (typeof index !== "number" || Number.isNaN(index)) return
-      if (index < 0 || index >= initialMembers.length) return
+      if (index < 0 || index >= members.length) return
       setActiveIndex(index)
     }
     window.addEventListener("editor-band-member-focus", onEditorBandMemberFocus as EventListener)
     return () => {
       window.removeEventListener("editor-band-member-focus", onEditorBandMemberFocus as EventListener)
     }
-  }, [initialMembers.length])
+  }, [members.length])
 
   const handleMemberClick = (index: number) => {
     setActiveIndex(index)
@@ -76,15 +159,35 @@ export function BandMembersSection({
     }
   }
 
-  const displayedMembers = initialMembers.map((member, index) => ({
+  const displayedMembers = members.map((member, index) => ({
     ...member,
-    number: String(member.id).padStart(2, "0"),
-    fullName: member.fullName,
-    role: member.role,
-    image: member.image,
+    number: resolveMemberNumberOverride(overrides[`member-item-${index}-number`], String(member.id).padStart(2, "0")),
+    fullName: resolveMemberNameOverride(
+      overrides[`member-item-${index}-name`] ?? overrides[`member-item-${index}`],
+      member.fullName
+    ),
+    role: resolveMemberRoleOverride(overrides[`member-item-${index}-role`], member.role),
+    image: overrides[`member-item-${index}-image`]?.explicitContent && overrides[`member-item-${index}-image`]?.content.src
+      ? (overrides[`member-item-${index}-image`]?.content.src as string)
+      : member.image,
   }))
   const activeMember = displayedMembers[activeIndex]
   const activeImage = activeMember?.image || initialMembers[0]?.image || ""
+  const activeImageStyle = buildInlineImageStyleFromOverride(overrides[`member-item-${activeIndex}-image`])
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" || !traceNodeId) return
+    if (!traceNodeId.startsWith("member-item-") && !traceNodeId.startsWith("band-members-")) return
+    console.info("[band-members][trace]", {
+      traceNodeId,
+      hasOverride: !!overrides[traceNodeId],
+      override: overrides[traceNodeId] || null,
+      activeIndex,
+      activeMember: activeMember
+        ? { id: activeMember.id, fullName: activeMember.fullName, role: activeMember.role, image: activeMember.image }
+        : null,
+    })
+  }, [traceNodeId, overrides, activeIndex, activeMember])
 
   return (
     <section
@@ -93,19 +196,17 @@ export function BandMembersSection({
       data-editor-node-type="section"
       data-editor-node-label="Sección Miembros de la Banda"
       className="relative isolate min-h-screen w-full overflow-hidden bg-black"
-      style={getElementLayoutStyle(elementStyles, "band-members-section")}
     >
       {/* Fondo full width */}
-      <div
+      <div 
         data-editor-node-id="band-members-bg"
         data-editor-node-type="background"
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo banda"
         className="absolute inset-0 z-0"
-        style={getElementLayoutStyle(elementStyles, "band-members-bg")}
       >
         <Image
-          src={backgroundImageUrl}
+          src="/images/t4t-2.jpg"
           alt="Band background"
           fill
           className="object-cover"
@@ -126,18 +227,17 @@ export function BandMembersSection({
             className="mb-8 md:mb-12 lg:mb-16 text-center"
           >
           <SectionHeader
-            eyebrow={headerEyebrow}
-            title={headerTitle}
-            description={headerDescription}
+            eyebrow="The Musicians"
+            title="Meet the Band"
+            description="Five musicians from diverse backgrounds, united by a passion for rhythm and groove."
             dataEditId="band-members-header"
             dataEditLabel="Encabezado Miembros"
-            elementStyles={elementStyles}
           />
         </motion.div>
 
         <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-2 lg:gap-14">
           {/* Desktop photo - hidden on mobile */}
-          <div className="relative hidden max-h-[78vh] max-h-[78dvh] min-h-[420px] overflow-hidden rounded-3xl bg-zinc-950 shadow-2xl lg:block lg:aspect-[3/4]">
+          <div className="relative hidden max-h-[78vh] min-h-[420px] overflow-hidden rounded-3xl bg-zinc-950 shadow-2xl lg:block lg:aspect-[3/4]">
             {displayedMembers.map((member, index) => (
               <motion.div
                 key={member.id}
@@ -149,14 +249,7 @@ export function BandMembersSection({
                 transition={{ duration: 0.6, ease: "easeInOut" }}
                 className="absolute inset-0"
               >
-                <div
-                  className="absolute inset-0"
-                  data-editor-node-id={`member-item-${index}-image`}
-                  data-editor-node-type="image"
-                  data-editor-node-label={`${member.fullName} photo`}
-                  data-editor-media-kind="image"
-                  style={getElementLayoutStyle(elementStyles, `member-item-${index}-image`)}
-                >
+                <div className="absolute inset-0">
                   <Image
                     src={member.image}
                     alt={member.fullName}
@@ -179,6 +272,7 @@ export function BandMembersSection({
             ))}
           </div>
 
+
           <div className="space-y-2.5 md:space-y-4">
             {displayedMembers.map((member, index) => (
               <motion.div
@@ -194,7 +288,6 @@ export function BandMembersSection({
                 role="button"
                 tabIndex={0}
                 aria-label={`${member.fullName} card`}
-                style={getBandMemberCardStyle(elementStyles, `member-item-${index}`)}
                 className={`group flex min-h-[62px] w-full touch-manipulation items-center justify-between rounded-xl border p-3.5 text-left transition-all duration-300 md:min-h-[88px] md:rounded-2xl md:p-6
                   ${
                     activeIndex === index
@@ -204,11 +297,7 @@ export function BandMembersSection({
               >
                 <div className="min-w-0 flex-1">
                   <h4
-                    data-editor-node-id={`member-item-${index}-name`}
-                    data-editor-node-type="text"
-                    data-editor-node-label={`${member.fullName} name`}
                     data-member-name-index={index}
-                    style={getElementLayoutStyle(elementStyles, `member-item-${index}-name`)}
                     className={`text-base md:text-xl font-medium transition-colors truncate ${
                       activeIndex === index ? "text-white" : "text-white/80 group-hover:text-white"
                     }`}
@@ -216,11 +305,7 @@ export function BandMembersSection({
                     {member.fullName}
                   </h4>
                   <p
-                    data-editor-node-id={`member-item-${index}-role`}
-                    data-editor-node-type="text"
-                    data-editor-node-label={`${member.fullName} role`}
                     data-member-role-index={index}
-                    style={getElementLayoutStyle(elementStyles, `member-item-${index}-role`)}
                     className={`text-xs md:text-sm mt-0.5 md:mt-1 transition-colors ${
                       activeIndex === index ? "text-orange-400" : "text-white/50"
                     }`}
@@ -230,18 +315,14 @@ export function BandMembersSection({
                 </div>
 
                 <div
-                  data-editor-node-id={`member-item-${index}-number`}
-                  data-editor-node-type="text"
-                  data-editor-node-label={`${member.fullName} number`}
                   data-member-number-index={index}
-                  style={getElementLayoutStyle(elementStyles, `member-item-${index}-number`)}
                   className={`w-7 h-7 md:w-8 md:h-8 shrink-0 ml-3 rounded-full flex items-center justify-center text-xs font-mono border transition-all ${
                     activeIndex === index
                       ? "border-orange-500 text-orange-400 bg-orange-950"
                       : "border-white/20 text-white/40 group-hover:border-white/40"
                   }`}
                 >
-                  {member.number}
+                  {String(member.id).padStart(2, "0")}
                 </div>
               </motion.div>
             ))}
@@ -268,14 +349,12 @@ export function BandMembersSection({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative w-full" style={{ aspectRatio: '3/4' }}>
-                <Image
+                <img
                   src={activeImage}
                   alt={activeMember.fullName}
-                  fill
                   className="absolute inset-0 w-full h-full object-cover"
                   style={{ zIndex: 1 }}
                   draggable={false}
-                  sizes="22rem"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" style={{ zIndex: 2 }} />
                 <div className="absolute bottom-0 left-0 right-0 p-6" style={{ zIndex: 3 }}>

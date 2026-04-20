@@ -1,21 +1,20 @@
 import { draftMode } from 'next/headers'
-import HomePage from "../home-page"
+import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 
 export default async function EditorPage() {
-  // Enable Draft Mode to fetch drafts from Sanity
+  // Check authentication
+  const cookieStore = await cookies()
+  const authCookie = cookieStore.get('t4t-editor-auth')
+
+  if (!authCookie || authCookie.value !== 'authorized') {
+    redirect('/editor/login')
+  }
+
+  // Enable Draft Mode
   const draft = await draftMode()
   draft.enable()
 
-  const timestamp = new Date().toISOString()
-  console.log(`[RUNTIME] EditorPage mounted at ${timestamp}`)
-
-  // Render editor with drafts perspective
-  // VisualEditorProvider on client will detect /editor route and activate editing mode
-  // The client will load editor state separately after hydration
-  return (
-    <>
-      <script dangerouslySetInnerHTML={{__html: `console.log('[RUNTIME] EditorPage HTML received at', new Date().toISOString())`}} />
-      <HomePage perspective="drafts" isEditorRoute={true} />
-    </>
-  )
+  // Redirect to home with edit mode
+  redirect('/?editMode=true')
 }
