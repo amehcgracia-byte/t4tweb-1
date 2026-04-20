@@ -54,7 +54,7 @@ export default async function HomePagePublic() {
 
       <SectionDivider editorId="section-divider-intro-release" />
 
-      <LatestReleaseSection data={latestReleaseData} />
+      <LatestReleaseSection />
 
       <SectionDivider editorId="section-divider-release-about" />
 
@@ -73,18 +73,13 @@ export default async function HomePagePublic() {
       <SceneSection id="band">
         <BandMembersSection
           initialMembers={bandMembersData.members}
-          backgroundImageUrl={bandMembersData.backgroundImageUrl}
-          headerEyebrow={bandMembersData.headerEyebrow}
-          headerTitle={bandMembersData.headerTitle}
-          headerDescription={bandMembersData.headerDescription}
-          elementStyles={bandMembersData.elementStyles}
         />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-band-live" />
 
       <SceneSection id="live">
-        <LiveSection data={liveData} />
+        <LiveSection initialConcerts={liveData.concerts} />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-live-contact" />

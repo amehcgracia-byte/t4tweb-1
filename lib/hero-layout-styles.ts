@@ -109,7 +109,7 @@ export function getElementLayoutStyle(
   if (!elementStyles || !elementStyles[targetId]) return {}
 
   const styles = elementStyles[targetId] as Record<string, unknown>
-  const includeGeometry = options?.includeGeometry ?? true
+  const includeGeometry = options?.includeGeometry ?? false
   const hasX = typeof styles.x === "number"
   const hasY = typeof styles.y === "number"
   const tx = hasX ? roundLayoutPx(styles.x as number) : 0

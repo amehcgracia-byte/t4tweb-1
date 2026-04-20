@@ -22,7 +22,8 @@ const FALLBACK: HeroData = {
   description: "",
   bgUrl: "/images/hero-bg.jpg",
   logoUrl: "/logo.png",
-  titleSegments: [],
+  scrollLabel: "SCROLL",
+  ctaButtons: [],
   elementStyles: {},
 }
 
@@ -90,19 +91,12 @@ export function HeroSection({ data }: { data: HeroData }) {
   const debug = useMemo<HeroDebug>(
     () => ({
       sourceUsed: "server",
-      hasTitleSegments:
-        Array.isArray(content.titleSegments) && content.titleSegments.length > 0,
-      titleSegmentsCount: Array.isArray(content.titleSegments)
-        ? content.titleSegments.length
-        : 0,
+      hasTitleSegments: false,
+      titleSegmentsCount: 0,
       titleValue: content.title || "",
       titleHighlightValue: content.titleHighlight || "",
-      segmentTexts: Array.isArray(content.titleSegments)
-        ? content.titleSegments.map((s) => s.text || "")
-        : [],
-      hasGradientFields:
-        Array.isArray(content.titleSegments) &&
-        content.titleSegments.some((s) => s.gradientEnabled === true),
+      segmentTexts: [],
+      hasGradientFields: false,
     }),
     [content]
   )
@@ -294,64 +288,10 @@ export function HeroSection({ data }: { data: HeroData }) {
   const scrollLayoutSaved =
     allowGeometryOverrides && scrollIndicatorHasLayout(content.elementStyles)
 
-  const heroTitleMode: "legacy" | "segmented" =
-    Array.isArray(content.titleSegments) && content.titleSegments.length > 0
-      ? "segmented"
-      : "legacy"
+  const heroTitleMode: "legacy" = "legacy"
 
-  const normalizedTitleSegments = useMemo(() => {
-    if (heroTitleMode !== "segmented") return []
-
-    const source = (content.titleSegments || [])
-      .map((segment) => ({
-        ...segment,
-        text: (segment.text || "").trim(),
-      }))
-      .filter((segment) => segment.text.length > 0)
-
-    if (source.length === 0) return []
-
-    const deduped: Array<{ text: string; color?: string; bold?: boolean; italic?: boolean; underline?: boolean; opacity?: number; fontSize?: string; fontFamily?: string; gradientEnabled?: boolean; gradientStart?: string; gradientEnd?: string }> = []
-
-    source.forEach((segment) => {
-      const previous = deduped[deduped.length - 1]
-      if (previous && previous.text.toLowerCase() === segment.text.toLowerCase()) {
-        return
-      }
-      deduped.push(segment)
-    })
-
-    if (deduped.length >= 2) {
-      const first = deduped[0]
-      const second = deduped[1]
-      const firstLower = first.text.toLowerCase()
-      const secondLower = second.text.toLowerCase()
-
-      if (firstLower.endsWith(secondLower) && first.text.length > second.text.length) {
-        const trimmedFirst = first.text
-          .slice(0, first.text.length - second.text.length)
-          .trim()
-
-        if (trimmedFirst.length > 0) {
-          deduped[0] = { ...first, text: trimmedFirst }
-        }
-      }
-    }
-
-    return deduped
-  }, [heroTitleMode, content.titleSegments])
-
-  const mainTitleText =
-    heroTitleMode === "segmented"
-      ? normalizedTitleSegments[0]?.text || content.title || FALLBACK.title
-      : content.title || FALLBACK.title
-
-  const accentTitleText =
-    heroTitleMode === "segmented"
-      ? normalizedTitleSegments[1]?.text ||
-        content.titleHighlight ||
-        FALLBACK.titleHighlight
-      : content.titleHighlight || FALLBACK.titleHighlight
+  const mainTitleText = content.title || FALLBACK.title
+  const accentTitleText = content.titleHighlight || FALLBACK.titleHighlight
 
   return (
     <section

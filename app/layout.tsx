@@ -3,7 +3,7 @@ import "./globals.css"
 import { VisualEditorProvider } from "@/components/visual-editor"
 import { EditorOverlayWrapper } from "@/components/editor-overlay-wrapper"
 import { draftMode } from 'next/headers'
-import { SanityVisualEditing } from "@/components/sanity-visual-editing"
+// import { SanityVisualEditing } from "@/components/sanity-visual-editing"
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://talesforthetillerman.com"),
@@ -81,8 +81,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const draft = await draftMode()
-  const isDraft = draft.isEnabled
+  // const draft = await draftMode()
+  // const isDraft = draft.isEnabled
 
   return (
     <html lang="en">
@@ -156,7 +156,7 @@ export default async function RootLayout({
           <EditorOverlayWrapper />
           {children}
         </VisualEditorProvider>
-        {isDraft && <SanityVisualEditing />}
+        {/* {isDraft && <SanityVisualEditing />} */}
       </body>
     </html>
   )
