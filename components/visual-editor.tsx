@@ -431,12 +431,8 @@ function isNavbarTextOrButtonPatternNode(node: EditorNode): boolean {
 
 function hasRealTextToolingWriter(node: EditorNode | null): boolean {
   if (!node) return false
-  if (node.type !== "text" && node.type !== "button") return false
-  if (isExtraNodeId(node.id)) return true
-  if (isNavbarTextOrButtonPatternNode(node)) return true
-  if (TEXT_TOOL_EXACT_IDS.has(node.id)) return true
-  if (/^live-(?:upcoming|history)-event-\d+-(?:date|venue|city|country|genre|price|time|status|capacity|locationUrl)$/.test(node.id)) return true
-  if (/^live-(?:upcoming|history|stream|social)-/.test(node.id)) return true
+  // Todos los textos y botones reales usan herramientas completas
+  if (node.type === "text" || node.type === "button") return true
   return false
 }
 
@@ -1228,9 +1224,15 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           {
             const entry = registry.get(command.nodeId)
             if (entry?.element) {
-              entry.element.dataset.editorDeleted = "true"
-              entry.element.style.display = "none"
-              deletedIdsRef.current.add(command.nodeId)
+              // Solo para nodos reales (no extra) marcamos como eliminado
+              if (!isExtraNodeId(command.nodeId)) {
+                entry.element.dataset.editorDeleted = "true"
+                entry.element.style.display = "none"
+                deletedIdsRef.current.add(command.nodeId)
+              } else {
+                // Para extra nodes, el DOM es manejado por ExtraNodesRenderer
+                // No necesitamos modificar el DOM aquí
+              }
             }
           }
           next.delete(command.nodeId)
@@ -1238,7 +1240,6 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             setSelectedId(null)
             setOpenPanel(false)
           }
-          next.delete(command.nodeId)
           setSelectedId((current) => (current === command.nodeId ? null : current))
           setOpenPanel((current) => (current ? false : current))
           break
@@ -1252,16 +1253,19 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           if (node) clipboardRef.current = structuredClone(node)
           const entry = registry.get(command.nodeId)
           if (entry?.element) {
-            entry.element.dataset.editorDeleted = "true"
-            entry.element.style.display = "none"
-            deletedIdsRef.current.add(command.nodeId)
+            // Solo para nodos reales (no extra) marcamos como eliminado
+            if (!isExtraNodeId(command.nodeId)) {
+              entry.element.dataset.editorDeleted = "true"
+              entry.element.style.display = "none"
+              deletedIdsRef.current.add(command.nodeId)
+            }
+            // Para extra nodes, el DOM es manejado por ExtraNodesRenderer
           }
           next.delete(command.nodeId)
           if (selectedId === command.nodeId) {
             setSelectedId(null)
             setOpenPanel(false)
           }
-          next.delete(command.nodeId)
           setSelectedId((current) => (current === command.nodeId ? null : current))
           setOpenPanel((current) => (current ? false : current))
           break
@@ -1270,23 +1274,13 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           const clip = clipboardRef.current
           if (!clip) break
           const id = `${clip.id}-copy-${Date.now()}`
-          const sourceEntry = registry.get(clip.id)
-          if (sourceEntry?.element) {
-            const clone = sourceEntry.element.cloneNode(true)
-            if (clone instanceof HTMLElement) {
-              clone.dataset.editorNodeId = id
-              clone.dataset.editorManagedTransform = "true"
-              clone.querySelectorAll<HTMLElement>("[data-editor-node-id]").forEach((child) => {
-                if (child === clone) return
-                delete child.dataset.editorNodeId
-                delete child.dataset.editorNodeType
-                delete child.dataset.editorNodeLabel
-                delete child.dataset.editorGrouped
-              })
-              sourceEntry.element.insertAdjacentElement("afterend", clone)
-            }
-          }
-          next.set(id, { ...structuredClone(clip), id, geometry: { ...clip.geometry, x: clip.geometry.x + 24, y: clip.geometry.y + 24 }, explicitPosition: true })
+          // NO clonar DOM manualmente - ExtraNodesRenderer se encargará del render
+          next.set(id, { 
+            ...structuredClone(clip), 
+            id, 
+            geometry: { ...clip.geometry, x: clip.geometry.x + 24, y: clip.geometry.y + 24 }, 
+            explicitPosition: true 
+          })
           setSelectedId(id)
           setOpenPanel(true)
           break
@@ -1736,7 +1730,8 @@ export function VisualEditorOverlay() {
     (selectedNode?.type === "card" || selectedNode?.type === "overlay") &&
     !isFooterSocialGroup &&
     !hasNestedEditableChildren &&
-    !hasStructuredCardFields
+    !hasStructuredCardFields &&
+    !isExtraNodeId(selectedNode?.id || "")
 
   const selectedEntryElement = selectedEntry?.element
   const footerSocialLinkItems = (() => {

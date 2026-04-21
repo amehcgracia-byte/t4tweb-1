@@ -1,14 +1,14 @@
-import { HeroSectionWrapper } from "@/components/hero-section-wrapper"
+import { HeroSection } from "@/components/hero-section"
 import { SectionDivider } from "@/components/section-divider"
 import { AboutSection } from "@/components/about-section"
 import { PressKitSection } from "@/components/press-kit-section"
-import { BandMembersSection } from "@/components/band-members-section"
-import { LiveSection } from "@/components/live-section"
+import { BandMembersSectionSimple } from "@/components/band-members-section-simple"
+import { LiveSectionSimple } from "@/components/live-section-simple"
 import { ContactSection } from "@/components/contact-section"
 import { Footer } from "@/components/footer"
 import { Navigation } from "@/components/navigation"
 import { SceneSection } from "@/components/scene-section"
-import { LatestReleaseSection } from "@/components/latest-release-section"
+import { LatestReleaseCorrect } from "@/components/latest-release-correct"
 import { IntroBannerSection } from "@/components/intro-banner-section"
 import { loadHeroData } from "@/lib/sanity/hero-loader"
 import { loadNavigationData } from "@/lib/sanity/navigation-loader"
@@ -22,7 +22,9 @@ import { loadFooterData } from "@/lib/sanity/footer-loader"
 import { loadLiveSectionData } from "@/lib/live-concerts-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
 import { HomeEditorOverridesProvider } from "@/components/home-editor-overrides-provider"
+import { HomeEditorStateApplier } from "@/components/home-editor-state-applier"
 import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
+import { ExtraNodesRenderer } from "@/components/extra-nodes-renderer"
 
 export const dynamic = "force-dynamic"
 
@@ -47,56 +49,110 @@ export default async function HomePage({ perspective = "published", isEditorRout
 
   return (
     <main className="relative overflow-x-clip bg-black">
-      <HomeEditorOverridesProvider nodes={homeEditorNodes}>
-        <RibbonsBlock />
-        <Navigation data={navigationData} />
+      {isEditorRoute ? (
+        <HomeEditorOverridesProvider nodes={homeEditorNodes}>
+          <ExtraNodesRenderer nodes={homeEditorNodes} />
+          <RibbonsBlock />
+          <Navigation data={navigationData} />
 
-        <HeroSectionWrapper data={heroData} isEditorRoute={isEditorRoute} />
+          <HeroSection data={heroData} />
 
-        <SectionDivider editorId="section-divider-hero-intro" />
+          <SectionDivider editorId="section-divider-hero-intro" />
 
-        <IntroBannerSection data={introBannerData} />
+          <IntroBannerSection data={introBannerData} />
 
-        <SectionDivider editorId="section-divider-intro-release" />
+          <SectionDivider editorId="section-divider-intro-release" />
 
-        <LatestReleaseSection />
+          <LatestReleaseCorrect data={latestReleaseData} />
 
-        <SectionDivider editorId="section-divider-release-about" />
+          <SectionDivider editorId="section-divider-release-about" />
 
-        <SceneSection id="about">
-          <AboutSection data={aboutData} />
-        </SceneSection>
+          <SceneSection id="about">
+            <AboutSection data={aboutData} />
+          </SceneSection>
 
-        <SectionDivider editorId="section-divider-about-press" />
+          <SectionDivider editorId="section-divider-about-press" />
 
-        <SceneSection id="press-kit">
-          <PressKitSection data={pressKitData} />
-        </SceneSection>
+          <SceneSection id="press-kit">
+            <PressKitSection data={pressKitData} />
+          </SceneSection>
 
-        <SectionDivider editorId="section-divider-press-band" />
+          <SectionDivider editorId="section-divider-press-band" />
 
-        <SceneSection id="band">
-          <BandMembersSection
-            initialMembers={bandMembersData.members}
-          />
-        </SceneSection>
+          <SceneSection id="band">
+            <BandMembersSectionSimple
+              data={bandMembersData}
+            />
+          </SceneSection>
 
-        <SectionDivider editorId="section-divider-band-live" />
+          <SectionDivider editorId="section-divider-band-live" />
 
-        <SceneSection id="live">
-          <LiveSection initialConcerts={liveData.concerts} />
-        </SceneSection>
+          <SceneSection id="live">
+            <LiveSectionSimple data={liveData} />
+          </SceneSection>
 
-        <SectionDivider editorId="section-divider-live-contact" />
+          <SectionDivider editorId="section-divider-live-contact" />
 
-        <SceneSection id="contact">
-          <ContactSection data={contactData} />
-        </SceneSection>
+          <SceneSection id="contact">
+            <ContactSection data={contactData} />
+          </SceneSection>
 
-        <SectionDivider editorId="section-divider-contact-footer" />
+          <SectionDivider editorId="section-divider-contact-footer" />
 
-        <Footer data={footerData} />
-      </HomeEditorOverridesProvider>
+          <Footer data={footerData} />
+        </HomeEditorOverridesProvider>
+      ) : (
+        <>
+          <RibbonsBlock />
+          <Navigation data={navigationData} />
+
+          <HeroSection data={heroData} />
+
+          <SectionDivider editorId="section-divider-hero-intro" />
+
+          <IntroBannerSection data={introBannerData} />
+
+          <SectionDivider editorId="section-divider-intro-release" />
+
+          <LatestReleaseCorrect data={latestReleaseData} />
+
+          <SectionDivider editorId="section-divider-release-about" />
+
+          <SceneSection id="about">
+            <AboutSection data={aboutData} />
+          </SceneSection>
+
+          <SectionDivider editorId="section-divider-about-press" />
+
+          <SceneSection id="press-kit">
+            <PressKitSection data={pressKitData} />
+          </SceneSection>
+
+          <SectionDivider editorId="section-divider-press-band" />
+
+          <SceneSection id="band">
+            <BandMembersSectionSimple
+              data={bandMembersData}
+            />
+          </SceneSection>
+
+          <SectionDivider editorId="section-divider-band-live" />
+
+          <SceneSection id="live">
+            <LiveSectionSimple data={liveData} />
+          </SceneSection>
+
+          <SectionDivider editorId="section-divider-live-contact" />
+
+          <SceneSection id="contact">
+            <ContactSection data={contactData} />
+          </SceneSection>
+
+          <SectionDivider editorId="section-divider-contact-footer" />
+
+          <Footer data={footerData} />
+        </>
+      )}
     </main>
   )
 }

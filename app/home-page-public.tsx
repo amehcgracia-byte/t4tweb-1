@@ -1,14 +1,14 @@
-import { HeroSectionWrapper } from "@/components/hero-section-wrapper"
+import { HeroSection } from "@/components/hero-section"
 import { SectionDivider } from "@/components/section-divider"
 import { AboutSection } from "@/components/about-section"
 import { PressKitSection } from "@/components/press-kit-section"
-import { BandMembersSection } from "@/components/band-members-section"
-import { LiveSection } from "@/components/live-section"
+import { BandMembersSectionSimple } from "@/components/band-members-section-simple"
+import { LiveSectionSimple } from "@/components/live-section-simple"
 import { ContactSection } from "@/components/contact-section"
 import { Footer } from "@/components/footer"
 import { Navigation } from "@/components/navigation"
 import { SceneSection } from "@/components/scene-section"
-import { LatestReleaseSection } from "@/components/latest-release-section"
+import { LatestReleaseCorrect } from "@/components/latest-release-correct"
 import { IntroBannerSection } from "@/components/intro-banner-section"
 import { loadHeroData } from "@/lib/sanity/hero-loader"
 import { loadNavigationData } from "@/lib/sanity/navigation-loader"
@@ -22,23 +22,21 @@ import { loadFooterData } from "@/lib/sanity/footer-loader"
 import { loadLiveSectionData } from "@/lib/live-concerts-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
 import { ExtraNodesRenderer } from "@/components/extra-nodes-renderer"
-import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
 
 export const dynamic = "force-dynamic"
 
 export default async function HomePagePublic() {
-  const [heroData, navigationData, introBannerData, latestReleaseData, aboutData, pressKitData, bandMembersData, liveData, contactData, footerData, homeEditorNodes] = await Promise.all([
+  const [heroData, navigationData, introBannerData, latestReleaseData, aboutData, pressKitData, bandMembersData, liveData, contactData, footerData] = await Promise.all([
     loadHeroData("published"),
     loadNavigationData(),
-    loadIntroBannerData(),
+    loadIntroBannerData("published"),
     loadLatestReleaseData("published"),
     loadAboutData("published"),
     loadPressKitData("published"),
-    loadBandMembersData(),
+    loadBandMembersData("published"),
     loadLiveSectionData("published"),
     loadContactSectionData("published"),
     loadFooterData("published"),
-    loadHomeEditorState("published"),
   ])
 
   return (
@@ -46,7 +44,7 @@ export default async function HomePagePublic() {
       <RibbonsBlock />
       <Navigation data={navigationData} />
 
-      <HeroSectionWrapper data={heroData} />
+      <HeroSection data={heroData} />
 
       <SectionDivider editorId="section-divider-hero-intro" />
 
@@ -54,7 +52,7 @@ export default async function HomePagePublic() {
 
       <SectionDivider editorId="section-divider-intro-release" />
 
-      <LatestReleaseSection />
+      <LatestReleaseCorrect data={latestReleaseData} />
 
       <SectionDivider editorId="section-divider-release-about" />
 
@@ -71,15 +69,15 @@ export default async function HomePagePublic() {
       <SectionDivider editorId="section-divider-press-band" />
 
       <SceneSection id="band">
-        <BandMembersSection
-          initialMembers={bandMembersData.members}
+        <BandMembersSectionSimple
+          data={bandMembersData}
         />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-band-live" />
 
       <SceneSection id="live">
-        <LiveSection initialConcerts={liveData.concerts} />
+        <LiveSectionSimple data={liveData} />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-live-contact" />
@@ -91,8 +89,6 @@ export default async function HomePagePublic() {
       <SectionDivider editorId="section-divider-contact-footer" />
 
       <Footer data={footerData} />
-
-      <ExtraNodesRenderer nodes={homeEditorNodes} />
     </main>
   )
 }

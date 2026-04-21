@@ -22,11 +22,11 @@ export default function PresentationPage() {
             </li>
             <li className="flex gap-4">
               <span className="font-bold text-orange-500 flex-shrink-0">2.</span>
-              <span>Open any document you want to edit (e.g., "Hero Section")</span>
+              <span>Open any document you want to edit (e.g., &quot;Hero Section&quot;)</span>
             </li>
             <li className="flex gap-4">
               <span className="font-bold text-orange-500 flex-shrink-0">3.</span>
-              <span>Look for the <strong>"Presentation"</strong> tab in the top navigation bar</span>
+              <span>Look for the <strong>&quot;Presentation&quot;</strong> tab in the top navigation bar</span>
             </li>
             <li className="flex gap-4">
               <span className="font-bold text-orange-500 flex-shrink-0">4.</span>

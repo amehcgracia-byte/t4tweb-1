@@ -8,9 +8,7 @@ import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provid
 import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 import {
-  buildHeroScrollIndicatorLayoutStyle,
   getElementLayoutStyle,
-  roundLayoutPx,
 } from "@/lib/hero-layout-styles"
 
 const getElementStyle = getElementLayoutStyle
@@ -27,48 +25,7 @@ const FALLBACK: HeroData = {
   elementStyles: {},
 }
 
-function scrollIndicatorHasLayout(
-  elementStyles: Record<string, unknown> | undefined
-): boolean {
-  const s = elementStyles?.["hero-scroll-indicator"]
-  if (!s || typeof s !== "object") return false
 
-  const o = s as Record<string, unknown>
-
-  return (
-    typeof o.x === "number" ||
-    typeof o.y === "number" ||
-    typeof o.width === "number" ||
-    typeof o.height === "number" ||
-    (typeof o.scale === "number" && o.scale !== 1)
-  )
-}
-
-function getScrollIndicatorStyle(
-  elementStyles: Record<string, unknown> | undefined
-): React.CSSProperties {
-  if (!elementStyles?.["hero-scroll-indicator"]) return {}
-
-  const styles = elementStyles["hero-scroll-indicator"] as Record<string, unknown>
-  const tx = typeof styles.x === "number" ? roundLayoutPx(styles.x as number) : 0
-  const ty = typeof styles.y === "number" ? roundLayoutPx(styles.y as number) : 0
-  const scaleVal = typeof styles.scale === "number" ? styles.scale : 1
-  const needScale = typeof styles.scale === "number" && scaleVal !== 1
-
-  return buildHeroScrollIndicatorLayoutStyle({
-    x: tx,
-    y: ty,
-    scale: needScale ? scaleVal : undefined,
-    width:
-      typeof styles.width === "number"
-        ? roundLayoutPx(styles.width as number)
-        : undefined,
-    height:
-      typeof styles.height === "number"
-        ? roundLayoutPx(styles.height as number)
-        : undefined,
-  })
-}
 
 interface HeroDebug {
   sourceUsed: "server"
@@ -285,8 +242,8 @@ export function HeroSection({ data }: { data: HeroData }) {
 
   const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
   const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
-  const scrollLayoutSaved =
-    allowGeometryOverrides && scrollIndicatorHasLayout(content.elementStyles)
+  const scrollLayoutSaved = allowGeometryOverrides && 
+    content.elementStyles?.["hero-scroll-indicator"] !== undefined
 
   const heroTitleMode: "legacy" = "legacy"
 
@@ -426,7 +383,9 @@ export function HeroSection({ data }: { data: HeroData }) {
         }
         style={
           scrollLayoutSaved
-            ? getScrollIndicatorStyle(content.elementStyles)
+            ? getElementStyle(content.elementStyles, "hero-scroll-indicator", {
+                includeGeometry: allowGeometryOverrides,
+              })
             : undefined
         }
       >
