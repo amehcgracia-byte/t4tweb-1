@@ -1,6 +1,8 @@
 import { revalidatePath } from "next/cache"
 import { NextResponse } from "next/server"
 import { createClient } from "next-sanity"
+import { readFile } from "fs/promises"
+import path from "path"
 import { roundLayoutPx } from "@/lib/hero-layout-styles"
 import { ABOUT_FALLBACK } from "@/lib/sanity/about-loader"
 import { DEFAULT_NAV_LINKS } from "@/lib/sanity/navigation-loader"
@@ -81,7 +83,7 @@ interface DeployNodePayload {
     locationName?: string
     locationLink?: string
     style?: string
-    extraNodeType?: "text" | "button" | "card" | "overlay"
+    extraNodeType?: "text" | "button" | "card" | "overlay" | "section-divider" | "section" | "shade" | "background-image"
     parentSection?: string
     label?: string
   }
@@ -463,6 +465,75 @@ function buildSanityImageFieldFromSrc(
       _ref: ref,
     },
   }
+}
+
+function getImageContentTypeFromPath(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase()
+  if (ext === ".png") return "image/png"
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg"
+  if (ext === ".webp") return "image/webp"
+  if (ext === ".gif") return "image/gif"
+  if (ext === ".svg") return "image/svg+xml"
+  return "application/octet-stream"
+}
+
+async function uploadPublicImageAsSanityAsset(
+  src: string,
+  projectId: string,
+  dataset: string,
+  token: string,
+  nodeId: string
+): Promise<{
+  imageField: { _type: "image"; asset: { _type: "reference"; _ref: string } } | null
+  skippedReason: string | null
+}> {
+  let pathname: string
+  try {
+    pathname = decodeURIComponent(new URL(src, "http://local.invalid").pathname)
+  } catch {
+    return { imageField: null, skippedReason: `${nodeId}:src(invalid-local-path)` }
+  }
+
+  if (!pathname.startsWith("/")) return { imageField: null, skippedReason: `${nodeId}:src(non-public-path)` }
+
+  const publicRoot = path.resolve(process.cwd(), "public")
+  const filePath = path.resolve(publicRoot, pathname.replace(/^\/+/, ""))
+  if (filePath !== publicRoot && !filePath.startsWith(`${publicRoot}${path.sep}`)) {
+    return { imageField: null, skippedReason: `${nodeId}:src(public-path-traversal)` }
+  }
+
+  let fileBuffer: Buffer
+  try {
+    fileBuffer = await readFile(filePath)
+  } catch {
+    return { imageField: null, skippedReason: `${nodeId}:src(public-file-missing)` }
+  }
+
+  const uploadResponse = await fetch(
+    `https://${projectId}.api.sanity.io/v1/assets/images/${dataset}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": getImageContentTypeFromPath(filePath),
+      },
+      body: fileBuffer,
+    }
+  )
+
+  if (!uploadResponse.ok) {
+    return { imageField: null, skippedReason: `${nodeId}:src(public-upload-failed:${uploadResponse.status})` }
+  }
+
+  const uploadedAsset = await uploadResponse.json() as { document?: { url?: unknown } }
+  const assetUrl = uploadedAsset.document?.url
+  if (typeof assetUrl !== "string") {
+    return { imageField: null, skippedReason: `${nodeId}:src(public-upload-missing-url)` }
+  }
+
+  const imageField = buildSanityImageFieldFromSrc(assetUrl, projectId, dataset)
+  if (!imageField) return { imageField: null, skippedReason: `${nodeId}:src(public-upload-invalid-ref)` }
+  return { imageField, skippedReason: null }
 }
 
 function parseSanityFileRefFromUrl(src: string, projectId: string, dataset: string): string | null {
@@ -1798,7 +1869,12 @@ export async function POST(request: Request) {
     const heroBgImageNode = payload.nodes.find((node) => node.id === "hero-bg-image")
     if (heroBgImageNode?.explicitContent) {
       const src = typeof heroBgImageNode.content?.src === "string" ? heroBgImageNode.content.src.trim() : ""
-      const { imageField, skippedReason } = resolveSanityImagePatch("hero-bg-image", src, projectId, dataset)
+      const directImageField = buildSanityImageFieldFromSrc(src, projectId, dataset)
+      const { imageField, skippedReason } = directImageField
+        ? { imageField: directImageField, skippedReason: null }
+        : src.startsWith("/")
+          ? await uploadPublicImageAsSanityAsset(src, projectId, dataset, sanityToken, "hero-bg-image")
+          : resolveSanityImagePatch("hero-bg-image", src, projectId, dataset)
       if (skippedReason) {
         skippedNodes.push(skippedReason)
       } else if (imageField) {
@@ -1813,7 +1889,12 @@ export async function POST(request: Request) {
     const heroLogoNode = payload.nodes.find((node) => node.id === "hero-logo")
     if (heroLogoNode?.explicitContent) {
       const src = typeof heroLogoNode.content?.src === "string" ? heroLogoNode.content.src.trim() : ""
-      const { imageField, skippedReason } = resolveSanityImagePatch("hero-logo", src, projectId, dataset)
+      const directImageField = buildSanityImageFieldFromSrc(src, projectId, dataset)
+      const { imageField, skippedReason } = directImageField
+        ? { imageField: directImageField, skippedReason: null }
+        : src.startsWith("/")
+          ? await uploadPublicImageAsSanityAsset(src, projectId, dataset, sanityToken, "hero-logo")
+          : resolveSanityImagePatch("hero-logo", src, projectId, dataset)
       if (skippedReason) {
         skippedNodes.push(skippedReason)
       } else if (imageField) {
@@ -2252,13 +2333,19 @@ export async function POST(request: Request) {
       } else if (!isImageSrcPersistable(src)) {
         skippedNodes.push("nav-logo:src(blob/data url)")
       } else {
-        const imageField = buildSanityImageFieldFromSrc(src, projectId, dataset)
-        if (!imageField) {
-          skippedNodes.push("nav-logo:src(non-sanity-cdn url)")
-        } else {
+        const directImageField = buildSanityImageFieldFromSrc(src, projectId, dataset)
+        const { imageField, skippedReason } = directImageField
+          ? { imageField: directImageField, skippedReason: null }
+          : src.startsWith("/")
+            ? await uploadPublicImageAsSanityAsset(src, projectId, dataset, sanityToken, "nav-logo")
+            : { imageField: null, skippedReason: "nav-logo:src(non-sanity-cdn url)" }
+
+        if (imageField) {
           navImagePatch.brandLogo = imageField
           if (!persistedFields.includes("brandLogo")) persistedFields.push("brandLogo")
           if (!persistedNodes.includes("nav-logo")) persistedNodes.push("nav-logo")
+        } else if (skippedReason) {
+          skippedNodes.push(skippedReason)
         }
       }
     }
@@ -2994,7 +3081,7 @@ export async function POST(request: Request) {
 
     let homeEditorStateDocumentId: string | null = null
     const homeEditorStateNodes = Array.isArray(payload.nodes)
-      ? payload.nodes.filter((node) => !OBSOLETE_EDITOR_NODE_IDS.has(node.id) && !ABOUT_NODE_IDS.has(node.id) && !PRESS_KIT_NODE_IDS.has(node.id) && !isBandMembersNodeId(node.id))
+      ? payload.nodes.filter((node) => node.id !== "nav-logo" && !HERO_NODE_IDS.has(node.id) && !INTRO_NODE_IDS.has(node.id) && !OBSOLETE_EDITOR_NODE_IDS.has(node.id) && !ABOUT_NODE_IDS.has(node.id) && !PRESS_KIT_NODE_IDS.has(node.id) && !isBandMembersNodeId(node.id))
       : []
     if (homeEditorStateNodes.length > 0) {
       const homeStateDocument = {
@@ -3967,13 +4054,31 @@ export async function POST(request: Request) {
       } else if (nodeId === "hero-bg-image" && node.explicitContent && writeContentKeys.has("src")) {
         storageTarget = "heroSection.fields"
         const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
-        expected.backgroundImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        const writtenBackgroundImageRef =
+          heroPatch.backgroundImage &&
+          typeof heroPatch.backgroundImage === "object" &&
+          "asset" in heroPatch.backgroundImage &&
+          heroPatch.backgroundImage.asset &&
+          typeof heroPatch.backgroundImage.asset === "object" &&
+          "_ref" in heroPatch.backgroundImage.asset
+            ? heroPatch.backgroundImage.asset._ref
+            : null
+        expected.backgroundImageRef = writtenBackgroundImageRef || parseSanityImageRefFromUrl(src, projectId, dataset)
         readBack.backgroundImageRef = heroReadback?.backgroundImage?.asset?._ref ?? heroReadback?.backgroundImage?.asset?._id
         addHeroLayoutReadback()
       } else if (nodeId === "hero-logo" && node.explicitContent && writeContentKeys.has("src")) {
         storageTarget = "heroSection.fields"
         const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
-        expected.logoRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        const writtenLogoRef =
+          heroPatch.logo &&
+          typeof heroPatch.logo === "object" &&
+          "asset" in heroPatch.logo &&
+          heroPatch.logo.asset &&
+          typeof heroPatch.logo.asset === "object" &&
+          "_ref" in heroPatch.logo.asset
+            ? heroPatch.logo.asset._ref
+            : null
+        expected.logoRef = writtenLogoRef || parseSanityImageRefFromUrl(src, projectId, dataset)
         readBack.logoRef = heroReadback?.logo?.asset?._ref ?? heroReadback?.logo?.asset?._id
         addHeroLayoutReadback()
       } else if (isHeroLayoutId && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
@@ -4064,7 +4169,16 @@ export async function POST(request: Request) {
       } else if (nodeId === "nav-logo" && node.explicitContent && writeContentKeys.has("src")) {
         storageTarget = "navigation.fields"
         const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
-        expected.brandLogoRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+        const writtenBrandLogoRef =
+          navImagePatch.brandLogo &&
+          typeof navImagePatch.brandLogo === "object" &&
+          "asset" in navImagePatch.brandLogo &&
+          navImagePatch.brandLogo.asset &&
+          typeof navImagePatch.brandLogo.asset === "object" &&
+          "_ref" in navImagePatch.brandLogo.asset
+            ? navImagePatch.brandLogo.asset._ref
+            : null
+        expected.brandLogoRef = writtenBrandLogoRef || parseSanityImageRefFromUrl(src, projectId, dataset)
         readBack.brandLogoRef = navReadback?.brandLogo?.asset?._ref ?? navReadback?.brandLogo?.asset?._id
       } else if (isIntroLayoutIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
         storageTarget = "introBanner.elementStyles"

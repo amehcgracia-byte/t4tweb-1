@@ -12,10 +12,5 @@ export default async function EditorPage() {
   // Render editor with drafts perspective
   // VisualEditorProvider on client will detect /editor route and activate editing mode
   // The client will load editor state separately after hydration
-  return (
-    <>
-      <script dangerouslySetInnerHTML={{__html: `console.log('[RUNTIME] EditorPage HTML received at', new Date().toISOString())`}} />
-      <HomePage perspective="drafts" isEditorRoute={true} />
-    </>
-  )
+  return <HomePage perspective="drafts" isEditorRoute={true} />
 }

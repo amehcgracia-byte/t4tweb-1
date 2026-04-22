@@ -1,4 +1,5 @@
 export type HomeEditorNodeType = "section" | "background" | "card" | "text" | "button" | "image" | "overlay"
+export type HomeEditorExtraNodeType = "text" | "button" | "card" | "overlay" | "section-divider" | "section" | "shade" | "background-image"
 
 export interface HomeEditorNodeGeometry {
   x: number
@@ -84,7 +85,7 @@ export interface HomeEditorNodeContent {
   time?: string
   capacity?: string
   locationUrl?: string
-  extraNodeType?: "text" | "button" | "card" | "overlay"
+  extraNodeType?: HomeEditorExtraNodeType
   parentSection?: string
   label?: string
 }

@@ -31,8 +31,8 @@ export async function loadIntroBannerData(perspective: "published" | "drafts" = 
       projectId: resolveSanityProjectId(),
       dataset: resolveSanityDataset(),
       apiVersion: "2024-01-01",
-      useCdn: process.env.SANITY_USE_CDN === "true",
-      perspective: perspective,
+      useCdn: false,
+      perspective,
     })
 
     const query = `*[_type == "introBanner"][0]{

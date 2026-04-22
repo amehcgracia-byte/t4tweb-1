@@ -12,7 +12,7 @@ import type { NavigationData } from "@/lib/sanity/navigation-loader"
  * so text/logo/icon children stay fully opaque in public render.
  */
 function getNavbarBoxPatternStyle(elementStyles: NavigationData["elementStyles"], targetId: string): CSSProperties {
-  const style = { ...getElementLayoutStyle(elementStyles, targetId) }
+  const style = { ...getElementLayoutStyle(elementStyles, targetId, { includeGeometry: true }) }
   delete style.opacity
 
   const persistedStyle = elementStyles[targetId]
@@ -22,6 +22,10 @@ function getNavbarBoxPatternStyle(elementStyles: NavigationData["elementStyles"]
   }
 
   return style
+}
+
+function getNavbarElementStyle(elementStyles: NavigationData["elementStyles"], targetId: string): CSSProperties {
+  return getElementLayoutStyle(elementStyles, targetId, { includeGeometry: true })
 }
 
 export function Navigation({ data }: { data: NavigationData }) {
@@ -236,7 +240,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                     width: "clamp(2.75rem, 9vw, 3.5rem)",
                     height: "clamp(2.75rem, 9vw, 3.5rem)",
                   },
-                  ...getElementLayoutStyle(data.elementStyles, "nav-logo"),
+                  ...getNavbarElementStyle(data.elementStyles, "nav-logo"),
                 }}
               >
                 <Image
@@ -252,7 +256,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-id="nav-brand-name"
                 data-editor-node-type="text"
                 data-editor-node-label="Brand Name"
-                style={getElementLayoutStyle(data.elementStyles, "nav-brand-name")}
+                style={getNavbarElementStyle(data.elementStyles, "nav-brand-name")}
               >
                 {data.brandName}
               </span>
@@ -340,7 +344,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-label="Mobile Book Button"
                   style={getNavbarBoxPatternStyle(data.elementStyles, "nav-mobile-book-button")}
                 >
-                  {data.ctaLabel || "Book the band"}
+                  {data.ctaLabel || "Book"}
                 </a>
               </div>
             </div>

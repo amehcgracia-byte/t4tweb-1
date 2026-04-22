@@ -257,6 +257,12 @@ function parseDatasetNumber(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function parseDatasetBoolean(value: string | undefined): boolean | undefined {
+  if (value === "true") return true
+  if (value === "false") return false
+  return undefined
+}
+
 function readHydratedNodeOverride(nodeId: string): HydratedNodeOverride | null {
   if (typeof window === "undefined") return null
   const bag = (window as Window & { __HOME_EDITOR_NODE_OVERRIDES__?: Record<string, HydratedNodeOverride> }).__HOME_EDITOR_NODE_OVERRIDES__
@@ -285,6 +291,7 @@ function extractBandMemberIndex(nodeId: string | null | undefined): number | nul
 const TEXT_TOOL_EXACT_IDS = new Set<string>([
   "nav-brand-name",
   "hero-title",
+  "hero-title-accent",
   "hero-subtitle",
   "hero-scroll-label",
   "intro-banner-text",
@@ -317,6 +324,7 @@ const TEXT_TOOL_EXACT_IDS = new Set<string>([
 
 const HERO_TEXT_PATTERN_NODE_IDS = new Set<string>([
   "hero-title",
+  "hero-title-accent",
   "hero-subtitle",
   "hero-scroll-label",
 ])
@@ -328,13 +336,18 @@ const NAVBAR_TEXT_PATTERN_NODE_IDS = new Set<string>([
 ])
 
 const EXTRA_NODE_PREFIX = "extra-"
-type ExtraNodeKind = "text" | "button" | "card" | "overlay"
+type ExtraNodeKind = "text" | "button" | "card" | "overlay" | "section-divider" | "section" | "shade" | "background-image"
+const EXTRA_NODE_KINDS = new Set<ExtraNodeKind>(["text", "button", "card", "overlay", "section-divider", "section", "shade", "background-image"])
 
 const EXTRA_NODE_LIMITS: Record<ExtraNodeKind, number> = {
   text: 6,
   button: 4,
   card: 4,
   overlay: 3,
+  "section-divider": 4,
+  section: 3,
+  shade: 6,
+  "background-image": 4,
 }
 
 function isExtraNodeId(nodeId: string): boolean {
@@ -343,16 +356,24 @@ function isExtraNodeId(nodeId: string): boolean {
 
 function getExtraNodeKind(node: EditorNode): ExtraNodeKind | null {
   if (!isExtraNodeId(node.id)) return null
-  if (node.type === "text" || node.type === "button" || node.type === "card" || node.type === "overlay") return node.type
-  return null
+  const kind = node.content.extraNodeType || node.type
+  return typeof kind === "string" && EXTRA_NODE_KINDS.has(kind as ExtraNodeKind) ? kind as ExtraNodeKind : null
+}
+
+function extraNodeKindToNodeType(kind: ExtraNodeKind): NodeType {
+  if (kind === "section") return "section"
+  if (kind === "background-image" || kind === "section-divider") return "background"
+  if (kind === "shade") return "overlay"
+  return kind
 }
 
 function createExtraNodeFromHydrated(nodeId: string, hydrated: HydratedNodeOverride): EditorNode | null {
   const content = (hydrated.content || {}) as Record<string, unknown>
   const style = (hydrated.style || {}) as Record<string, unknown>
   const type = content.extraNodeType || style.extraNodeType || (hydrated as HydratedNodeOverride & { nodeType?: unknown }).nodeType
-  const normalizedType = typeof type === "string" ? normalizeType(type) : normalizeType(String(content.type || "text"))
-  if (normalizedType !== "text" && normalizedType !== "button" && normalizedType !== "card" && normalizedType !== "overlay") return null
+  const extraKind = typeof type === "string" && EXTRA_NODE_KINDS.has(type as ExtraNodeKind) ? type as ExtraNodeKind : null
+  if (!extraKind) return null
+  const normalizedType = extraNodeKindToNodeType(extraKind)
   const sectionId = typeof content.parentSection === "string" ? content.parentSection : "root"
 
   return {
@@ -364,8 +385,8 @@ function createExtraNodeFromHydrated(nodeId: string, hydrated: HydratedNodeOverr
     geometry: {
       x: typeof hydrated.geometry?.x === "number" ? hydrated.geometry.x : 32,
       y: typeof hydrated.geometry?.y === "number" ? hydrated.geometry.y : 32,
-      width: typeof hydrated.geometry?.width === "number" ? hydrated.geometry.width : normalizedType === "button" ? 164 : 260,
-      height: typeof hydrated.geometry?.height === "number" ? hydrated.geometry.height : normalizedType === "button" ? 48 : 80,
+      width: typeof hydrated.geometry?.width === "number" ? hydrated.geometry.width : normalizedType === "button" ? 164 : extraKind === "section-divider" ? 320 : 260,
+      height: typeof hydrated.geometry?.height === "number" ? hydrated.geometry.height : normalizedType === "button" ? 48 : extraKind === "section-divider" ? 32 : 80,
     },
     style: { ...(hydrated.style || {}) },
     content: { ...(hydrated.content || {}) },
@@ -544,10 +565,14 @@ export function useVisualEditor() {
 
 function scanRegistry(): Map<string, RuntimeEntry> {
   const map = new Map<string, RuntimeEntry>()
-  const elements = document.querySelectorAll<HTMLElement>("[data-editor-node-id]")
-  elements.forEach((el) => {
+  // Buscar tanto data-editor-node-id como data-extra-node-id
+  const editorElements = document.querySelectorAll<HTMLElement>("[data-editor-node-id]")
+  const extraElements = document.querySelectorAll<HTMLElement>("[data-extra-node-id]")
+  const allElements = Array.from(editorElements).concat(Array.from(extraElements))
+  
+  allElements.forEach((el) => {
     if (el.dataset.editorDeleted === "true") return
-    const id = el.dataset.editorNodeId
+    const id = el.dataset.editorNodeId || el.dataset.extraNodeId
     if (!id) return
     const rect = el.getBoundingClientRect()
     const style = getComputedStyle(el)
@@ -608,71 +633,16 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const el = entry.element
   const hydrated = readHydratedNodeOverride(entry.id)
   const content: EditorNode["content"] = {}
+  const domExtraNodeKind = el.dataset.editorExtraNodeKind
+  if (domExtraNodeKind && EXTRA_NODE_KINDS.has(domExtraNodeKind as ExtraNodeKind)) {
+    content.extraNodeType = domExtraNodeKind as ExtraNodeKind
+    content.parentSection = entry.sectionId
+    content.label = entry.label
+  }
   const isStructuredConcertCard =
     entry.type === "card" && (el.dataset.concertCard === "true" || Boolean(el.querySelector("[data-concert-field]")))
   if (entry.type === "text" || entry.type === "button" || entry.type === "card") {
     content.text = el.textContent?.trim() || ""
-    if (entry.id === "hero-subtitle") {
-      let loadedFromDataset = false
-      const encodedSegments = el.dataset.editorTitleSegments
-      if (encodedSegments) {
-        try {
-          const parsed = JSON.parse(encodedSegments) as TextSegment[]
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            content.titleSegments = parsed
-            content.textSegments = parsed
-            loadedFromDataset = true
-          }
-        } catch {
-          // fall through to DOM extraction
-        }
-      }
-      if (!loadedFromDataset) {
-      const baseStyle = getComputedStyle(el)
-      const baseSegment: TextSegment = {
-        text: (el.textContent || "").trim(),
-        color: rgbToHex(baseStyle.color),
-        bold: Number(baseStyle.fontWeight || "400") >= 600,
-        italic: baseStyle.fontStyle === "italic",
-        underline: (baseStyle.textDecorationLine || "").includes("underline"),
-        opacity: Number(baseStyle.opacity || "1"),
-        fontSize: baseStyle.fontSize,
-        fontFamily: baseStyle.fontFamily,
-      }
-      const segments: TextSegment[] = []
-
-      el.childNodes.forEach((child) => {
-        if (child.nodeType !== Node.ELEMENT_NODE) {
-          if (child.nodeType === Node.TEXT_NODE) {
-            const text = child.textContent?.trim()
-            if (text) segments.push({ ...baseSegment, text })
-          }
-          return
-        }
-        if (child.nodeType === Node.ELEMENT_NODE) {
-          const childEl = child as HTMLElement
-          const childText = childEl.textContent?.trim()
-          if (!childText) return
-          const childStyle = getComputedStyle(childEl)
-          segments.push({
-            text: childText,
-            color: rgbToHex(childStyle.color),
-            bold: Number(childStyle.fontWeight || "400") >= 600,
-            italic: childStyle.fontStyle === "italic",
-            underline: (childStyle.textDecorationLine || "").includes("underline"),
-            opacity: Number(childStyle.opacity || "1"),
-            fontSize: childStyle.fontSize,
-            fontFamily: childStyle.fontFamily,
-          })
-        }
-      })
-      const normalizedSegments = segments.filter((segment) => segment.text.length > 0)
-      if (normalizedSegments.length > 1) {
-        content.titleSegments = normalizedSegments
-        content.textSegments = normalizedSegments
-      }
-      }
-    }
   }
   if (entry.type === "button") {
     content.href = el.getAttribute("href") || ""
@@ -701,6 +671,12 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const geometryY = parseDatasetNumber(el.dataset.editorGeometryY)
   const geometryWidth = parseDatasetNumber(el.dataset.editorGeometryWidth)
   const geometryHeight = parseDatasetNumber(el.dataset.editorGeometryHeight)
+  const styleScale = parseDatasetNumber(el.dataset.editorStyleScale)
+  const styleColor = el.dataset.editorStyleColor
+  const styleBackgroundColor = el.dataset.editorStyleBackgroundColor
+  const styleGradientEnabled = parseDatasetBoolean(el.dataset.editorStyleGradientEnabled)
+  const styleGradientStart = el.dataset.editorStyleGradientStart
+  const styleGradientEnd = el.dataset.editorStyleGradientEnd
   const hydratedGeometry = hydrated?.geometry || null
   const hydratedStyle = hydrated?.style || null
   const hydratedContent = hydrated?.content || null
@@ -742,14 +718,17 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       height: (typeof hydratedGeometryForNode?.height === "number" ? hydratedGeometryForNode.height : null) ?? geometryHeight ?? entry.rect.height,
     },
     style: {
-      color: rgbToHex(cs.color),
-      backgroundColor: cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)" ? rgbToHex(cs.backgroundColor) : undefined,
+      color: styleColor || rgbToHex(cs.color),
+      backgroundColor: styleBackgroundColor || (cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)" ? cs.backgroundColor : undefined),
       fontSize: cs.fontSize,
       fontFamily: cs.fontFamily,
       fontWeight: cs.fontWeight,
       fontStyle: cs.fontStyle,
       textDecoration: cs.textDecorationLine,
-      scale: 1,
+      scale: styleScale ?? 1,
+      gradientEnabled: styleGradientEnabled,
+      gradientStart: styleGradientStart,
+      gradientEnd: styleGradientEnd,
       minHeight: cs.minHeight,
       paddingTop: cs.paddingTop,
       paddingBottom: cs.paddingBottom,
@@ -757,9 +736,9 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     },
     // Merge hydratedContent for fields that cannot be read from the DOM
     // (e.g. gradientEnabled, gradientStart, gradientEnd, concert data).
-    // DOM-read fields in `content` override hydrated ones; hydrated supplies
-    // anything the DOM extraction cannot see.
-    content: { ...(hydratedContent || {}), ...content } as EditorNode["content"],
+    // hydratedContent (editor overrides) MUST override DOM-read fields
+    // to ensure editor changes are preserved.
+    content: { ...content, ...(hydratedContent || {}) } as EditorNode["content"],
     explicitContent,
     explicitStyle,
     explicitPosition,
@@ -930,8 +909,12 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isEditing || !isHydrated || !nodesBuiltRef.current || !extraNodeRegistrySignature) return
-    const timeout = window.setTimeout(() => setRegistry(scanRegistry()), 0)
-    return () => window.clearTimeout(timeout)
+    // Usar requestAnimationFrame para asegurar que los portals de extra nodes se hayan montado
+    const raf = requestAnimationFrame(() => {
+      const timeout = window.setTimeout(() => setRegistry(scanRegistry()), 100)
+      return () => window.clearTimeout(timeout)
+    })
+    return () => cancelAnimationFrame(raf)
   }, [isEditing, isHydrated, extraNodeRegistrySignature])
 
   // Boot timeout: if editorBootComplete not set within 30 seconds, something is wrong
@@ -1024,19 +1007,24 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (node.explicitContent) {
         // Only apply simple text content, NOT innerHTML reconstruction for hero-title
         if (node.content.text !== undefined) {
+          console.log(`[VISUAL-EDITOR] applyNodeToDom for ${node.id}:`, {
+            explicitContent: node.explicitContent,
+            text: node.content.text,
+            elementText: el.textContent
+          })
           el.textContent = node.content.text
         }
       }
       if (node.explicitStyle) {
         // Apply gradient first if enabled, BEFORE applying color
         const nodeStyleAny = node.style as any
-        if ((node.type === "text" || node.type === "button") && nodeStyleAny.gradientEnabled) {
+        if ((node.type === "text" || node.type === "button") && nodeStyleAny.gradientEnabled === true) {
           el.style.background = `linear-gradient(90deg, ${nodeStyleAny.gradientStart || "#FFB15A"}, ${nodeStyleAny.gradientEnd || "#FF6C00"})`
           el.style.backgroundClip = "text"
           el.style.webkitBackgroundClip = "text"
           el.style.webkitTextFillColor = "transparent"
           el.style.color = "transparent"
-        } else {
+        } else if (nodeStyleAny.gradientEnabled === false) {
           el.style.removeProperty("background")
           el.style.removeProperty("background-image")
           el.style.removeProperty("background-clip")
@@ -1044,6 +1032,8 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           el.style.removeProperty("-webkit-text-fill-color")
           if (node.style.color) el.style.color = node.style.color
         }
+        const keepsServerGradient = nodeStyleAny.gradientEnabled === undefined && el.style.webkitTextFillColor === "transparent"
+        if (node.style.color && !keepsServerGradient) el.style.color = node.style.color
         if (node.style.fontSize) el.style.fontSize = node.style.fontSize
         if (node.style.fontFamily) el.style.fontFamily = node.style.fontFamily
         if (node.style.fontWeight) el.style.fontWeight = node.style.fontWeight
@@ -1064,7 +1054,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     }
     if (node.type === "card" || node.type === "overlay") {
       if (node.explicitContent && node.content.text !== undefined) el.textContent = node.content.text
-      if (node.explicitStyle && node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
+      if (node.explicitStyle && (node.content.extraNodeType === "shade" || node.content.extraNodeType === "section-divider")) {
+        el.style.background = `linear-gradient(180deg, ${node.style.gradientStart || node.style.backgroundColor || "rgba(0,0,0,0.55)"}, ${node.style.gradientEnd || "rgba(0,0,0,0)"})`
+      } else if (node.explicitStyle && node.style.backgroundColor) {
+        el.style.backgroundColor = node.style.backgroundColor
+      }
     }
     if (node.type === "image" || node.type === "background") {
       const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
@@ -1093,9 +1087,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     }
     if (node.type === "section") {
       if (node.explicitStyle) {
-        if (node.style.minHeight) el.style.minHeight = node.style.minHeight
-        if (node.style.paddingTop) el.style.paddingTop = node.style.paddingTop
-        if (node.style.paddingBottom) el.style.paddingBottom = node.style.paddingBottom
+        if (node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
       }
     }
   }, [])
@@ -1217,7 +1209,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           next.set(command.node.id, command.node)
           setSelectedId(command.node.id)
           setOpenPanel(true)
-          window.setTimeout(() => setRegistry(scanRegistry()), 0)
+          // Esperar a que el extra node se monte antes de escanear
+          requestAnimationFrame(() => {
+            window.setTimeout(() => setRegistry(scanRegistry()), 100)
+          })
           break
         }
         case "DELETE_NODE":
@@ -1229,10 +1224,20 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
                 entry.element.dataset.editorDeleted = "true"
                 entry.element.style.display = "none"
                 deletedIdsRef.current.add(command.nodeId)
-              } else {
-                // Para extra nodes, el DOM es manejado por ExtraNodesRenderer
-                // No necesitamos modificar el DOM aquí
+          } else {
+            // Para extra nodes, también marcamos como eliminado para que scanRegistry lo ignore
+            entry.element.dataset.editorDeleted = "true"
+            entry.element.style.display = "none"
+            deletedIdsRef.current.add(command.nodeId)
+            // Guardar en sessionStorage para persistir la eliminación local entre refreshes
+            if (typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
+              try {
+                window.sessionStorage.setItem(`extra-node-deleted:${command.nodeId}`, "true")
+              } catch {
+                // Ignore sessionStorage errors
               }
+            }
+          }
             }
           }
           next.delete(command.nodeId)
@@ -1253,13 +1258,18 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           if (node) clipboardRef.current = structuredClone(node)
           const entry = registry.get(command.nodeId)
           if (entry?.element) {
-            // Solo para nodos reales (no extra) marcamos como eliminado
-            if (!isExtraNodeId(command.nodeId)) {
-              entry.element.dataset.editorDeleted = "true"
-              entry.element.style.display = "none"
-              deletedIdsRef.current.add(command.nodeId)
+            // Para todos los nodos (incluyendo extra) marcamos como eliminado
+            entry.element.dataset.editorDeleted = "true"
+            entry.element.style.display = "none"
+            deletedIdsRef.current.add(command.nodeId)
+            // Para extra nodes, guardar en sessionStorage
+            if (isExtraNodeId(command.nodeId) && typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
+              try {
+                window.sessionStorage.setItem(`extra-node-deleted:${command.nodeId}`, "true")
+              } catch {
+                // Ignore sessionStorage errors
+              }
             }
-            // Para extra nodes, el DOM es manejado por ExtraNodesRenderer
           }
           next.delete(command.nodeId)
           if (selectedId === command.nodeId) {
@@ -1273,6 +1283,15 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         case "PASTE_NODE": {
           const clip = clipboardRef.current
           if (!clip) break
+          
+          // Solo permitir pegar nodos extra (text, button, card, overlay)
+          // Los nodos regulares necesitan elementos DOM existentes
+          const isExtra = isExtraNodeId(clip.id)
+          if (!isExtra) {
+            console.warn("[PASTE_NODE] Skipping paste of non-extra node:", clip.id, clip.type)
+            break
+          }
+          
           const id = `${clip.id}-copy-${Date.now()}`
           // NO clonar DOM manualmente - ExtraNodesRenderer se encargará del render
           next.set(id, { 
@@ -1283,6 +1302,15 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           })
           setSelectedId(id)
           setOpenPanel(true)
+          
+          // Limpiar sessionStorage si este node (copia) estaba marcado como eliminado
+          if (typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
+            try {
+              window.sessionStorage.removeItem(`extra-node-deleted:${id}`)
+            } catch {
+              // Ignore sessionStorage errors
+            }
+          }
           break
         }
         default:
@@ -1321,15 +1349,17 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (candidate.closest("[data-editor-toolbar]") || candidate.closest("[data-editor-panel]")) continue
 
       // Concert card editing always wins over parent grouped lists and generic card handlers.
-      const concertCard = candidate.closest<HTMLElement>("[data-concert-card='true'][data-editor-node-id]")
-      if (concertCard?.dataset.editorNodeId) {
-        const concertEntry = registry.get(concertCard.dataset.editorNodeId)
+      const concertCard = candidate.closest<HTMLElement>("[data-concert-card='true'][data-editor-node-id], [data-concert-card='true'][data-extra-node-id]")
+      const concertNodeId = concertCard?.dataset.editorNodeId || concertCard?.dataset.extraNodeId
+      if (concertNodeId) {
+        const concertEntry = registry.get(concertNodeId)
         if (concertEntry?.eligible) return concertEntry
       }
 
-      const bound = candidate.closest<HTMLElement>("[data-editor-node-id]")
-      if (!bound?.dataset.editorNodeId) continue
-      const entry = registry.get(bound.dataset.editorNodeId)
+      const bound = candidate.closest<HTMLElement>("[data-editor-node-id], [data-extra-node-id]")
+      if (!bound?.dataset.editorNodeId && !bound?.dataset.extraNodeId) continue
+      const nodeId = bound.dataset.editorNodeId || bound.dataset.extraNodeId
+      const entry = registry.get(nodeId!)
       if (!entry || !entry.eligible) continue
       if (!candidates.find((c) => c.id === entry.id)) candidates.push(entry)
     }
@@ -1363,9 +1393,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const best = candidates[0]
     if (best && HERO_TEXT_PATTERN_NODE_IDS.has(best.id)) return best
     if (best) {
-      const groupedAncestor = best.element.parentElement?.closest<HTMLElement>("[data-editor-grouped='true'][data-editor-node-id]")
-      if (groupedAncestor?.dataset.editorNodeId && groupedAncestor.dataset.editorNodeId !== best.id) {
-        const groupedEntry = registry.get(groupedAncestor.dataset.editorNodeId)
+      const groupedAncestor = best.element.parentElement?.closest<HTMLElement>("[data-editor-grouped='true'][data-editor-node-id], [data-editor-grouped='true'][data-extra-node-id]")
+      const groupedNodeId = groupedAncestor?.dataset.editorNodeId || groupedAncestor?.dataset.extraNodeId
+      if (groupedNodeId && groupedNodeId !== best.id) {
+        const groupedEntry = registry.get(groupedNodeId)
         if (groupedEntry) return groupedEntry
       }
     }
@@ -1484,7 +1515,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     <VisualEditorContext.Provider value={value}>
       <MotionConfig reducedMotion={isEditing ? "always" : "never"}>
         {children}
-        {isEditing && <ExtraNodesLayer nodes={nodes} />}
+        {isEditing && <ExtraNodesLayer nodes={nodes} registry={registry} />}
       </MotionConfig>
     </VisualEditorContext.Provider>
   )
@@ -1554,7 +1585,7 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
   )
 }
 
-function ExtraNodesLayer({ nodes }: { nodes: Map<string, EditorNode> }) {
+function ExtraNodesLayer({ nodes, registry }: { nodes: Map<string, EditorNode>; registry: Map<string, RuntimeEntry> }) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -1568,6 +1599,8 @@ function ExtraNodesLayer({ nodes }: { nodes: Map<string, EditorNode> }) {
       {Array.from(nodes.values()).map((node) => {
         const kind = getExtraNodeKind(node)
         if (!kind) return null
+        const existingEntry = registry.get(node.id)
+        if (existingEntry?.element?.dataset.editorSsrExtraNode === "true") return null
         const parent = document.querySelector<HTMLElement>(`[data-editor-node-id="${node.sectionId}"]`)
         if (!parent) return null
 
@@ -1579,7 +1612,7 @@ function ExtraNodesLayer({ nodes }: { nodes: Map<string, EditorNode> }) {
           height: `${Math.max(8, node.geometry.height)}px`,
           transform: `translate(${node.geometry.x}px, ${node.geometry.y}px)`,
           transformOrigin: "top left",
-          zIndex: kind === "overlay" ? 8 : 20,
+          zIndex: kind === "overlay" || kind === "shade" || kind === "background-image" || kind === "section-divider" ? 8 : 20,
           color: node.style.color,
           backgroundColor: node.style.backgroundColor,
           fontSize: node.style.fontSize,
@@ -1587,14 +1620,24 @@ function ExtraNodesLayer({ nodes }: { nodes: Map<string, EditorNode> }) {
           fontWeight: node.style.fontWeight,
           fontStyle: node.style.fontStyle,
           textDecoration: node.style.textDecoration,
-          display: kind === "button" ? "inline-flex" : kind === "text" ? "block" : "flex",
+          display: kind === "button" ? "inline-flex" : kind === "text" || kind === "background-image" ? "block" : "flex",
           alignItems: kind === "text" ? undefined : "center",
           justifyContent: kind === "text" ? undefined : "center",
-          padding: kind === "text" ? undefined : kind === "button" ? "0 18px" : "16px",
-          borderRadius: kind === "text" ? undefined : kind === "button" ? "8px" : "8px",
+          padding: kind === "text" || kind === "background-image" || kind === "section-divider" || kind === "shade" ? undefined : kind === "button" ? "0 18px" : "16px",
+          borderRadius: kind === "text" || kind === "section-divider" ? undefined : kind === "button" ? "8px" : "8px",
           border: kind === "card" ? "1px solid rgba(255,255,255,0.18)" : undefined,
-          backdropFilter: kind === "overlay" ? "blur(2px)" : undefined,
+          backdropFilter: kind === "overlay" || kind === "shade" ? "blur(2px)" : undefined,
           pointerEvents: "auto",
+          overflow: "hidden",
+        }
+        if (kind === "section") {
+          baseStyle.minHeight = `${Math.max(120, node.geometry.height)}px`
+        }
+        if (kind === "shade" || kind === "section-divider") {
+          baseStyle.background = `linear-gradient(180deg, ${node.style.gradientStart || node.style.backgroundColor || "rgba(0,0,0,0.55)"}, ${node.style.gradientEnd || "rgba(0,0,0,0)"})`
+        }
+        if (kind === "background-image" && typeof node.style.opacity === "number") {
+          baseStyle.opacity = node.style.opacity
         }
         if ((kind === "text" || kind === "button") && node.style.textShadowEnabled) {
           baseStyle.textShadow = TEXT_EMPHASIS_SHADOW
@@ -1613,6 +1656,7 @@ function ExtraNodesLayer({ nodes }: { nodes: Map<string, EditorNode> }) {
           "data-editor-node-label": node.label,
           "data-editor-section-id": node.sectionId,
           "data-editor-extra-node": "true",
+          "data-editor-extra-node-kind": kind,
           style: baseStyle,
         }
 
@@ -1623,8 +1667,28 @@ function ExtraNodesLayer({ nodes }: { nodes: Map<string, EditorNode> }) {
           )
         }
 
+        if (kind === "background-image") {
+          return createPortal(
+            <div {...commonProps} aria-hidden="true">
+              {node.content.src ? (
+                <img
+                  src={node.content.src}
+                  alt={node.content.alt || ""}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    filter: `contrast(${node.style.contrast ?? 100}%) saturate(${node.style.saturation ?? 100}%) brightness(${node.style.brightness ?? 100}%)${node.style.negative ? " invert(1)" : ""}`,
+                  }}
+                />
+              ) : null}
+            </div>,
+            parent
+          )
+        }
+
         return createPortal(
-          <div {...commonProps}>{kind === "overlay" ? "" : node.content.text}</div>,
+          <div {...commonProps}>{kind === "overlay" || kind === "shade" || kind === "section-divider" ? "" : node.content.text}</div>,
           parent
         )
       })}
@@ -1700,10 +1764,8 @@ export function VisualEditorOverlay() {
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
-  // Hero title treated as simple text - disable segment UI to prevent innerHTML reconstruction
-  // This fixes the rollback issue by removing segment-based DOM reconstruction
-  const heroTitleSegments: TextSegment[] = selectedNode?.id === "hero-title" ? [] : (selectedNode?.content.titleSegments || selectedNode?.content.textSegments || [])
-  const heroSubtitleSegments: TextSegment[] = selectedNode?.id === "hero-subtitle" ? [] : (selectedNode?.content.titleSegments || selectedNode?.content.textSegments || [])
+  const heroTitleSegments: TextSegment[] = selectedNode?.content.titleSegments || selectedNode?.content.textSegments || []
+  const heroSubtitleSegments: TextSegment[] = selectedNode?.content.titleSegments || selectedNode?.content.textSegments || []
   const canUseSimpleTextTools = hasRealTextToolingWriter(selectedNode)
   const isHeroAssetNode =
     (selectedNode?.type === "image" || selectedNode?.type === "background") &&
@@ -1713,8 +1775,8 @@ export function VisualEditorOverlay() {
   const hasNestedEditableChildren = Boolean(
     selectedNode?.type === "card" &&
       selectedEntry?.element &&
-      Array.from(selectedEntry.element.querySelectorAll<HTMLElement>("[data-editor-node-id]")).some(
-        (el) => (el.dataset.editorNodeId || "") !== selectedNode.id
+      Array.from(selectedEntry.element.querySelectorAll<HTMLElement>("[data-editor-node-id], [data-extra-node-id]")).some(
+        (el) => (el.dataset.editorNodeId || el.dataset.extraNodeId || "") !== selectedNode.id
       )
   )
   const hasStructuredCardFields = Boolean(
@@ -1736,7 +1798,7 @@ export function VisualEditorOverlay() {
   const selectedEntryElement = selectedEntry?.element
   const footerSocialLinkItems = (() => {
     if (!isFooterSocialGroup || !selectedEntryElement) return [] as Array<{ id: string; name: string; href: string }>
-    return Array.from(selectedEntryElement.querySelectorAll<HTMLElement>("[data-link-item='true'][data-editor-node-id]"))
+    return Array.from(selectedEntryElement.querySelectorAll<HTMLElement>("[data-link-item='true'][data-editor-node-id], [data-link-item='true'][data-extra-node-id]"))
       .map((el) => {
         const id = (el.dataset.editorNodeId || "").trim()
         if (!id) return null
@@ -1752,10 +1814,10 @@ export function VisualEditorOverlay() {
 
   const addExtraNode = (kind: ExtraNodeKind): void => {
     const selectedSectionElement =
-      selectedEntry?.element?.closest<HTMLElement>("[data-editor-node-type='section'][data-editor-node-id]") ||
+      selectedEntry?.element?.closest<HTMLElement>("[data-editor-node-type='section'][data-editor-node-id], [data-editor-node-type='section'][data-extra-node-id]") ||
       (selectedEntry?.type === "section" ? selectedEntry.element : null)
     const viewportCenterY = window.innerHeight / 2
-    const fallbackSection = Array.from(document.querySelectorAll<HTMLElement>("[data-editor-node-type='section'][data-editor-node-id]"))
+    const fallbackSection = Array.from(document.querySelectorAll<HTMLElement>("[data-editor-node-type='section'][data-editor-node-id], [data-editor-node-type='section'][data-extra-node-id]"))
       .map((el) => ({ el, rect: el.getBoundingClientRect() }))
       .filter(({ rect }) => rect.bottom > 0 && rect.top < window.innerHeight)
       .sort((a, b) => Math.abs((a.rect.top + a.rect.bottom) / 2 - viewportCenterY) - Math.abs((b.rect.top + b.rect.bottom) / 2 - viewportCenterY))[0]?.el || null
@@ -1775,7 +1837,7 @@ export function VisualEditorOverlay() {
     }
 
     const rect = sectionElement.getBoundingClientRect()
-    const defaults: Record<ExtraNodeKind, { type: NodeType; label: string; width: number; height: number; text?: string; href?: string; style: EditorNode["style"] }> = {
+    const defaults: Record<ExtraNodeKind, { type: NodeType; label: string; width: number; height: number; text?: string; href?: string; src?: string; style: EditorNode["style"] }> = {
       text: {
         type: "text",
         label: "Extra Text",
@@ -1807,6 +1869,35 @@ export function VisualEditorOverlay() {
         height: 190,
         style: { backgroundColor: "rgba(0, 0, 0, 0.32)" },
       },
+      "section-divider": {
+        type: "background",
+        label: "Extra Section Divider",
+        width: Math.max(320, Math.round(rect.width * 0.8)),
+        height: 36,
+        style: { backgroundColor: "rgba(0, 0, 0, 0.55)", gradientStart: "rgba(0,0,0,0.65)", gradientEnd: "rgba(0,0,0,0)" },
+      },
+      section: {
+        type: "section",
+        label: "Extra Section",
+        width: Math.max(360, Math.round(rect.width * 0.85)),
+        height: 260,
+        style: { backgroundColor: "rgba(0, 0, 0, 0.35)", color: "#f2f2f2" },
+      },
+      shade: {
+        type: "overlay",
+        label: "Extra Shade Layer",
+        width: Math.max(340, Math.round(rect.width * 0.75)),
+        height: 160,
+        style: { backgroundColor: "rgba(0, 0, 0, 0.42)", gradientStart: "rgba(0,0,0,0.62)", gradientEnd: "rgba(0,0,0,0)" },
+      },
+      "background-image": {
+        type: "background",
+        label: "Extra Background Image",
+        width: Math.max(420, Math.round(rect.width * 0.75)),
+        height: 240,
+        src: "/images/sections/live-bg.jpg",
+        style: { opacity: 0.75, contrast: 100, saturation: 100, brightness: 100 },
+      },
     }
     const preset = defaults[kind]
     const yBase = Math.max(32, Math.min(Math.max(32, rect.height - preset.height - 32), window.innerHeight * 0.35 - rect.top))
@@ -1833,6 +1924,8 @@ export function VisualEditorOverlay() {
       content: {
         text: preset.text,
         href: preset.href,
+        src: preset.src,
+        mediaKind: kind === "background-image" ? "image" : undefined,
         extraNodeType: kind,
         parentSection: sectionId,
         label: preset.label,
@@ -1847,6 +1940,15 @@ export function VisualEditorOverlay() {
     setSelectedIds([nodeId])
     setAddMenuOpen(false)
     setAddMessage(null)
+    
+    // Limpiar sessionStorage si este node estaba marcado como eliminado previamente
+    if (typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
+      try {
+        window.sessionStorage.removeItem(`extra-node-deleted:${nodeId}`)
+      } catch {
+        // Ignore sessionStorage errors
+      }
+    }
   }
 
   const selectedBandMemberIndex = extractBandMemberIndex(selectedNode?.id)
@@ -1910,7 +2012,7 @@ export function VisualEditorOverlay() {
       })
       const deployableNodes = Array.from(nodes.values())
       const nonPersistableNodes = deployableNodes
-        .filter((node) => (node.type === "image" || node.type === "background") && !isPersistableImageSrc(node.content.src))
+        .filter((node) => (node.type === "image" || (node.type === "background" && node.content.mediaKind === "image")) && !isPersistableImageSrc(node.content.src))
         .map((node) => node.id)
       const serializedNodes = deployableNodes.map((node) => ({
         id: node.id,
@@ -2030,6 +2132,22 @@ export function VisualEditorOverlay() {
         nodes.forEach((node, id) => baseline.set(id, getNodeSignature(node)))
         baselineNodeSignaturesRef.current = baseline
         dirtyNodeIdsRef.current.clear()
+        
+        // Limpiar sessionStorage de extra nodes eliminados (porque ahora están persistidos en Sanity)
+        if (typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
+          try {
+            const keysToRemove: string[] = []
+            for (let i = 0; i < window.sessionStorage.length; i++) {
+              const key = window.sessionStorage.key(i)
+              if (key?.startsWith("extra-node-deleted:")) {
+                keysToRemove.push(key)
+              }
+            }
+            keysToRemove.forEach(key => window.sessionStorage.removeItem(key))
+          } catch {
+            // Ignore sessionStorage errors
+          }
+        }
       }
     } catch (error) {
       setDeployStatus("failed")
@@ -2353,7 +2471,7 @@ export function VisualEditorOverlay() {
     const shouldBlockPublicAction = (target: EventTarget | null): boolean => {
       if (!(target instanceof HTMLElement)) return false
       if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]") || target.closest("[data-editor-deploy-modal]")) return false
-      if (target.closest("[data-editor-node-id]")) return true
+      if (target.closest("[data-editor-node-id], [data-extra-node-id]")) return true
       if (target.closest("a,button,[role='button'],form")) return true
       return false
     }
@@ -2506,15 +2624,15 @@ export function VisualEditorOverlay() {
             +
           </button>
           {addMenuOpen && (
-            <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-lg border border-white/15 bg-[#111827] py-1 text-sm shadow-2xl">
-              {(["text", "button", "card", "overlay"] as const).map((kind) => (
+            <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-lg border border-white/15 bg-[#111827] py-1 text-sm shadow-2xl">
+              {(["text", "button", "card", "overlay", "section-divider", "section", "shade", "background-image"] as const).map((kind) => (
                 <button
                   key={kind}
                   type="button"
                   className="block w-full px-3 py-2 text-left text-white hover:bg-white/10"
                   onClick={() => addExtraNode(kind)}
                 >
-                  {kind === "text" ? "Add Text" : kind === "button" ? "Add Button" : kind === "card" ? "Add Card" : "Add Overlay"}
+                  {kind === "text" ? "Add Text" : kind === "button" ? "Add Button" : kind === "card" ? "Add Card" : kind === "overlay" ? "Add Overlay" : kind === "section-divider" ? "Add Section Divider" : kind === "section" ? "Add Section" : kind === "shade" ? "Add Shade Layer" : "Add Background Image"}
                 </button>
               ))}
             </div>
@@ -2679,8 +2797,6 @@ export function VisualEditorOverlay() {
 
 
             {(selectedNode.type === "text" || selectedNode.type === "button") &&
-              !(selectedNode.type === "text" && selectedNode.id === "hero-title" && heroTitleSegments.length > 0) &&
-              !(selectedNode.type === "text" && selectedNode.id === "hero-subtitle" && heroSubtitleSegments.length > 0) &&
               canUseSimpleTextTools && (
               <>
                 <label className="text-xs font-semibold">Content</label>
@@ -2908,7 +3024,9 @@ export function VisualEditorOverlay() {
                       selectedNode.id === "live-section-bg-image" ||
                       selectedNode.id === "contact-bg-image" ||
                       selectedNode.id === "footer-logo" ||
-                      /^member-item-\d+-image$/.test(selectedNode.id)
+                      selectedNode.id === "nav-logo" ||
+                      /^member-item-\d+-image$/.test(selectedNode.id) ||
+                      (isExtraNodeId(selectedNode.id) && selectedNode.type === "background")
 
                     if (requiresSanityAsset) {
                       try {

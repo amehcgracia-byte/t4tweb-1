@@ -6,16 +6,17 @@ import { getTraceNodeId } from "@/lib/sanity/env"
 
 interface HomeEditorOverridesContextValue {
   resolveImageSrc: (nodeId: string, fallback: string) => string
+  resolveTextOverride: (nodeId: string, fallback: string) => string
 }
 
 const HomeEditorOverridesContext = createContext<HomeEditorOverridesContextValue>({
   resolveImageSrc: (_nodeId: string, fallback: string) => fallback,
+  resolveTextOverride: (_nodeId: string, fallback: string) => fallback,
 })
 
 const DOC_DRIVEN_IMAGE_NODE_IDS = new Set<string>([
   "hero-bg-image",
   "hero-logo",
-  "nav-logo",
   "intro-banner-gif",
 ])
 
@@ -36,20 +37,22 @@ export function HomeEditorOverridesProvider({ nodes, children }: { nodes: HomeEd
   const traceNodeId = getTraceNodeId()
 
   // Normalize nodes - simple and robust
-  const normalizedNodes: HomeEditorNodeOverride[] = Array.isArray(nodes) ? nodes : [];
+  const normalizedNodes = useMemo(() => Array.isArray(nodes) ? nodes : [], [nodes]);
 
   // Diagnostic log for array check
-  if (typeof window !== "undefined") {
-    console.log("[EDITOR-REHYDRATE][provider-input-type]", {
-      isArray: Array.isArray(nodes),
-      length: Array.isArray(nodes) ? nodes.length : null,
-    });
-    console.log("[EDITOR-REHYDRATE][provider-is-array-check]", {
-      isArray: Array.isArray(normalizedNodes),
-      constructorName: normalizedNodes?.constructor?.name ?? null,
-      length: Array.isArray(normalizedNodes) ? normalizedNodes.length : null,
-    });
-  }
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      console.log("[EDITOR-REHYDRATE][provider-input-type]", {
+        isArray: Array.isArray(nodes),
+        length: Array.isArray(nodes) ? nodes.length : null,
+      });
+      console.log("[EDITOR-REHYDRATE][provider-is-array-check]", {
+        isArray: Array.isArray(normalizedNodes),
+        constructorName: normalizedNodes?.constructor?.name ?? null,
+        length: Array.isArray(normalizedNodes) ? normalizedNodes.length : null,
+      });
+    }
+  }, [nodes, normalizedNodes])
 
   const srcByNodeId = useMemo(() => {
     const map = new Map<string, string>()
@@ -64,40 +67,53 @@ export function HomeEditorOverridesProvider({ nodes, children }: { nodes: HomeEd
     return map
   }, [normalizedNodes])
 
-  useEffect(() => {
-    // Populate window.__HOME_EDITOR_NODE_OVERRIDES__ for visual-editor hydration
-    if (typeof window === "undefined") return
-
-    try {
-      if (!Array.isArray(normalizedNodes)) {
-        (window as any).__HOME_EDITOR_NODE_OVERRIDES__ = {}
-        return
-      }
-
-      if (normalizedNodes.length === 0) {
-        (window as any).__HOME_EDITOR_NODE_OVERRIDES__ = {}
-        console.log("[EDITOR-REHYDRATE][provider-window-write]", { count: 0, reason: "no nodes" })
-        return
-      }
-
-      const nodeOverridesMap: Record<string, typeof normalizedNodes[0]> = {}
-      const skippedDocDrivenHeroImages: string[] = []
+  const textByNodeId = useMemo(() => {
+    const map = new Map<string, string>()
+    if (Array.isArray(normalizedNodes)) {
+      console.log('[HOME-EDITOR-PROVIDER] Processing normalized nodes:', normalizedNodes.length)
       normalizedNodes.forEach((node) => {
-        if (HERO_DOC_DRIVEN_IMAGE_NODE_IDS.has(node.nodeId)) {
-          skippedDocDrivenHeroImages.push(node.nodeId)
-          return
+        // Skip doc-driven images
+        if (DOC_DRIVEN_IMAGE_NODE_IDS.has(node.nodeId)) return
+        // Only include text overrides with explicitContent
+        if (node.explicitContent && typeof node.content?.text === "string") {
+          console.log(`[HOME-EDITOR-PROVIDER] Adding text override for ${node.nodeId}:`, node.content.text)
+          map.set(node.nodeId, node.content.text)
         }
-        nodeOverridesMap[node.nodeId] = node;
-      });
-      (window as any).__HOME_EDITOR_NODE_OVERRIDES__ = nodeOverridesMap;
-      console.log("[EDITOR-REHYDRATE][provider-normalized-count]", {
-        count: Object.keys(nodeOverridesMap).length,
-        nodeIds: Object.keys(nodeOverridesMap),
-        skippedDocDrivenHeroImages,
-      });
-    } catch (err) {
-      console.error("[EDITOR-REHYDRATE][provider-invalid-input]", { error: "window write failed", message: err instanceof Error ? err.message : String(err) });
-      (window as any).__HOME_EDITOR_NODE_OVERRIDES__ = {};
+      })
+    }
+    return map
+  }, [normalizedNodes])
+
+  // Set window.__HOME_EDITOR_NODE_OVERRIDES__ in useEffect to avoid hydration mismatch
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        if (!Array.isArray(normalizedNodes)) {
+          (window as any).__HOME_EDITOR_NODE_OVERRIDES__ = {}
+        } else if (normalizedNodes.length === 0) {
+          (window as any).__HOME_EDITOR_NODE_OVERRIDES__ = {}
+          console.log("[EDITOR-REHYDRATE][provider-window-write]", { count: 0, reason: "no nodes" })
+        } else {
+          const nodeOverridesMap: Record<string, typeof normalizedNodes[0]> = {}
+          const skippedDocDrivenHeroImages: string[] = []
+          normalizedNodes.forEach((node) => {
+            if (HERO_DOC_DRIVEN_IMAGE_NODE_IDS.has(node.nodeId)) {
+              skippedDocDrivenHeroImages.push(node.nodeId)
+              return
+            }
+            nodeOverridesMap[node.nodeId] = node;
+          });
+          (window as any).__HOME_EDITOR_NODE_OVERRIDES__ = nodeOverridesMap;
+          console.log("[EDITOR-REHYDRATE][provider-normalized-count]", {
+            count: Object.keys(nodeOverridesMap).length,
+            nodeIds: Object.keys(nodeOverridesMap),
+            skippedDocDrivenHeroImages,
+          });
+        }
+      } catch (err) {
+        console.error("[EDITOR-REHYDRATE][provider-invalid-input]", { error: "window write failed", message: err instanceof Error ? err.message : String(err) });
+        (window as any).__HOME_EDITOR_NODE_OVERRIDES__ = {};
+      }
     }
   }, [normalizedNodes])
 
@@ -116,7 +132,8 @@ export function HomeEditorOverridesProvider({ nodes, children }: { nodes: HomeEd
 
   const value = useMemo<HomeEditorOverridesContextValue>(() => ({
     resolveImageSrc: (nodeId: string, fallback: string) => srcByNodeId.get(nodeId) || fallback,
-  }), [srcByNodeId])
+    resolveTextOverride: (nodeId: string, fallback: string) => textByNodeId.get(nodeId) || fallback,
+  }), [srcByNodeId, textByNodeId])
 
   return <HomeEditorOverridesContext.Provider value={value}>{children}</HomeEditorOverridesContext.Provider>
 }
@@ -124,4 +141,9 @@ export function HomeEditorOverridesProvider({ nodes, children }: { nodes: HomeEd
 export function useHomeEditorImageSrc(nodeId: string, fallback: string): string {
   const { resolveImageSrc } = useContext(HomeEditorOverridesContext)
   return resolveImageSrc(nodeId, fallback)
+}
+
+export function useHomeEditorTextOverride(nodeId: string, fallback: string): string {
+  const { resolveTextOverride } = useContext(HomeEditorOverridesContext)
+  return resolveTextOverride(nodeId, fallback)
 }

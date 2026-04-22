@@ -20,15 +20,20 @@ import { loadBandMembersData } from "@/lib/sanity/band-members-loader"
 import { loadContactSectionData } from "@/lib/sanity/contact-loader"
 import { loadFooterData } from "@/lib/sanity/footer-loader"
 import { loadLiveSectionData } from "@/lib/live-concerts-loader"
+import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
 import { ExtraNodesRenderer } from "@/components/extra-nodes-renderer"
 
 export const dynamic = "force-dynamic"
 
+function isHeroExtraNode(node: { nodeId: string; content?: { parentSection?: string } }): boolean {
+  return node.nodeId.startsWith("extra-") && node.content?.parentSection === "hero-section"
+}
+
 export default async function HomePagePublic() {
-  const [heroData, navigationData, introBannerData, latestReleaseData, aboutData, pressKitData, bandMembersData, liveData, contactData, footerData] = await Promise.all([
+  const [heroData, navigationData, introBannerData, latestReleaseData, aboutData, pressKitData, bandMembersData, liveData, contactData, footerData, homeEditorNodes] = await Promise.all([
     loadHeroData("published"),
-    loadNavigationData(),
+    loadNavigationData("published"),
     loadIntroBannerData("published"),
     loadLatestReleaseData("published"),
     loadAboutData("published"),
@@ -37,14 +42,16 @@ export default async function HomePagePublic() {
     loadLiveSectionData("published"),
     loadContactSectionData("published"),
     loadFooterData("published"),
+    loadHomeEditorState("published"),
   ])
+  const heroExtraNodes = homeEditorNodes.filter(isHeroExtraNode)
 
   return (
     <main className="relative overflow-x-clip bg-black">
       <RibbonsBlock />
       <Navigation data={navigationData} />
 
-      <HeroSection data={heroData} />
+      <HeroSection data={heroData} extraNodes={heroExtraNodes} />
 
       <SectionDivider editorId="section-divider-hero-intro" />
 
@@ -89,6 +96,7 @@ export default async function HomePagePublic() {
       <SectionDivider editorId="section-divider-contact-footer" />
 
       <Footer data={footerData} />
+      <ExtraNodesRenderer nodes={homeEditorNodes} />
     </main>
   )
 }

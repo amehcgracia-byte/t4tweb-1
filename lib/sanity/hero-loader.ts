@@ -36,12 +36,10 @@ export async function loadHeroData(perspective: "published" | "drafts" = "publis
     const client = createClient({
       projectId: resolveSanityProjectId(),
       dataset: resolveSanityDataset(),
-      apiVersion: '2024-01-01',
-      // API origin by default so post-deploy reads match what we wrote (opt into CDN with SANITY_USE_CDN=true).
-      useCdn: process.env.SANITY_USE_CDN === 'true',
-      perspective: perspective,
+      apiVersion: "2024-01-01",
+      useCdn: false,
+      perspective,
     })
-
     const query = `*[_type == "heroSection"][0]{
       title,
       titleHighlight,
@@ -77,11 +75,11 @@ export async function loadHeroData(perspective: "published" | "drafts" = "publis
       titleHighlight: fetched.titleHighlight || FALLBACK.titleHighlight,
       subtitle: fetched.subtitle || FALLBACK.subtitle,
       description: fetched.description || FALLBACK.description,
-      logoUrl: fetched.logoUrl || FALLBACK.logoUrl,
       bgUrl: fetched.bgUrl || FALLBACK.bgUrl,
-      scrollLabel: fetched.scrollLabel ?? FALLBACK.scrollLabel,
+      logoUrl: fetched.logoUrl || FALLBACK.logoUrl,
+      scrollLabel: fetched.scrollLabel || FALLBACK.scrollLabel,
       ctaButtons: Array.isArray(fetched.ctaButtons) ? fetched.ctaButtons : FALLBACK.ctaButtons,
-      elementStyles: elementStyles ?? FALLBACK.elementStyles,
+      elementStyles: elementStyles || FALLBACK.elementStyles,
     }
   } catch (error) {
     console.error('[loadHeroData] failed to fetch from Sanity:', error)

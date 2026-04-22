@@ -49,17 +49,32 @@ export async function loadHomeEditorState(perspective: "published" | "drafts" = 
       "press-kit-manager",
     ])
 
-    return raw
+    const HERO_DOC_DRIVEN_NODE_IDS = new Set([
+      "hero-section",
+      "hero-bg-image",
+      "hero-title",
+      "hero-subtitle",
+      "hero-logo",
+      "hero-scroll-indicator",
+      "hero-scroll-label",
+      "hero-buttons",
+    ])
+
+    const INTRO_DOC_DRIVEN_NODE_IDS = new Set([
+      "intro-section",
+      "intro-banner-gif",
+      "intro-banner-text",
+      "intro-book-button",
+      "intro-press-button",
+    ])
+
+    const nodes = raw
       .map((raw): HomeEditorNodeOverride | null => {
         if (!raw || typeof raw !== "object") return null
         const n = raw as Record<string, unknown>
         const nodeId = typeof n.nodeId === "string" ? n.nodeId : typeof n.id === "string" ? n.id : null
         if (!nodeId) return null
-        // Filter out legacy nodes
-        if (LEGACY_NODE_IDS.has(nodeId)) {
-          console.log(`[home-editor-state-loader] Filtering legacy node: ${nodeId}`)
-          return null
-        }
+        if (LEGACY_NODE_IDS.has(nodeId) || HERO_DOC_DRIVEN_NODE_IDS.has(nodeId) || INTRO_DOC_DRIVEN_NODE_IDS.has(nodeId)) return null
         const nodeType = typeof n.nodeType === "string" ? n.nodeType : typeof n.type === "string" ? n.type : "text"
         const geometry = (n.geometry && typeof n.geometry === "object" ? n.geometry : {}) as Record<string, unknown>
         const style = (n.style && typeof n.style === "object" ? n.style : {}) as Record<string, unknown>
@@ -83,6 +98,8 @@ export async function loadHomeEditorState(perspective: "published" | "drafts" = 
         }
       })
       .filter((node): node is HomeEditorNodeOverride => Boolean(node))
+
+    return nodes
   } catch (error) {
     console.error("[home-editor-state-loader] Failed to load home editor state", error)
     return []

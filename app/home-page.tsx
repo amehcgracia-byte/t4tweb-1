@@ -22,11 +22,14 @@ import { loadFooterData } from "@/lib/sanity/footer-loader"
 import { loadLiveSectionData } from "@/lib/live-concerts-loader"
 import { RibbonsBlock } from "@/components/ribbons-block"
 import { HomeEditorOverridesProvider } from "@/components/home-editor-overrides-provider"
-import { HomeEditorStateApplier } from "@/components/home-editor-state-applier"
 import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
 import { ExtraNodesRenderer } from "@/components/extra-nodes-renderer"
 
 export const dynamic = "force-dynamic"
+
+function isHeroExtraNode(node: { nodeId: string; content?: { parentSection?: string } }): boolean {
+  return node.nodeId.startsWith("extra-") && node.content?.parentSection === "hero-section"
+}
 
 export default async function HomePage({ perspective = "published", isEditorRoute = false }: { perspective?: "published" | "drafts"; isEditorRoute?: boolean } = {}) {
   const [heroData, navigationData, introBannerData, latestReleaseData, aboutData, pressKitData, bandMembersData, liveData, contactData, footerData] = await Promise.all([
@@ -46,6 +49,7 @@ export default async function HomePage({ perspective = "published", isEditorRout
   const homeEditorNodes = isEditorRoute
     ? await loadHomeEditorState(perspective)
     : []
+  const heroExtraNodes = homeEditorNodes.filter(isHeroExtraNode)
 
   return (
     <main className="relative overflow-x-clip bg-black">
@@ -55,7 +59,7 @@ export default async function HomePage({ perspective = "published", isEditorRout
           <RibbonsBlock />
           <Navigation data={navigationData} />
 
-          <HeroSection data={heroData} />
+          <HeroSection data={heroData} extraNodes={heroExtraNodes} />
 
           <SectionDivider editorId="section-divider-hero-intro" />
 
@@ -106,7 +110,7 @@ export default async function HomePage({ perspective = "published", isEditorRout
           <RibbonsBlock />
           <Navigation data={navigationData} />
 
-          <HeroSection data={heroData} />
+          <HeroSection data={heroData} extraNodes={heroExtraNodes} />
 
           <SectionDivider editorId="section-divider-hero-intro" />
 
@@ -151,6 +155,7 @@ export default async function HomePage({ perspective = "published", isEditorRout
           <SectionDivider editorId="section-divider-contact-footer" />
 
           <Footer data={footerData} />
+          <ExtraNodesRenderer nodes={homeEditorNodes} />
         </>
       )}
     </main>
