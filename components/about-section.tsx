@@ -14,10 +14,41 @@ interface AboutSectionProps {
 
 function getAboutBoxStyle(elementStyles: AboutData["elementStyles"], nodeId: string): CSSProperties {
   const rawStyle = elementStyles[nodeId]
-  const style = { ...getElementLayoutStyle(elementStyles, nodeId) }
+  const style = { ...getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: true }) }
   if (typeof rawStyle?.backgroundColor === "string") style.backgroundColor = rawStyle.backgroundColor
   delete style.opacity
   return style
+}
+
+function getAboutNodeStyle(elementStyles: AboutData["elementStyles"], nodeId: string): CSSProperties {
+  return getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: true })
+}
+
+function getAboutEditorAttrs(elementStyles: AboutData["elementStyles"], nodeId: string): Record<string, string> {
+  const styles = elementStyles[nodeId]
+  if (!styles) return {}
+  const hasPosition = typeof styles.x === "number" || typeof styles.y === "number"
+  const hasSize = typeof styles.width === "number" || typeof styles.height === "number"
+  const hasStyle = Object.keys(styles).some((key) => !["x", "y", "width", "height"].includes(key))
+  const attrs: Record<string, string> = {}
+  if (hasPosition) attrs["data-editor-explicit-position"] = "true"
+  if (hasSize) attrs["data-editor-explicit-size"] = "true"
+  if (hasStyle) attrs["data-editor-explicit-style"] = "true"
+  if (typeof styles.x === "number") attrs["data-editor-geometry-x"] = String(styles.x)
+  if (typeof styles.y === "number") attrs["data-editor-geometry-y"] = String(styles.y)
+  if (typeof styles.width === "number") attrs["data-editor-geometry-width"] = String(styles.width)
+  if (typeof styles.height === "number") attrs["data-editor-geometry-height"] = String(styles.height)
+  if (typeof styles.scale === "number") attrs["data-editor-style-scale"] = String(styles.scale)
+  if (typeof styles.color === "string") attrs["data-editor-style-color"] = styles.color
+  if (typeof styles.backgroundColor === "string") attrs["data-editor-style-background-color"] = styles.backgroundColor
+  if (typeof styles.textShadowEnabled === "boolean") attrs["data-editor-style-text-shadow-enabled"] = String(styles.textShadowEnabled)
+  if (styles.textAlign === "left" || styles.textAlign === "center" || styles.textAlign === "right") {
+    attrs["data-editor-style-text-align"] = styles.textAlign
+  }
+  if (typeof styles.gradientEnabled === "boolean") attrs["data-editor-style-gradient-enabled"] = String(styles.gradientEnabled)
+  if (typeof styles.gradientStart === "string") attrs["data-editor-style-gradient-start"] = styles.gradientStart
+  if (typeof styles.gradientEnd === "string") attrs["data-editor-style-gradient-end"] = styles.gradientEnd
+  return attrs
 }
 
 function getAboutSectionStyle(elementStyles: AboutData["elementStyles"]): CSSProperties {
@@ -248,6 +279,7 @@ export function AboutSection({ className = "", data }: AboutSectionProps) {
       data-editor-node-id="about-section"
       data-editor-node-type="section"
       data-editor-node-label="About Section"
+      {...getAboutEditorAttrs(data.elementStyles, "about-section")}
       className={`relative isolate min-h-screen w-full overflow-hidden bg-black ${className}`}
       style={getAboutSectionStyle(data.elementStyles)}
     >
@@ -257,8 +289,10 @@ export function AboutSection({ className = "", data }: AboutSectionProps) {
         data-editor-node-type="background"
         data-editor-media-kind="image"
         data-editor-node-label="About Background"
+        data-editor-src={data.backgroundImageUrl}
+        {...getAboutEditorAttrs(data.elementStyles, "about-bg-image")}
         className="absolute inset-0 z-0"
-        style={getElementLayoutStyle(data.elementStyles, "about-bg-image")}
+        style={getAboutNodeStyle(data.elementStyles, "about-bg-image")}
       >
         <Image
           src={data.backgroundImageUrl}
@@ -281,8 +315,9 @@ export function AboutSection({ className = "", data }: AboutSectionProps) {
               data-editor-node-id="about-header-eyebrow"
               data-editor-node-type="text"
               data-editor-node-label="About Eyebrow"
+              {...getAboutEditorAttrs(data.elementStyles, "about-header-eyebrow")}
               className="mb-4 text-sm font-semibold uppercase tracking-[0.22em] text-[#FF8C21] md:text-base"
-              style={getElementLayoutStyle(data.elementStyles, "about-header-eyebrow")}
+              style={getAboutNodeStyle(data.elementStyles, "about-header-eyebrow")}
             >
               {data.eyebrow}
             </p>
@@ -291,8 +326,9 @@ export function AboutSection({ className = "", data }: AboutSectionProps) {
               data-editor-node-id="about-header-title"
               data-editor-node-type="text"
               data-editor-node-label="About Header"
+              {...getAboutEditorAttrs(data.elementStyles, "about-header-title")}
               className="text-4xl font-black leading-[0.95] text-white md:text-6xl lg:text-7xl"
-              style={getElementLayoutStyle(data.elementStyles, "about-header-title")}
+              style={getAboutNodeStyle(data.elementStyles, "about-header-title")}
             >
               {data.title}
             </h2>
@@ -303,6 +339,7 @@ export function AboutSection({ className = "", data }: AboutSectionProps) {
             data-editor-node-id="about-text-card"
             data-editor-node-type="card"
             data-editor-node-label="About Text Card"
+            {...getAboutEditorAttrs(data.elementStyles, "about-text-card")}
             className="relative z-10 w-full rounded-3xl border border-white/10 bg-black/50 px-6 py-8 shadow-2xl backdrop-blur-md md:px-10 md:py-12 lg:px-12 lg:py-14"
             style={getAboutBoxStyle(data.elementStyles, "about-text-card")}
           >
@@ -312,8 +349,9 @@ export function AboutSection({ className = "", data }: AboutSectionProps) {
                 data-editor-node-id="about-text-1"
                 data-editor-node-type="text"
                 data-editor-node-label="About Text 1"
+                {...getAboutEditorAttrs(data.elementStyles, "about-text-1")}
                 className="mb-0 max-w-none text-base leading-relaxed text-white/95 md:text-lg"
-                style={getElementLayoutStyle(data.elementStyles, "about-text-1")}
+                style={getAboutNodeStyle(data.elementStyles, "about-text-1")}
               >
                 {aboutText1}
               </p>
@@ -322,8 +360,9 @@ export function AboutSection({ className = "", data }: AboutSectionProps) {
                 data-editor-node-id="about-text-2"
                 data-editor-node-type="text"
                 data-editor-node-label="About Text 2"
+                {...getAboutEditorAttrs(data.elementStyles, "about-text-2")}
                 className="mb-0 max-w-none text-base leading-relaxed text-white/90 md:text-lg"
-                style={getElementLayoutStyle(data.elementStyles, "about-text-2")}
+                style={getAboutNodeStyle(data.elementStyles, "about-text-2")}
               >
                 {aboutText2}
               </p>
@@ -332,8 +371,9 @@ export function AboutSection({ className = "", data }: AboutSectionProps) {
                 data-editor-node-id="about-tags"
                 data-editor-node-type="text"
                 data-editor-node-label="About Tags"
+                {...getAboutEditorAttrs(data.elementStyles, "about-tags")}
                 className="mb-0 max-w-none pt-2 text-sm leading-relaxed text-[#FF8C21] md:text-base"
-                style={getElementLayoutStyle(data.elementStyles, "about-tags")}
+                style={getAboutNodeStyle(data.elementStyles, "about-tags")}
               >
                 {data.bioTagline}
               </p>
@@ -348,6 +388,7 @@ export function AboutSection({ className = "", data }: AboutSectionProps) {
               data-editor-node-id="about-copy-button"
               data-editor-node-type="button"
               data-editor-node-label="Copy Bio Button"
+              {...getAboutEditorAttrs(data.elementStyles, "about-copy-button")}
               className="inline-flex items-center justify-center rounded-2xl border border-[#FF8C21]/70 bg-[#FF8C21]/90 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#FF8C21]/30 md:text-lg"
               style={getAboutCopyButtonStyle(data.elementStyles)}
             >

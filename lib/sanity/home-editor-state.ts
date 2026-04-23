@@ -71,6 +71,7 @@ export interface HomeEditorNodeContent {
   role?: string
   email?: string
   videoUrl?: string
+  videoSources?: Array<Record<string, unknown>>
   mediaKind?: "image" | "video"
   gradientEnabled?: boolean
   gradientStart?: string

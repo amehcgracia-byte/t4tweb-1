@@ -3081,7 +3081,7 @@ export async function POST(request: Request) {
 
     let homeEditorStateDocumentId: string | null = null
     const homeEditorStateNodes = Array.isArray(payload.nodes)
-      ? payload.nodes.filter((node) => node.id !== "nav-logo" && !HERO_NODE_IDS.has(node.id) && !INTRO_NODE_IDS.has(node.id) && !OBSOLETE_EDITOR_NODE_IDS.has(node.id) && !ABOUT_NODE_IDS.has(node.id) && !PRESS_KIT_NODE_IDS.has(node.id) && !isBandMembersNodeId(node.id))
+      ? payload.nodes.filter((node) => node.id !== "nav-logo" && !HERO_NODE_IDS.has(node.id) && !INTRO_NODE_IDS.has(node.id) && !RELEASE_NODE_IDS.has(node.id) && !OBSOLETE_EDITOR_NODE_IDS.has(node.id) && !ABOUT_NODE_IDS.has(node.id) && !PRESS_KIT_NODE_IDS.has(node.id) && !isBandMembersNodeId(node.id))
       : []
     if (homeEditorStateNodes.length > 0) {
       const homeStateDocument = {

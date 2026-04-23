@@ -56,6 +56,7 @@ interface EditorNode {
     fontStyle?: string
     textDecoration?: string
     textShadowEnabled?: boolean
+    textAlign?: "left" | "center" | "right"
     gradientEnabled?: boolean
     gradientStart?: string
     gradientEnd?: string
@@ -72,7 +73,14 @@ interface EditorNode {
     src?: string
     alt?: string
     videoUrl?: string
+    videoSources?: Array<Record<string, unknown>>
     mediaKind?: "image" | "video"
+    title?: string
+    description?: string
+    role?: string
+    email?: string
+    fileName?: string
+    assets?: Array<{ label: string; url: string; fileName?: string }>
     gradientEnabled?: boolean
     gradientStart?: string
     gradientEnd?: string
@@ -307,6 +315,9 @@ const TEXT_TOOL_EXACT_IDS = new Set<string>([
   "about-text-2",
   "about-tags",
   "about-copy-button",
+  "press-kit-title",
+  "press-kit-description",
+  "press-kit-download-button",
   "contact-header-eyebrow",
   "contact-header-title",
   "contact-header-description",
@@ -352,6 +363,10 @@ const EXTRA_NODE_LIMITS: Record<ExtraNodeKind, number> = {
 
 function isExtraNodeId(nodeId: string): boolean {
   return nodeId.startsWith(EXTRA_NODE_PREFIX)
+}
+
+function isSectionDividerNodeId(nodeId: string): boolean {
+  return nodeId.startsWith("section-divider-")
 }
 
 function getExtraNodeKind(node: EditorNode): ExtraNodeKind | null {
@@ -405,6 +420,19 @@ function isNavbarOrHeroTextPatternNodeId(nodeId: string): boolean {
   return HERO_TEXT_PATTERN_NODE_IDS.has(nodeId) || isNavbarTextPatternNodeId(nodeId)
 }
 
+function supportsTextShadowTool(nodeId: string): boolean {
+  return nodeId.trim().length > 0
+}
+
+const TEXT_FONT_OPTIONS = [
+  { label: "Inherit", value: "inherit" },
+  { label: "Sans", value: "var(--font-sans)" },
+  { label: "Serif", value: "var(--font-serif)" },
+  { label: "Display", value: "var(--font-display)" },
+  { label: "System", value: "system-ui" },
+  { label: "Mono", value: "monospace" },
+]
+
 const HERO_IMAGE_FILTER_DEFAULTS = {
   contrast: 100,
   saturation: 100,
@@ -455,6 +483,40 @@ function hasRealTextToolingWriter(node: EditorNode | null): boolean {
   // Todos los textos y botones reales usan herramientas completas
   if (node.type === "text" || node.type === "button") return true
   return false
+}
+
+function parseYouTubeVideoId(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+  if (/^[a-zA-Z0-9_-]{6,}$/.test(trimmed) && !trimmed.includes("/")) return trimmed
+  try {
+    const url = new URL(trimmed)
+    if (url.hostname.includes("youtu.be")) return url.pathname.split("/").filter(Boolean)[0] || ""
+    const queryId = url.searchParams.get("v")
+    if (queryId) return queryId
+    const pathParts = url.pathname.split("/").filter(Boolean)
+    if ((pathParts[0] === "embed" || pathParts[0] === "shorts" || pathParts[0] === "live") && pathParts[1]) {
+      return pathParts[1]
+    }
+    const thumbnailMatch = /\/vi\/([^/?#]+)/.exec(url.pathname)
+    if (thumbnailMatch?.[1]) return thumbnailMatch[1]
+  } catch {
+    return ""
+  }
+  return ""
+}
+
+function getYouTubeWatchUrl(youtubeId: string): string {
+  return `https://www.youtube.com/watch?v=${youtubeId}`
+}
+
+function getYouTubePreviewUrl(youtubeId: string): string {
+  return `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/hqdefault.jpg`
+}
+
+function getYouTubeBackgroundEmbedUrl(youtubeId: string): string {
+  const encodedId = encodeURIComponent(youtubeId)
+  return `https://www.youtube.com/embed/${encodedId}?autoplay=1&mute=1&loop=1&playlist=${encodedId}&controls=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3`
 }
 
 function getConcertFieldFromNodeContent(node: EditorNode | null, field: ConcertField): string {
@@ -515,6 +577,13 @@ function withColorOpacity(input: string, opacity: number): string {
 function readColorOpacity(input: string | undefined): number {
   const parsed = parseCssColor(input)
   return parsed?.a ?? 1
+}
+
+function readColorHex(input: string | undefined, fallback: string): string {
+  const parsed = parseCssColor(input)
+  if (!parsed) return fallback
+  const toHex = (value: number) => Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, "0")
+  return `#${toHex(parsed.r)}${toHex(parsed.g)}${toHex(parsed.b)}`
 }
 
 function buildBoxOpacityPatch(nodeId: string, opacity: number): Partial<EditorNode["style"]> {
@@ -639,6 +708,10 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     content.parentSection = entry.sectionId
     content.label = entry.label
   }
+  if (el.dataset.editorSectionDivider === "true" || isSectionDividerNodeId(entry.id)) {
+    content.extraNodeType = "section-divider"
+    content.label = entry.label
+  }
   const isStructuredConcertCard =
     entry.type === "card" && (el.dataset.concertCard === "true" || Boolean(el.querySelector("[data-concert-field]")))
   if (entry.type === "text" || entry.type === "button" || entry.type === "card") {
@@ -647,19 +720,65 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   if (entry.type === "button") {
     content.href = el.getAttribute("href") || ""
   }
+  if (entry.id === "press-kit-download-button") {
+    content.href = el.dataset.editorDownloadUrl || content.href || ""
+    content.fileName = el.dataset.editorDownloadName || ""
+  }
+  const pressResourceMatch = /^press-kit-resource-(0|1)$/.exec(entry.id)
+  if (pressResourceMatch) {
+    content.title = el.dataset.editorResourceTitle || el.querySelector<HTMLElement>("[data-editor-resource-title]")?.textContent?.trim() || ""
+    content.description = el.dataset.editorResourceDescription || el.querySelector<HTMLElement>("[data-editor-resource-description]")?.textContent?.trim() || ""
+    const assetsAttr = el.dataset.editorResourceAssets
+    if (assetsAttr) {
+      try {
+        const parsedAssets = JSON.parse(assetsAttr)
+        if (Array.isArray(parsedAssets)) {
+          content.assets = parsedAssets
+            .map((asset) => ({
+              label: typeof asset?.label === "string" ? asset.label : "",
+              url: typeof asset?.url === "string" ? asset.url : "",
+              fileName: typeof asset?.fileName === "string" ? asset.fileName : undefined,
+            }))
+            .filter((asset) => asset.url)
+        }
+      } catch {
+        // Ignore malformed resource assets; the editor can still keep existing hydrated content.
+      }
+    }
+  }
+  if (entry.id === "press-kit-manager") {
+    content.title = el.dataset.editorManagerTitle || el.querySelector<HTMLElement>("[data-editor-manager-title]")?.textContent?.trim() || ""
+    content.text = el.dataset.editorManagerName || el.querySelector<HTMLElement>("[data-editor-manager-name]")?.textContent?.trim() || content.text || ""
+    content.role = el.dataset.editorManagerRole || ""
+    content.email = el.dataset.editorManagerEmail || ""
+    content.src = el.dataset.editorManagerPhoto || ""
+  }
   if (entry.type === "image" || entry.type === "background") {
     const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
-    content.src = img?.getAttribute("src") || ""
+    content.src = el.dataset.editorSrc || img?.getAttribute("src") || ""
     content.alt = img?.getAttribute("alt") || ""
     if (entry.type === "background") {
       const iframe = el.querySelector("iframe")
       const mediaKindAttr = el.dataset.editorMediaKind
+      const videoUrlAttr = el.dataset.editorVideoUrl
+      const videoSourcesAttr = el.dataset.editorVideoSources
+      if (mediaKindAttr === "section-divider") {
+        content.extraNodeType = "section-divider"
+      }
       if (mediaKindAttr === "video" || iframe) {
         content.mediaKind = "video"
-      } else {
+      } else if (mediaKindAttr !== "section-divider") {
         content.mediaKind = "image"
       }
-      content.videoUrl = iframe?.getAttribute("src") || ""
+      content.videoUrl = videoUrlAttr || iframe?.getAttribute("src") || ""
+      if (videoSourcesAttr) {
+        try {
+          const parsedVideoSources = JSON.parse(videoSourcesAttr)
+          if (Array.isArray(parsedVideoSources)) content.videoSources = parsedVideoSources
+        } catch {
+          // Ignore malformed DOM data; deploy can still use videoUrl.
+        }
+      }
     }
   }
   const cs = getComputedStyle(el)
@@ -677,6 +796,8 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const styleGradientEnabled = parseDatasetBoolean(el.dataset.editorStyleGradientEnabled)
   const styleGradientStart = el.dataset.editorStyleGradientStart
   const styleGradientEnd = el.dataset.editorStyleGradientEnd
+  const styleTextShadowEnabled = parseDatasetBoolean(el.dataset.editorStyleTextShadowEnabled)
+  const styleTextAlign = el.dataset.editorStyleTextAlign
   const hydratedGeometry = hydrated?.geometry || null
   const hydratedStyle = hydrated?.style || null
   const hydratedContent = hydrated?.content || null
@@ -725,6 +846,8 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       fontWeight: cs.fontWeight,
       fontStyle: cs.fontStyle,
       textDecoration: cs.textDecorationLine,
+      textAlign: styleTextAlign === "center" || styleTextAlign === "right" ? styleTextAlign : styleTextAlign === "left" ? "left" : cs.textAlign === "center" || cs.textAlign === "right" ? cs.textAlign : "left",
+      textShadowEnabled: styleTextShadowEnabled,
       scale: styleScale ?? 1,
       gradientEnabled: styleGradientEnabled,
       gradientStart: styleGradientStart,
@@ -1039,10 +1162,23 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         if (node.style.fontWeight) el.style.fontWeight = node.style.fontWeight
         if (node.style.fontStyle) el.style.fontStyle = node.style.fontStyle
         if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
+        if (node.style.textAlign) {
+          el.style.textAlign = node.style.textAlign
+          if (node.type === "button") {
+            el.style.justifyContent = node.style.textAlign === "left" ? "flex-start" : node.style.textAlign === "right" ? "flex-end" : "center"
+          }
+        }
         if (node.style.textShadowEnabled === true) {
           el.style.textShadow = TEXT_EMPHASIS_SHADOW
         } else if (node.style.textShadowEnabled === false) {
           el.style.removeProperty("text-shadow")
+        }
+        if (isSectionDividerNodeId(node.id)) {
+          if (typeof node.style.opacity === "number") el.style.opacity = String(node.style.opacity)
+          if (node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
+          if (node.style.gradientStart || node.style.gradientEnd) {
+            el.style.background = `linear-gradient(180deg, ${node.style.gradientStart || node.style.backgroundColor || "rgba(0,0,0,0.65)"}, ${node.style.gradientEnd || "rgba(0,0,0,0.05)"})`
+          }
         }
       }
     }
@@ -1065,7 +1201,26 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       const iframe = node.type === "background" ? el.querySelector("iframe") : null
       if (node.explicitContent) {
         if (node.type === "background" && node.content.mediaKind === "video") {
-          if (iframe && node.content.videoUrl) iframe.setAttribute("src", node.content.videoUrl)
+          const activeSource = Array.isArray(node.content.videoSources) && node.content.videoSources.length > 0
+            ? node.content.videoSources[0]
+            : null
+          const activeYoutubeId =
+            activeSource && typeof activeSource.youtubeId === "string"
+              ? activeSource.youtubeId
+              : parseYouTubeVideoId(node.content.videoUrl || "")
+          const activeVideoUrl =
+            activeSource && typeof activeSource.url === "string"
+              ? activeSource.url
+              : node.content.videoUrl || ""
+          if (activeVideoUrl) {
+            el.dataset.editorVideoUrl = activeVideoUrl
+            node.content.videoUrl = activeVideoUrl
+          }
+          if (Array.isArray(node.content.videoSources)) {
+            el.dataset.editorVideoSources = JSON.stringify(node.content.videoSources)
+          }
+          if (activeYoutubeId && img) img.src = getYouTubePreviewUrl(activeYoutubeId)
+          if (iframe && activeYoutubeId) iframe.setAttribute("src", getYouTubeBackgroundEmbedUrl(activeYoutubeId))
         } else {
           if (img && node.content.src) img.src = node.content.src
           if (img && node.content.alt !== undefined) img.alt = node.content.alt
@@ -1190,7 +1345,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
                 (style as Record<string, unknown>)[k] = v
               }
               // Content properties
-              else if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl", "accentText"].includes(k)) {
+              else if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl", "videoSources", "backgroundVideoSources", "mediaKind", "accentText", "title", "description", "role", "email", "fileName", "assets"].includes(k)) {
                 isContentEdit = true;
                 (content as Record<string, unknown>)[k] = v
               }
@@ -1387,6 +1542,9 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         return heroTitleEntry
       }
     }
+
+    const sectionDividerEntry = candidates.find((c) => isSectionDividerNodeId(c.id))
+    if (sectionDividerEntry) return sectionDividerEntry
 
     candidates.sort((a, b) => typePriority[a.type] - typePriority[b.type])
 
@@ -1709,6 +1867,9 @@ export function VisualEditorOverlay() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [addMessage, setAddMessage] = useState<string | null>(null)
+  const [videoInputValues, setVideoInputValues] = useState<Record<string, string>>({})
+  const [videoApplyMessages, setVideoApplyMessages] = useState<Record<string, string>>({})
+  const videoInputValuesRef = useRef<Record<string, string>>({})
   const selectedIdsRef = useRef<string[]>(selectedIds)
   const [marqueeRect, setMarqueeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const marqueeRef = useRef<{ active: boolean; start: Point }>({ active: false, start: { x: 0, y: 0 } })
@@ -1762,8 +1923,37 @@ export function VisualEditorOverlay() {
     })
   }, [isEditing, nodes, getNodeSignature])
 
+  const applyVideoLink = useCallback((node: EditorNode): void => {
+    const rawValue = (videoInputValuesRef.current[node.id] ?? videoInputValues[node.id] ?? node.content.videoUrl ?? "").trim()
+    const youtubeId = parseYouTubeVideoId(rawValue)
+    if (!youtubeId) {
+      setVideoApplyMessages((current) => ({ ...current, [node.id]: "Invalid YouTube URL" }))
+      return
+    }
+    const url = getYouTubeWatchUrl(youtubeId)
+    const nextSource = {
+      type: "youtube",
+      url,
+      youtubeId,
+      enabled: true,
+      order: 1,
+    }
+    dispatch({
+      type: "UPDATE_BACKGROUND",
+      nodeId: node.id,
+      patch: {
+        videoUrl: url,
+        videoSources: [nextSource],
+        mediaKind: "video",
+      },
+    })
+    setVideoInputValues((current) => ({ ...current, [node.id]: url }))
+    setVideoApplyMessages((current) => ({ ...current, [node.id]: "Applied" }))
+  }, [dispatch, videoInputValues])
+
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
+  const selectedVideoInputValue = selectedNode ? videoInputValues[selectedNode.id] ?? selectedNode.content.videoUrl ?? "" : ""
   const heroTitleSegments: TextSegment[] = selectedNode?.content.titleSegments || selectedNode?.content.textSegments || []
   const heroSubtitleSegments: TextSegment[] = selectedNode?.content.titleSegments || selectedNode?.content.textSegments || []
   const canUseSimpleTextTools = hasRealTextToolingWriter(selectedNode)
@@ -1771,7 +1961,11 @@ export function VisualEditorOverlay() {
     (selectedNode?.type === "image" || selectedNode?.type === "background") &&
     (selectedNode.id === "hero-logo" || selectedNode.id === "hero-bg-image")
   const isFooterSocialGroup = selectedNode?.type === "card" && selectedNode.id === "footer-social-group"
-  const isNavbarOrHeroTextNode = selectedNode ? isNavbarOrHeroTextPatternNodeId(selectedNode.id) : false
+  const isLatestReleaseCard = selectedNode?.id === "latest-release-card"
+  const isAboutTextCard = selectedNode?.id === "about-text-card"
+  const isPressKitResourceCard = Boolean(selectedNode && /^press-kit-resource-(0|1)$/.test(selectedNode.id))
+  const isPressKitManagerCard = selectedNode?.id === "press-kit-manager"
+  const isSelectedSectionDivider = Boolean(selectedNode && isSectionDividerNodeId(selectedNode.id))
   const hasNestedEditableChildren = Boolean(
     selectedNode?.type === "card" &&
       selectedEntry?.element &&
@@ -1791,7 +1985,7 @@ export function VisualEditorOverlay() {
   const isSimpleEditableBox =
     (selectedNode?.type === "card" || selectedNode?.type === "overlay") &&
     !isFooterSocialGroup &&
-    !hasNestedEditableChildren &&
+    (isLatestReleaseCard || isAboutTextCard || isPressKitResourceCard || isPressKitManagerCard || !hasNestedEditableChildren) &&
     !hasStructuredCardFields &&
     !isExtraNodeId(selectedNode?.id || "")
 
@@ -2811,7 +3005,7 @@ export function VisualEditorOverlay() {
                     <input
                       type="color"
                       className="h-8 w-full rounded border p-1"
-                      value={selectedNode.style.color || "#ffffff"}
+                      value={readColorHex(selectedNode.style.color, "#ffffff")}
                       onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { color: e.target.value } })}
                     />
                   </div>
@@ -2829,15 +3023,28 @@ export function VisualEditorOverlay() {
                   <label className="text-[10px]">Font Family</label>
                   <select
                     className="w-full rounded border p-1 text-xs"
-                    value={selectedNode.style.fontFamily || "sans-serif"}
+                    value={selectedNode.style.fontFamily || "inherit"}
                     onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { fontFamily: e.target.value } })}
                   >
-                    <option value="sans-serif">Sans Serif</option>
-                    <option value="serif">Serif</option>
-                    <option value="monospace">Monospace</option>
-                    <option value="cursive">Cursive</option>
-                    <option value="system-ui">System UI</option>
+                    {TEXT_FONT_OPTIONS.map((font) => (
+                      <option key={font.value} value={font.value}>{font.label}</option>
+                    ))}
                   </select>
+                </div>
+                <div>
+                  <label className="text-[10px]">Text Align</label>
+                  <div className="mt-1 grid grid-cols-3 gap-1">
+                    {(["left", "center", "right"] as const).map((align) => (
+                      <button
+                        key={align}
+                        type="button"
+                        className={`rounded border px-2 py-1 text-xs capitalize ${selectedNode.style.textAlign === align || (!selectedNode.style.textAlign && align === "left") ? "bg-slate-900 text-white" : ""}`}
+                        onClick={() => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { textAlign: align } })}
+                      >
+                        {align}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -2861,7 +3068,7 @@ export function VisualEditorOverlay() {
                   >
                     U
                   </button>
-                  {(isNavbarOrHeroTextNode || isExtraNodeId(selectedNode.id)) && (
+                  {supportsTextShadowTool(selectedNode.id) && (
                     <button
                       type="button"
                       title="Text shadow"
@@ -2925,8 +3132,12 @@ export function VisualEditorOverlay() {
                 <input
                   type="color"
                   className="h-8 w-full rounded border p-1"
-                  value={selectedNode.style.backgroundColor || "#ff8c21"}
-                  onChange={(e) => dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { backgroundColor: e.target.value } })}
+                  value={readColorHex(selectedNode.style.backgroundColor, "#ff8c21")}
+                  onChange={(e) => dispatch({
+                    type: "UPDATE_BUTTON",
+                    nodeId: selectedNode.id,
+                    patch: { backgroundColor: withColorOpacity(e.target.value, readColorOpacity(selectedNode.style.backgroundColor)) },
+                  })}
                 />
                 <label className="text-[10px]">Button opacity ({readColorOpacity(selectedNode.style.backgroundColor).toFixed(2)})</label>
                 <input
@@ -2989,7 +3200,179 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {(selectedNode.type === "image" || (selectedNode.type === "background" && selectedNode.content.mediaKind !== "video")) && (
+            {/^press-kit-resource-(0|1)$/.test(selectedNode.id) && selectedNode.type === "card" && (
+              <>
+                <label className="text-xs font-semibold">Resource Title</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.content.title || ""}
+                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { title: e.target.value } })}
+                />
+                <label className="text-xs font-semibold">Resource Description</label>
+                <textarea
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.content.description || ""}
+                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { description: e.target.value } })}
+                />
+                <label className="text-xs font-semibold">{selectedNode.id === "press-kit-resource-0" ? "Band Logos" : "Press Photos"}</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-xs"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const input = e.currentTarget
+                    const formData = new FormData()
+                    formData.append("file", file)
+                    formData.append("nodeId", selectedNode.id)
+                    const uploadRes = await fetch("/api/editor-upload-asset", { method: "POST", body: formData })
+                    if (!uploadRes.ok) {
+                      console.error("[press-kit-resource-upload] Upload failed.", { nodeId: selectedNode.id, status: uploadRes.status })
+                      return
+                    }
+                    const uploadData = await uploadRes.json() as { url?: string }
+                    if (!uploadData.url) return
+                    const currentAssets = Array.isArray(selectedNode.content.assets) ? selectedNode.content.assets : []
+                    dispatch({
+                      type: "UPDATE_CARD",
+                      nodeId: selectedNode.id,
+                      patch: {
+                        assets: [
+                          ...currentAssets,
+                          {
+                            label: file.name.replace(/\.[^.]+$/, "") || `Asset ${currentAssets.length + 1}`,
+                            url: uploadData.url,
+                            fileName: file.name,
+                          },
+                        ],
+                      },
+                    })
+                    input.value = ""
+                  }}
+                />
+                <div className="space-y-1 rounded border border-slate-200 p-2">
+                  {(Array.isArray(selectedNode.content.assets) ? selectedNode.content.assets : []).map((asset, index) => (
+                    <div key={`${asset.url}-${index}`} className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-[10px]">{asset.label || asset.fileName || `Asset ${index + 1}`}</span>
+                      <button
+                        type="button"
+                        className="rounded border px-2 py-0.5 text-[10px]"
+                        onClick={() => {
+                          const currentAssets = Array.isArray(selectedNode.content.assets) ? selectedNode.content.assets : []
+                          dispatch({
+                            type: "UPDATE_CARD",
+                            nodeId: selectedNode.id,
+                            patch: { assets: currentAssets.filter((_, assetIndex) => assetIndex !== index) },
+                          })
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {selectedNode.id === "press-kit-manager" && selectedNode.type === "card" && (
+              <>
+                <label className="text-xs font-semibold">Manager Card Title</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.content.title || ""}
+                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { title: e.target.value } })}
+                />
+                <label className="text-xs font-semibold">Manager Name</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.content.text || ""}
+                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { text: e.target.value } })}
+                />
+                <label className="text-xs font-semibold">Role</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.content.role || ""}
+                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { role: e.target.value } })}
+                />
+                <label className="text-xs font-semibold">Email</label>
+                <input
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.content.email || ""}
+                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { email: e.target.value } })}
+                />
+                <label className="text-xs font-semibold">Manager Photo</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-xs"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const input = e.currentTarget
+                    const formData = new FormData()
+                    formData.append("file", file)
+                    formData.append("nodeId", selectedNode.id)
+                    const uploadRes = await fetch("/api/editor-upload-asset", { method: "POST", body: formData })
+                    if (!uploadRes.ok) {
+                      console.error("[press-kit-manager-upload] Upload failed.", { status: uploadRes.status })
+                      return
+                    }
+                    const uploadData = await uploadRes.json() as { url?: string }
+                    if (uploadData.url) dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { src: uploadData.url } })
+                    input.value = ""
+                  }}
+                />
+              </>
+            )}
+
+            {isSelectedSectionDivider && selectedNode.type === "background" && (
+              <>
+                <label className="text-[10px]">Opacity ({Math.round((selectedNode.style.opacity ?? 1) * 100)}%)</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  className="w-full"
+                  value={selectedNode.style.opacity ?? 1}
+                  onChange={(e) => dispatch({ type: "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
+                />
+                <label className="text-[10px]">Base Color</label>
+                <input
+                  type="color"
+                  className="h-8 w-full rounded border p-1"
+                  value={readColorHex(selectedNode.style.backgroundColor, "#000000")}
+                  onChange={(e) => dispatch({
+                    type: "UPDATE_BACKGROUND",
+                    nodeId: selectedNode.id,
+                    patch: { backgroundColor: withColorOpacity(e.target.value, readColorOpacity(selectedNode.style.backgroundColor)) },
+                  })}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px]">Gradient Start</label>
+                    <input
+                      type="color"
+                      className="h-8 w-full rounded border p-1"
+                      value={readColorHex(selectedNode.style.gradientStart, "#000000")}
+                      onChange={(e) => dispatch({ type: "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { gradientStart: e.target.value } })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px]">Gradient End</label>
+                    <input
+                      type="color"
+                      className="h-8 w-full rounded border p-1"
+                      value={readColorHex(selectedNode.style.gradientEnd, "#000000")}
+                      onChange={(e) => dispatch({ type: "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { gradientEnd: e.target.value } })}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {(selectedNode.type === "image" || (selectedNode.type === "background" && selectedNode.content.mediaKind !== "video" && !isSelectedSectionDivider)) && (
               <>
                 <label className="text-xs font-semibold">Asset</label>
                 <select
@@ -3025,6 +3408,7 @@ export function VisualEditorOverlay() {
                       selectedNode.id === "contact-bg-image" ||
                       selectedNode.id === "footer-logo" ||
                       selectedNode.id === "nav-logo" ||
+                      selectedNode.id === "press-kit-bg" ||
                       /^member-item-\d+-image$/.test(selectedNode.id) ||
                       (isExtraNodeId(selectedNode.id) && selectedNode.type === "background")
 
@@ -3199,11 +3583,31 @@ export function VisualEditorOverlay() {
                   onChange={(e) => dispatch({ type: "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
                 />
                 <label className="text-xs font-semibold">Video Link</label>
-                <input
-                  className="w-full rounded border p-1 text-xs"
-                  value={selectedNode.content.videoUrl || ""}
-                  onChange={(e) => dispatch({ type: "UPDATE_BACKGROUND", nodeId: selectedNode.id, patch: { videoUrl: e.target.value, mediaKind: "video" } })}
-                />
+                <div className="flex gap-2">
+                  <input
+                    className="min-w-0 flex-1 rounded border p-1 text-xs"
+                    value={selectedVideoInputValue}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      videoInputValuesRef.current = { ...videoInputValuesRef.current, [selectedNode.id]: value }
+                      setVideoInputValues((current) => ({ ...current, [selectedNode.id]: value }))
+                      setVideoApplyMessages((current) => ({ ...current, [selectedNode.id]: "" }))
+                    }}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                  />
+                  <button
+                    type="button"
+                    className="rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white"
+                    onClick={() => applyVideoLink(selectedNode)}
+                  >
+                    Apply
+                  </button>
+                </div>
+                {videoApplyMessages[selectedNode.id] ? (
+                  <p className={`text-[10px] ${videoApplyMessages[selectedNode.id] === "Applied" ? "text-emerald-700" : "text-red-700"}`}>
+                    {videoApplyMessages[selectedNode.id]}
+                  </p>
+                ) : null}
               </>
             )}
 
@@ -3230,7 +3634,7 @@ export function VisualEditorOverlay() {
 
             {isSimpleEditableBox && (
               <>
-                {selectedNode.type === "card" && !isExtraNodeId(selectedNode.id) && (
+                {selectedNode.type === "card" && !isLatestReleaseCard && !isAboutTextCard && !isPressKitResourceCard && !isPressKitManagerCard && !isExtraNodeId(selectedNode.id) && (
                   <>
                     <label className="text-xs font-semibold">Card Text</label>
                     <textarea
@@ -3254,8 +3658,12 @@ export function VisualEditorOverlay() {
                 <input
                   type="color"
                   className="h-8 w-full rounded border p-1"
-                  value={selectedNode.style.backgroundColor || "#000000"}
-                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { backgroundColor: e.target.value } })}
+                  value={readColorHex(selectedNode.style.backgroundColor, "#000000")}
+                  onChange={(e) => dispatch({
+                    type: "UPDATE_CARD",
+                    nodeId: selectedNode.id,
+                    patch: { backgroundColor: withColorOpacity(e.target.value, readColorOpacity(selectedNode.style.backgroundColor)) },
+                  })}
                 />
               </>
             )}

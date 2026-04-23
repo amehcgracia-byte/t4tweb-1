@@ -1,5 +1,4 @@
 import { createClient } from "next-sanity"
-import { CAMPAIGN_CONTENT } from "@/components/campaign-content"
 import { resolveSanityDataset, resolveSanityProjectId } from "@/lib/sanity/env"
 
 export interface LatestReleaseVideoSource {
@@ -34,12 +33,13 @@ const FALLBACK_VIDEO_SOURCES: LatestReleaseVideoSource[] = [
 ]
 
 const FALLBACK: LatestReleaseData = {
-  releaseTitle: CAMPAIGN_CONTENT.releaseTitle,
-  releaseSubtitle: CAMPAIGN_CONTENT.releaseSubtitle,
-  releaseCtaLabel: CAMPAIGN_CONTENT.releaseCtaLabel,
-  releaseCtaHref: CAMPAIGN_CONTENT.releaseCtaHref,
-  showsCtaLabel: CAMPAIGN_CONTENT.showsCtaLabel,
-  showsCtaHref: CAMPAIGN_CONTENT.showsCtaHref,
+  releaseTitle: "Latest Release",
+  releaseSubtitle: "Fresh groove, built for live stages and late-night playlists.",
+  releaseCtaLabel: "Stream the New Single",
+  releaseCtaHref: "https://open.spotify.com/intl-es/artist/0FHjK3O0k8HQMrJsF7KQwF",
+  showsCtaLabel: "See Upcoming Shows",
+  showsCtaHref:
+    "https://www.bandsintown.com/e/108124718-tales-for-the-tillerman-at-mauerpark?came_from=250&utm_medium=web&utm_source=artist_page&utm_campaign=search_bar",
   videoSources: FALLBACK_VIDEO_SOURCES,
   elementStyles: {},
 }
@@ -102,21 +102,25 @@ export async function loadLatestReleaseData(perspective: "published" | "drafts" 
       projectId: resolveSanityProjectId(),
       dataset: resolveSanityDataset(),
       apiVersion: "2024-01-01",
-      useCdn: process.env.SANITY_USE_CDN === "true",
+      useCdn: false,
       perspective,
     })
 
     const fetched = await client.fetch<{
       title?: string
       subtitle?: string
+      youtubeId?: string
       videoSources?: Array<{ type?: string; url?: string; youtubeId?: string; enabled?: boolean; order?: number }>
+      backgroundVideoSources?: Array<{ type?: string; url?: string; youtubeId?: string; enabled?: boolean; order?: number }>
       ctaButtons?: Array<{ label?: string; href?: string }>
       elementStyles?: Record<string, Record<string, unknown>>
     } | null>(
       `*[_type == "latestRelease"][0]{
         title,
         subtitle,
+        youtubeId,
         videoSources[]{ type, url, youtubeId, enabled, order },
+        backgroundVideoSources[]{ type, url, youtubeId, enabled, order },
         ctaButtons[]{ label, href },
         elementStyles
       }`
@@ -134,7 +138,10 @@ export async function loadLatestReleaseData(perspective: "published" | "drafts" 
       releaseCtaHref: primaryCta?.href || FALLBACK.releaseCtaHref,
       showsCtaLabel: showsCta?.label || FALLBACK.showsCtaLabel,
       showsCtaHref: showsCta?.href || FALLBACK.showsCtaHref,
-      videoSources: normalizeVideoSources(fetched.videoSources),
+      videoSources: normalizeVideoSources(
+        fetched.videoSources && fetched.videoSources.length > 0 ? fetched.videoSources : fetched.backgroundVideoSources,
+        fetched.youtubeId
+      ),
       elementStyles:
         fetched.elementStyles && typeof fetched.elementStyles === "object" && !Array.isArray(fetched.elementStyles)
           ? fetched.elementStyles

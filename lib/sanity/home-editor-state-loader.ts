@@ -68,13 +68,41 @@ export async function loadHomeEditorState(perspective: "published" | "drafts" = 
       "intro-press-button",
     ])
 
+    const RELEASE_DOC_DRIVEN_NODE_IDS = new Set([
+      "latest-release-section",
+      "latest-release-bg",
+      "latest-release-card",
+      "latest-release-title",
+      "latest-release-subtitle",
+      "latest-release-watch-button",
+      "latest-release-shows-button",
+    ])
+
+    const ABOUT_DOC_DRIVEN_NODE_IDS = new Set([
+      "about-section",
+      "about-bg-image",
+      "about-header-eyebrow",
+      "about-header-title",
+      "about-text-card",
+      "about-text-1",
+      "about-text-2",
+      "about-tags",
+      "about-copy-button",
+    ])
+
     const nodes = raw
       .map((raw): HomeEditorNodeOverride | null => {
         if (!raw || typeof raw !== "object") return null
         const n = raw as Record<string, unknown>
         const nodeId = typeof n.nodeId === "string" ? n.nodeId : typeof n.id === "string" ? n.id : null
         if (!nodeId) return null
-        if (LEGACY_NODE_IDS.has(nodeId) || HERO_DOC_DRIVEN_NODE_IDS.has(nodeId) || INTRO_DOC_DRIVEN_NODE_IDS.has(nodeId)) return null
+        if (
+          LEGACY_NODE_IDS.has(nodeId) ||
+          HERO_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
+          INTRO_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
+          RELEASE_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
+          ABOUT_DOC_DRIVEN_NODE_IDS.has(nodeId)
+        ) return null
         const nodeType = typeof n.nodeType === "string" ? n.nodeType : typeof n.type === "string" ? n.type : "text"
         const geometry = (n.geometry && typeof n.geometry === "object" ? n.geometry : {}) as Record<string, unknown>
         const style = (n.style && typeof n.style === "object" ? n.style : {}) as Record<string, unknown>
