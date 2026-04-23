@@ -11,7 +11,28 @@ type NodeType = "section" | "background" | "card" | "text" | "button" | "image" 
 type Point = { x: number; y: number }
 
 type Size = { width: number; height: number }
-type ConcertField = "date" | "venue" | "city" | "country" | "genre" | "price" | "status" | "time" | "capacity" | "locationUrl"
+type ConcertField = "eventName" | "date" | "venue" | "city" | "country" | "genre" | "price" | "status" | "time" | "capacity" | "locationUrl" | "locationName" | "locationLink" | "style" | "ticketUrl" | "address" | "imageUrl"
+
+interface EditorConcert {
+  _editorId: number
+  eventName?: string
+  locationName?: string
+  locationLink?: string
+  ticketUrl?: string
+  venue?: string
+  city?: string
+  country?: string
+  address?: string
+  date?: string
+  time?: string
+  status?: string
+  style?: string
+  genre?: string
+  capacity?: string
+  price?: string
+  locationUrl?: string
+  imageUrl?: string
+}
 
 interface TextSegment {
   text: string
@@ -79,6 +100,9 @@ interface EditorNode {
     description?: string
     role?: string
     email?: string
+    photoDescription?: string
+    group?: "band" | "colab"
+    concerts?: EditorConcert[]
     fileName?: string
     assets?: Array<{ label: string; url: string; fileName?: string }>
     gradientEnabled?: boolean
@@ -108,7 +132,7 @@ interface HydratedNodeOverride {
   explicitSize?: boolean
 }
 
-const BAND_MEMBER_PERSIST_ONLY_NODE_ID = /^member-item-(\d+)-(name|role|number|image)$/
+const BAND_MEMBER_PERSIST_ONLY_NODE_ID = /^member-item-(\d+)-(name|role|number|image|description)$/
 
 function isPersistOnlyNodeId(nodeId: string): boolean {
   return BAND_MEMBER_PERSIST_ONLY_NODE_ID.test(nodeId)
@@ -243,7 +267,13 @@ const typePriority: Record<NodeType, number> = {
 function isEditingInput(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   const tag = target.tagName
-  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable
+}
+
+function isEditingInputActive(target: EventTarget | null): boolean {
+  if (isEditingInput(target)) return true
+  if (typeof document === "undefined") return false
+  return isEditingInput(document.activeElement)
 }
 
 function normalizeType(raw: string): NodeType {
@@ -290,10 +320,23 @@ function extractConcertCardId(nodeId: string | null | undefined): string | null 
 
 function extractBandMemberIndex(nodeId: string | null | undefined): number | null {
   if (!nodeId) return null
-  const match = /^member-item-(\d+)(?:-(name|role|number|image))?$/.exec(nodeId)
+  const match = /^member-item-(\d+)(?:-(name|role|number|image|description))?$/.exec(nodeId)
   if (!match) return null
   const index = Number(match[1])
   return Number.isFinite(index) ? index : null
+}
+
+function parseLiveConcertNodeId(nodeId: string | null | undefined): { listType: "upcoming" | "history"; editorId: number; field: ConcertField | null } | null {
+  if (!nodeId) return null
+  const match = /^live-(upcoming|history)-event-(\d+)(?:-(eventName|date|time|locationName|locationLink|style|price|status|venue|city|country|genre|capacity|locationUrl|ticketUrl|address|imageUrl))?$/.exec(nodeId)
+  if (!match) return null
+  const editorId = Number(match[2])
+  if (!Number.isFinite(editorId)) return null
+  return {
+    listType: match[1] as "upcoming" | "history",
+    editorId,
+    field: (match[3] || null) as ConcertField | null,
+  }
 }
 
 const TEXT_TOOL_EXACT_IDS = new Set<string>([
@@ -324,10 +367,12 @@ const TEXT_TOOL_EXACT_IDS = new Set<string>([
   "contact-email-title",
   "contact-email-description",
   "contact-email-address",
+  "contact-email-button",
   "contact-middle-text",
   "contact-telegram-title",
   "contact-telegram-description",
   "contact-telegram-handle",
+  "contact-telegram-button",
   "footer-copyright",
   "footer-description",
   "footer-cta",
@@ -702,6 +747,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const el = entry.element
   const hydrated = readHydratedNodeOverride(entry.id)
   const content: EditorNode["content"] = {}
+  const isBandMemberCard = /^member-item-(\d+)$/.test(entry.id)
   const domExtraNodeKind = el.dataset.editorExtraNodeKind
   if (domExtraNodeKind && EXTRA_NODE_KINDS.has(domExtraNodeKind as ExtraNodeKind)) {
     content.extraNodeType = domExtraNodeKind as ExtraNodeKind
@@ -714,11 +760,19 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   }
   const isStructuredConcertCard =
     entry.type === "card" && (el.dataset.concertCard === "true" || Boolean(el.querySelector("[data-concert-field]")))
-  if (entry.type === "text" || entry.type === "button" || entry.type === "card") {
+  const isLiveConcertsContainer = entry.id === "live-section-concerts-container"
+  if (entry.type === "text" || entry.type === "button" || (entry.type === "card" && !isBandMemberCard && !isStructuredConcertCard && !isLiveConcertsContainer)) {
     content.text = el.textContent?.trim() || ""
   }
   if (entry.type === "button") {
     content.href = el.getAttribute("href") || ""
+  }
+  const bandMemberMatch = /^member-item-(\d+)$/.exec(entry.id)
+  if (bandMemberMatch) {
+    content.title = el.dataset.editorMemberName || ""
+    content.role = el.dataset.editorMemberRole || ""
+    content.photoDescription = el.dataset.editorMemberPhotoDescription || ""
+    content.group = el.dataset.editorMemberGroup === "colab" ? "colab" : "band"
   }
   if (entry.id === "press-kit-download-button") {
     content.href = el.dataset.editorDownloadUrl || content.href || ""
@@ -752,6 +806,17 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     content.role = el.dataset.editorManagerRole || ""
     content.email = el.dataset.editorManagerEmail || ""
     content.src = el.dataset.editorManagerPhoto || ""
+  }
+  if (isLiveConcertsContainer) {
+    const liveConcertsAttr = el.dataset.liveConcerts
+    if (liveConcertsAttr) {
+      try {
+        const parsedConcerts = JSON.parse(liveConcertsAttr)
+        if (Array.isArray(parsedConcerts)) content.concerts = parsedConcerts as EditorConcert[]
+      } catch {
+        // Ignore malformed live concert payloads.
+      }
+    }
   }
   if (entry.type === "image" || entry.type === "background") {
     const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
@@ -1345,7 +1410,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
                 (style as Record<string, unknown>)[k] = v
               }
               // Content properties
-              else if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl", "videoSources", "backgroundVideoSources", "mediaKind", "accentText", "title", "description", "role", "email", "fileName", "assets"].includes(k)) {
+              else if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl", "videoSources", "backgroundVideoSources", "mediaKind", "accentText", "title", "description", "role", "email", "photoDescription", "group", "concerts", "fileName", "assets"].includes(k)) {
                 isContentEdit = true;
                 (content as Record<string, unknown>)[k] = v
               }
@@ -1857,7 +1922,7 @@ function ExtraNodesLayer({ nodes, registry }: { nodes: Map<string, EditorNode>; 
 export function VisualEditorOverlay() {
   const t = new Date().toISOString()
   console.log(`[OVERLAY-MOUNT] ${t} - VisualEditorOverlay mounting`)
-  const { isEditing, isMobileEditBlocked, setIsEditing, selectedId, nodes, registry, dispatch, openPanel, setOpenPanel, undo, redo, canUndo, canRedo, assets, getEditableAtPosition } = useVisualEditor()
+  const { isEditing, isMobileEditBlocked, setIsEditing, selectedId, setSelectedId, nodes, registry, dispatch, openPanel, setOpenPanel, undo, redo, canUndo, canRedo, assets, getEditableAtPosition } = useVisualEditor()
   console.log(`[OVERLAY-MOUNT] ${t} - Context loaded. isEditing=${isEditing}, nodes.size=${nodes.size}`)
   const [deployStatus, setDeployStatus] = useState<string | null>(null)
   const [deployDetails, setDeployDetails] = useState<string | null>(null)
@@ -1869,6 +1934,7 @@ export function VisualEditorOverlay() {
   const [addMessage, setAddMessage] = useState<string | null>(null)
   const [videoInputValues, setVideoInputValues] = useState<Record<string, string>>({})
   const [videoApplyMessages, setVideoApplyMessages] = useState<Record<string, string>>({})
+  const liveFileInputRef = useRef<HTMLInputElement | null>(null)
   const videoInputValuesRef = useRef<Record<string, string>>({})
   const selectedIdsRef = useRef<string[]>(selectedIds)
   const [marqueeRect, setMarqueeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
@@ -1953,6 +2019,41 @@ export function VisualEditorOverlay() {
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
+  const liveConcertSelection = parseLiveConcertNodeId(selectedId)
+  const liveConcertsContainerNode = nodes.get("live-section-concerts-container") || null
+  const liveConcerts = Array.isArray(liveConcertsContainerNode?.content.concerts)
+    ? liveConcertsContainerNode.content.concerts as EditorConcert[]
+    : []
+  const isLiveConcertListSelection = Boolean(
+    selectedNode &&
+      (
+        selectedNode.id === "live-section-concerts-container" ||
+        selectedNode.id === "live-upcoming-title" ||
+        selectedNode.id === "live-history-title" ||
+        selectedNode.id === "live-upcoming-list" ||
+        selectedNode.id === "live-history-list"
+      )
+  )
+  const selectedLiveConcert = liveConcertSelection
+    ? liveConcerts.find((concert) => concert._editorId === liveConcertSelection.editorId) || null
+    : null
+  const selectedPanelNode = selectedNode || (
+    selectedLiveConcert
+      ? {
+          id: selectedId || `live-upcoming-event-${selectedLiveConcert._editorId}`,
+          type: "card",
+          label: selectedLiveConcert.eventName || selectedLiveConcert.locationName || `Concert ${selectedLiveConcert._editorId + 1}`,
+          isGrouped: true,
+          geometry: { x: 0, y: 0, width: 0, height: 0 },
+          style: {},
+          content: {},
+          explicitContent: true,
+          explicitStyle: false,
+          explicitPosition: false,
+          explicitSize: false,
+        }
+      : null
+  )
   const selectedVideoInputValue = selectedNode ? videoInputValues[selectedNode.id] ?? selectedNode.content.videoUrl ?? "" : ""
   const heroTitleSegments: TextSegment[] = selectedNode?.content.titleSegments || selectedNode?.content.textSegments || []
   const heroSubtitleSegments: TextSegment[] = selectedNode?.content.titleSegments || selectedNode?.content.textSegments || []
@@ -1961,10 +2062,16 @@ export function VisualEditorOverlay() {
     (selectedNode?.type === "image" || selectedNode?.type === "background") &&
     (selectedNode.id === "hero-logo" || selectedNode.id === "hero-bg-image")
   const isFooterSocialGroup = selectedNode?.type === "card" && selectedNode.id === "footer-social-group"
+  const isLivePlatformGroup =
+    selectedNode?.type === "card" &&
+    (selectedNode.id === "live-stream-platforms-group" || selectedNode.id === "live-social-platforms-group")
   const isLatestReleaseCard = selectedNode?.id === "latest-release-card"
   const isAboutTextCard = selectedNode?.id === "about-text-card"
+  const isContactCard = selectedNode?.id === "contact-email" || selectedNode?.id === "contact-telegram"
   const isPressKitResourceCard = Boolean(selectedNode && /^press-kit-resource-(0|1)$/.test(selectedNode.id))
   const isPressKitManagerCard = selectedNode?.id === "press-kit-manager"
+  const isBandMemberCard = Boolean(selectedNode && /^member-item-\d+$/.test(selectedNode.id))
+  const isLiveConcertCard = Boolean(liveConcertSelection)
   const isSelectedSectionDivider = Boolean(selectedNode && isSectionDividerNodeId(selectedNode.id))
   const hasNestedEditableChildren = Boolean(
     selectedNode?.type === "card" &&
@@ -1978,28 +2085,34 @@ export function VisualEditorOverlay() {
       selectedEntry?.element &&
       (
         selectedEntry.element.dataset.concertCard === "true" ||
-        selectedEntry.element.dataset.linkGroupSummary ||
+        isFooterSocialGroup ||
+        isLivePlatformGroup ||
         selectedEntry.element.querySelector("[data-concert-field]")
       )
   )
   const isSimpleEditableBox =
     (selectedNode?.type === "card" || selectedNode?.type === "overlay") &&
     !isFooterSocialGroup &&
-    (isLatestReleaseCard || isAboutTextCard || isPressKitResourceCard || isPressKitManagerCard || !hasNestedEditableChildren) &&
+    (isLatestReleaseCard || isAboutTextCard || isContactCard || isPressKitResourceCard || isPressKitManagerCard || isBandMemberCard || isLiveConcertCard || !hasNestedEditableChildren) &&
     !hasStructuredCardFields &&
     !isExtraNodeId(selectedNode?.id || "")
 
   const selectedEntryElement = selectedEntry?.element
-  const footerSocialLinkItems = (() => {
-    if (!isFooterSocialGroup || !selectedEntryElement) return [] as Array<{ id: string; name: string; href: string }>
-    return Array.from(selectedEntryElement.querySelectorAll<HTMLElement>("[data-link-item='true'][data-editor-node-id], [data-link-item='true'][data-extra-node-id]"))
+  const groupedLinkItems = (() => {
+    if ((!isFooterSocialGroup && !isLivePlatformGroup) || !selectedEntryElement) return [] as Array<{ id: string; name: string; href: string }>
+    const selector = isFooterSocialGroup
+      ? "[data-editor-node-id^='footer-social-'], [data-extra-node-id^='footer-social-']"
+      : selectedNode?.id === "live-stream-platforms-group"
+        ? "[data-editor-node-id^='live-streaming-'], [data-extra-node-id^='live-streaming-']"
+        : "[data-editor-node-id^='live-social-'], [data-extra-node-id^='live-social-']"
+    return Array.from(selectedEntryElement.querySelectorAll<HTMLElement>(selector))
       .map((el) => {
-        const id = (el.dataset.editorNodeId || "").trim()
+        const id = (el.dataset.editorNodeId || el.dataset.extraNodeId || "").trim()
         if (!id) return null
         const node = nodes.get(id)
         return {
           id,
-          name: (el.dataset.linkItemName || el.dataset.editorNodeLabel || id).trim(),
+          name: (el.dataset.editorNodeLabel || id).trim(),
           href: (node?.content.href || el.getAttribute("href") || "").trim(),
         }
       })
@@ -2146,16 +2259,18 @@ export function VisualEditorOverlay() {
   }
 
   const selectedBandMemberIndex = extractBandMemberIndex(selectedNode?.id)
+  const selectedBandMemberGroup = selectedEntry?.element?.dataset.editorMemberGroup === "colab" ? "colab" : "band"
 
-  const getBandMemberFieldValue = useCallback((index: number, field: "number" | "name" | "role" | "photo"): string => {
+  const getBandMemberFieldValue = useCallback((index: number, field: "number" | "name" | "role" | "description" | "photo"): string => {
     if (typeof document === "undefined") return ""
     if (field === "number") return document.querySelector<HTMLElement>(`[data-member-number-index="${index}"]`)?.textContent?.trim() || ""
     if (field === "name") return document.querySelector<HTMLElement>(`[data-member-name-index="${index}"]`)?.textContent?.trim() || ""
     if (field === "role") return document.querySelector<HTMLElement>(`[data-member-role-index="${index}"]`)?.textContent?.trim() || ""
+    if (field === "description") return document.querySelector<HTMLElement>(`[data-member-photo-description-index="${index}"]`)?.textContent?.trim() || ""
     return document.querySelector<HTMLImageElement>(`[data-member-photo-index="${index}"]`)?.src || ""
   }, [])
 
-  const updateBandMemberField = useCallback((index: number, field: "number" | "name" | "role" | "photo", value: string) => {
+  const updateBandMemberField = useCallback((index: number, field: "number" | "name" | "role" | "description" | "photo", value: string) => {
     if (typeof document === "undefined") return
     if (field === "number") {
       const el = document.querySelector<HTMLElement>(`[data-member-number-index="${index}"]`)
@@ -2167,6 +2282,11 @@ export function VisualEditorOverlay() {
       document.querySelectorAll<HTMLElement>(`[data-member-name-index="${index}"],[data-member-overlay-name-index="${index}"]`).forEach((el) => {
         el.textContent = value
       })
+      const card = document.querySelector<HTMLElement>(`[data-editor-node-id="member-item-${index}"]`)
+      if (card) {
+        card.dataset.editorMemberName = value
+        card.dataset.editorNodeLabel = value
+      }
       dispatch({ type: "UPDATE_TEXT", nodeId: `member-item-${index}-name`, patch: { text: value } })
       return
     }
@@ -2174,7 +2294,19 @@ export function VisualEditorOverlay() {
       document.querySelectorAll<HTMLElement>(`[data-member-role-index="${index}"],[data-member-overlay-role-index="${index}"]`).forEach((el) => {
         el.textContent = value
       })
+      const card = document.querySelector<HTMLElement>(`[data-editor-node-id="member-item-${index}"]`)
+      if (card) card.dataset.editorMemberRole = value
       dispatch({ type: "UPDATE_TEXT", nodeId: `member-item-${index}-role`, patch: { text: value } })
+      return
+    }
+    if (field === "description") {
+      document.querySelectorAll<HTMLElement>(`[data-member-photo-description-index="${index}"]`).forEach((el) => {
+        el.textContent = value
+        el.classList.toggle("hidden", value.trim().length === 0)
+      })
+      const card = document.querySelector<HTMLElement>(`[data-editor-node-id="member-item-${index}"]`)
+      if (card) card.dataset.editorMemberPhotoDescription = value
+      dispatch({ type: "UPDATE_TEXT", nodeId: `member-item-${index}-description`, patch: { text: value } })
       return
     }
     document.querySelectorAll<HTMLImageElement>(`[data-member-photo-index="${index}"]`).forEach((img) => {
@@ -2182,6 +2314,213 @@ export function VisualEditorOverlay() {
     })
     dispatch({ type: "UPDATE_IMAGE", nodeId: `member-item-${index}-image`, patch: { src: value, mediaKind: "image" } })
   }, [dispatch])
+
+  const addBandMember = useCallback((group: "band" | "colab") => {
+    if (typeof window === "undefined") return
+    window.dispatchEvent(new CustomEvent("editor-band-member-add", { detail: { group } }))
+    window.setTimeout(() => {
+      const nextRegistry = scanRegistry()
+      nextRegistry.forEach((entry, id) => {
+        if (nodesRef.current.has(id) || !id.startsWith("member-item-")) return
+        dispatch({ type: "ADD_EXTRA_NODE", node: buildNodeFromEntry(entry) })
+      })
+    }, 150)
+  }, [dispatch])
+
+  const uploadEditorAsset = useCallback(async (file: File, nodeId: string): Promise<string | null> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("nodeId", nodeId)
+    const uploadRes = await fetch("/api/editor-upload-asset", {
+      method: "POST",
+      body: formData,
+    })
+    if (!uploadRes.ok) {
+      const text = await uploadRes.text()
+      console.error("[editor-asset-upload] Upload failed.", {
+        nodeId,
+        status: uploadRes.status,
+        body: text.substring(0, 300),
+      })
+      return null
+    }
+    const uploadData = await uploadRes.json() as { url?: string }
+    return typeof uploadData.url === "string" && uploadData.url.trim() ? uploadData.url.trim() : null
+  }, [])
+
+  const emitLiveConcertsUpdated = useCallback((concerts: EditorConcert[]) => {
+    if (typeof window === "undefined") return
+    window.dispatchEvent(new CustomEvent("live-concerts-updated", { detail: { concerts } }))
+  }, [])
+
+  const normalizeEditorConcert = useCallback((input: Partial<EditorConcert>, fallbackEditorId: number): EditorConcert => {
+    const locationName = (input.locationName || input.venue || "").trim()
+    const locationLink = (input.locationLink || input.locationUrl || "").trim()
+    const ticketUrl = (input.ticketUrl || "").trim()
+    const style = (input.style || input.genre || "World Music").trim() || "World Music"
+    const deriveStatus = () => {
+      const rawStatus = (input.status || "").trim()
+      if (/cancelled/i.test(rawStatus)) return "Cancelled"
+      if (!input.date) return rawStatus || "Upcoming"
+      const iso = `${input.date}${input.time ? `T${input.time}` : "T23:59"}:00`
+      const parsed = new Date(iso)
+      if (Number.isNaN(parsed.getTime())) return rawStatus || "Upcoming"
+      return parsed.getTime() < Date.now() ? "Completed" : "Upcoming"
+    }
+    return {
+      _editorId: typeof input._editorId === "number" ? input._editorId : fallbackEditorId,
+      eventName: (input.eventName || locationName || `Concert ${fallbackEditorId + 1}`).trim(),
+      locationName,
+      locationLink,
+      ticketUrl,
+      venue: locationName,
+      city: (input.city || "").trim(),
+      country: (input.country || "").trim(),
+      address: (input.address || "").trim(),
+      date: (input.date || "").trim(),
+      time: (input.time || "").trim(),
+      status: deriveStatus(),
+      style,
+      genre: style,
+      capacity: (input.capacity || "").trim(),
+      price: (input.price || "").trim(),
+      locationUrl: locationLink,
+      imageUrl: (input.imageUrl || "").trim(),
+    }
+  }, [])
+
+  const updateLiveConcertsCollection = useCallback((nextConcertsInput: EditorConcert[]) => {
+    const normalized = nextConcertsInput
+      .map((concert, index) => normalizeEditorConcert(concert, index))
+      .sort((a, b) => (a.date || "9999-12-31").localeCompare(b.date || "9999-12-31") || a._editorId - b._editorId)
+      .map((concert, index) => ({ ...concert, _editorId: index }))
+    dispatch({ type: "UPDATE_CARD", nodeId: "live-section-concerts-container", patch: { concerts: normalized } })
+    emitLiveConcertsUpdated(normalized)
+    return normalized
+  }, [dispatch, emitLiveConcertsUpdated, normalizeEditorConcert])
+
+  const updateSingleLiveConcert = useCallback((editorId: number, patch: Partial<EditorConcert>) => {
+    const nextConcerts = liveConcerts.map((concert) =>
+      concert._editorId === editorId ? normalizeEditorConcert({ ...concert, ...patch, _editorId: editorId }, editorId) : concert
+    )
+    updateLiveConcertsCollection(nextConcerts)
+  }, [liveConcerts, normalizeEditorConcert, updateLiveConcertsCollection])
+
+  const addLiveConcert = useCallback(() => {
+    const nextEditorId = liveConcerts.reduce((max, concert) => Math.max(max, concert._editorId), -1) + 1
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const date = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`
+    const created = normalizeEditorConcert({
+      _editorId: nextEditorId,
+      eventName: "New Concert",
+      locationName: "Venue TBA",
+      city: "",
+      country: "",
+      address: "",
+      locationLink: "",
+      ticketUrl: "",
+      date,
+      time: "20:00",
+      status: "Upcoming",
+      style: "World Music",
+      capacity: "",
+      price: "",
+      imageUrl: "",
+    }, nextEditorId)
+    updateLiveConcertsCollection([...liveConcerts, created])
+    setSelectedId(`live-upcoming-event-${nextEditorId}`)
+    setOpenPanel(true)
+  }, [liveConcerts, normalizeEditorConcert, setOpenPanel, setSelectedId, updateLiveConcertsCollection])
+
+  const deleteLiveConcert = useCallback((editorId: number) => {
+    const nextConcerts = liveConcerts.filter((concert) => concert._editorId !== editorId)
+    updateLiveConcertsCollection(nextConcerts)
+    if (selectedId && parseLiveConcertNodeId(selectedId)?.editorId === editorId) {
+      setSelectedId("live-section-concerts-container")
+      setOpenPanel(true)
+    }
+  }, [liveConcerts, selectedId, setOpenPanel, setSelectedId, updateLiveConcertsCollection])
+
+  const importLiveConcertFile = useCallback(async (file: File) => {
+    const XLSX = await import("xlsx")
+    const buffer = await file.arrayBuffer()
+    const workbook = XLSX.read(buffer, { type: "array" })
+    const firstSheetName = workbook.SheetNames[0]
+    const sheet = workbook.Sheets[firstSheetName]
+    if (!sheet) return
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" })
+    const normalizeSpreadsheetDate = (value: unknown): string => {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`
+      }
+      if (typeof value === "number" && Number.isFinite(value)) {
+        const parsed = XLSX.SSF.parse_date_code(value)
+        if (parsed?.y && parsed?.m && parsed?.d) {
+          return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(parsed.d).padStart(2, "0")}`
+        }
+      }
+      const text = String(value || "").trim()
+      if (!text) return ""
+      if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text
+      const parsed = new Date(text)
+      if (!Number.isNaN(parsed.getTime())) {
+        return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`
+      }
+      return text
+    }
+    const normalizeSpreadsheetTime = (value: unknown): string => {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`
+      }
+      if (typeof value === "number" && Number.isFinite(value)) {
+        const totalMinutes = Math.round(value * 24 * 60)
+        const hours = Math.floor(totalMinutes / 60) % 24
+        const minutes = totalMinutes % 60
+        return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+      }
+      const text = String(value || "").trim()
+      if (!text) return ""
+      const match = text.match(/(\d{1,2}):(\d{2})/)
+      if (match) return `${match[1].padStart(2, "0")}:${match[2]}`
+      return text
+    }
+    const imported = rows
+      .map((row, index) => {
+        const venue = String(row["Venue*"] || row["Venue"] || row["locationName"] || "").trim()
+        const city = String(row["City*"] || row["City"] || row["city"] || "").trim()
+        const country = String(row["Country*"] || row["Country"] || row["country"] || "").trim()
+        const address = String(row["Address"] || row["address"] || "").trim()
+        const date = normalizeSpreadsheetDate(row["Start Date* (yyyy-mm-dd)"] || row["Date"] || row["date"] || "")
+        const time = normalizeSpreadsheetTime(row["Start Time* (HH:MM)"] || row["Time"] || row["time"] || "")
+        const ticketUrl = String(row["Ticket Link"] || row["ticketUrl"] || row["Ticket Link 2"] || "").trim()
+        const eventName = String(row["Event Name"] || row["eventName"] || venue || `Concert ${index + 1}`).trim()
+        const imageUrl = String(row["Event Image"] || row["imageUrl"] || "").trim()
+        if (!venue && !eventName && !date) return null
+        const mapsQuery = [address, city, country].filter(Boolean).join(" ")
+        return normalizeEditorConcert({
+          _editorId: index,
+          eventName,
+          locationName: venue,
+          venue,
+          city,
+          country,
+          address,
+          date,
+          time,
+          locationLink: mapsQuery ? `https://maps.google.com/?q=${encodeURIComponent(mapsQuery)}` : "",
+          ticketUrl,
+          style: String(row["Genre"] || row["Style"] || row["Ticket Type"] || "World Music").trim() || "World Music",
+          price: String(row["Price"] || row["Ticket Type"] || "").trim(),
+          imageUrl,
+          status: "Upcoming",
+        }, index)
+      })
+      .filter((concert): concert is EditorConcert => Boolean(concert))
+    if (imported.length === 0) return
+    updateLiveConcertsCollection(imported)
+    setSelectedId("live-section-concerts-container")
+    setOpenPanel(true)
+  }, [normalizeEditorConcert, setOpenPanel, setSelectedId, updateLiveConcertsCollection])
   const exitEditor = () => {
     // Clear session state when exiting editor
     try {
@@ -2680,7 +3019,7 @@ export function VisualEditorOverlay() {
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (isEditingInput(e.target)) return
+      if (isEditingInputActive(e.target)) return
       const isActivation = e.key === "Enter" || e.key === " "
       if (isActivation && shouldBlockPublicAction(e.target)) {
         e.preventDefault()
@@ -2925,26 +3264,39 @@ export function VisualEditorOverlay() {
         />
       )}
 
-      {openPanel && selectedNode && (
+      {openPanel && selectedPanelNode && (
         <div data-editor-panel className="fixed top-16 right-3 z-[9997] w-72 rounded-xl bg-white text-slate-900 shadow-2xl">
           <div className="bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-semibold">{selectedNode.label}</div>
-                <div className="text-[10px] capitalize">{selectedNode.type}</div>
+                <div className="text-sm font-semibold">{selectedPanelNode.label}</div>
+                <div className="text-[10px] capitalize">{selectedPanelNode.type}</div>
               </div>
               <button onClick={() => { dispatch({ type: "DESELECT_NODE" }); setOpenPanel(false) }}>×</button>
             </div>
           </div>
 
           <div className="space-y-2 p-3 text-slate-900">
-            <button
-              type="button"
-              className="w-full rounded border border-slate-300 px-2 py-1 text-xs font-semibold"
-              onClick={arrangeSelectedNodes}
-            >
-              {selectedNode.id === "hero-bg-image" || selectedNode.id === "hero-logo" ? "Arrange + Reset image filters" : "Arrange / Auto-position"}
-            </button>
+            {selectedNode && (
+              <button
+                type="button"
+                className="w-full rounded border border-slate-300 px-2 py-1 text-xs font-semibold"
+                onClick={arrangeSelectedNodes}
+              >
+                {selectedNode.id === "hero-bg-image" || selectedNode.id === "hero-logo" ? "Arrange + Reset image filters" : "Arrange / Auto-position"}
+              </button>
+            )}
+            {(selectedNode?.id === "band-members-section" || selectedBandMemberIndex !== null) && (
+              <div className="rounded border border-slate-200 p-2">
+                <button
+                  type="button"
+                  className="w-full rounded bg-slate-900 px-2 py-1 text-xs font-semibold text-white"
+                  onClick={() => addBandMember(selectedBandMemberGroup)}
+                >
+                  Add Member
+                </button>
+              </div>
+            )}
             {selectedBandMemberIndex !== null && (
               <div className="space-y-2 rounded border border-slate-200 p-2">
                 <label className="text-[11px] font-semibold">Member Number</label>
@@ -2968,29 +3320,158 @@ export function VisualEditorOverlay() {
                   defaultValue={getBandMemberFieldValue(selectedBandMemberIndex, "role")}
                   onInput={(e) => updateBandMemberField(selectedBandMemberIndex, "role", (e.target as HTMLInputElement).value)}
                 />
+                <label className="text-[11px] font-semibold">Photo Description</label>
+                <textarea
+                  key={`member-description-${selectedBandMemberIndex}`}
+                  className="w-full rounded border p-1 text-xs"
+                  defaultValue={getBandMemberFieldValue(selectedBandMemberIndex, "description")}
+                  onInput={(e) => updateBandMemberField(selectedBandMemberIndex, "description", (e.target as HTMLTextAreaElement).value)}
+                />
                 <label className="text-[11px] font-semibold">Upload/Change Picture</label>
                 <input
                   type="file"
                   accept="image/*"
                   className="w-full text-xs"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0]
                     if (!file) return
-                    const url = URL.createObjectURL(file)
-                    setHasNonPersistableUpload(true)
+                    const input = e.currentTarget
+                    const url = await uploadEditorAsset(file, `member-item-${selectedBandMemberIndex}-image`)
+                    if (!url) {
+                      setHasNonPersistableUpload(true)
+                      return
+                    }
+                    setHasNonPersistableUpload(false)
                     updateBandMemberField(selectedBandMemberIndex, "photo", url)
+                    input.value = ""
                   }}
                 />
                 {hasNonPersistableUpload && (
                   <p className="text-[10px] text-amber-700">
-                    Local blob preview only. Upload to Sanity asset URL before relying on deploy persistence.
+                    Upload failed. This member photo needs a Sanity asset URL before it can persist to public runtime.
                   </p>
                 )}
               </div>
             )}
 
+            {isLiveConcertListSelection && (
+              <div className="space-y-2 rounded border border-slate-200 p-2">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="flex-1 rounded bg-slate-900 px-2 py-1 text-xs font-semibold text-white"
+                    onClick={addLiveConcert}
+                  >
+                    Add Concert
+                  </button>
+                  <button
+                    type="button"
+                    className="flex-1 rounded border border-slate-300 px-2 py-1 text-xs font-semibold"
+                    onClick={() => liveFileInputRef.current?.click()}
+                  >
+                    Upload File
+                  </button>
+                  <input
+                    ref={liveFileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.currentTarget.files?.[0]
+                      if (!file) return
+                      await importLiveConcertFile(file)
+                      e.currentTarget.value = ""
+                    }}
+                  />
+                </div>
+                <div className="max-h-60 space-y-1 overflow-auto rounded border border-slate-200 p-2">
+                  {liveConcerts.map((concert) => (
+                    <div key={`live-concert-row-${concert._editorId}`} className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 truncate rounded border border-slate-200 px-2 py-1 text-left text-[10px]"
+                        onClick={() => {
+                          const listType = concert.status === "Completed" ? "history" : "upcoming"
+                          setSelectedId(`live-${listType}-event-${concert._editorId}`)
+                          setOpenPanel(true)
+                        }}
+                      >
+                        {(concert.eventName || concert.locationName || `Concert ${concert._editorId + 1}`)} - {concert.date || "Date TBA"}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border px-2 py-1 text-[10px]"
+                        onClick={() => deleteLiveConcert(concert._editorId)}
+                      >
+                        X
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {(selectedNode.type === "text" || selectedNode.type === "button") &&
+            {selectedLiveConcert && (
+              <div className="space-y-2 rounded border border-slate-200 p-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold">Concert Editor</span>
+                  <button
+                    type="button"
+                    className="rounded border px-2 py-0.5 text-[10px]"
+                    onClick={() => deleteLiveConcert(selectedLiveConcert._editorId)}
+                  >
+                    Delete
+                  </button>
+                </div>
+                <label className="text-[11px] font-semibold">Event Name</label>
+                <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.eventName || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { eventName: e.target.value })} />
+                <label className="text-[11px] font-semibold">Venue</label>
+                <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.locationName || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationName: e.target.value, venue: e.target.value })} />
+                <label className="text-[11px] font-semibold">Address</label>
+                <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.address || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { address: e.target.value })} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-semibold">City</label>
+                    <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.city || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { city: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold">Country</label>
+                    <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.country || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { country: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-semibold">Date</label>
+                    <input type="date" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.date || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { date: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold">Time</label>
+                    <input type="time" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.time || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { time: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-semibold">Style</label>
+                    <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.style || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { style: e.target.value, genre: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold">Price</label>
+                    <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.price || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { price: e.target.value })} />
+                  </div>
+                </div>
+                <label className="text-[11px] font-semibold">Google Maps URL</label>
+                <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.locationLink || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationLink: e.target.value, locationUrl: e.target.value })} />
+                <label className="text-[11px] font-semibold">Ticket Link</label>
+                <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.ticketUrl || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { ticketUrl: e.target.value })} />
+                <label className="text-[11px] font-semibold">Current Bucket</label>
+                <div className="rounded border border-slate-200 px-2 py-1 text-[10px]">
+                  {selectedLiveConcert.status || "Upcoming"} (automatic from date/time unless cancelled)
+                </div>
+              </div>
+            )}
+
+
+            {(selectedNode?.type === "text" || selectedNode?.type === "button") &&
               canUseSimpleTextTools && (
               <>
                 <label className="text-xs font-semibold">Content</label>
@@ -3126,7 +3607,7 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {selectedNode.type === "button" && (
+            {selectedNode?.type === "button" && (
               <>
                 <label className="text-[10px]">Background Color</label>
                 <input
@@ -3160,11 +3641,11 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {isFooterSocialGroup && footerSocialLinkItems.length > 0 && (
+            {(isFooterSocialGroup || isLivePlatformGroup) && groupedLinkItems.length > 0 && (
               <>
-                <label className="text-xs font-semibold">Footer Social Links</label>
+                <label className="text-xs font-semibold">{isLivePlatformGroup ? "Platform Links" : "Footer Social Links"}</label>
                 <div className="space-y-2 rounded border border-slate-200 p-2">
-                  {footerSocialLinkItems.map((item) => (
+                  {groupedLinkItems.map((item) => (
                     <div key={`footer-social-link-${item.id}`} className="space-y-1">
                       <label className="text-[10px] font-semibold">{item.name}</label>
                       <input
@@ -3178,7 +3659,7 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {selectedNode.id === "navigation-inner" && selectedNode.type === "card" && (
+            {selectedNode?.id === "navigation-inner" && selectedNode?.type === "card" && (
               <>
                 <label className="text-[10px]">Background Color</label>
                 <input
@@ -3200,7 +3681,7 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {/^press-kit-resource-(0|1)$/.test(selectedNode.id) && selectedNode.type === "card" && (
+            {selectedNode && /^press-kit-resource-(0|1)$/.test(selectedNode.id) && selectedNode.type === "card" && (
               <>
                 <label className="text-xs font-semibold">Resource Title</label>
                 <input
@@ -3275,7 +3756,7 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {selectedNode.id === "press-kit-manager" && selectedNode.type === "card" && (
+            {selectedNode?.id === "press-kit-manager" && selectedNode?.type === "card" && (
               <>
                 <label className="text-xs font-semibold">Manager Card Title</label>
                 <input
@@ -3326,7 +3807,7 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {isSelectedSectionDivider && selectedNode.type === "background" && (
+            {isSelectedSectionDivider && selectedNode?.type === "background" && (
               <>
                 <label className="text-[10px]">Opacity ({Math.round((selectedNode.style.opacity ?? 1) * 100)}%)</label>
                 <input
@@ -3372,7 +3853,7 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {(selectedNode.type === "image" || (selectedNode.type === "background" && selectedNode.content.mediaKind !== "video" && !isSelectedSectionDivider)) && (
+            {(selectedNode?.type === "image" || (selectedNode?.type === "background" && selectedNode.content.mediaKind !== "video" && !isSelectedSectionDivider)) && (
               <>
                 <label className="text-xs font-semibold">Asset</label>
                 <select
@@ -3478,6 +3959,20 @@ export function VisualEditorOverlay() {
                     Blob preview detected. This src is not persistible in deploy.
                   </p>
                 )}
+                {selectedNode.id === "footer-logo" && (
+                  <>
+                    <label className="text-xs font-semibold">Link</label>
+                    <input
+                      className="w-full rounded border p-1 text-xs"
+                      value={selectedNode.content.href || selectedEntryElement?.getAttribute("href") || ""}
+                      onChange={(e) => dispatch({
+                        type: "UPDATE_IMAGE",
+                        nodeId: selectedNode.id,
+                        patch: { href: e.target.value },
+                      })}
+                    />
+                  </>
+                )}
                 {(selectedNode.content.mediaKind !== "video") && (
                   <>
                     <div>
@@ -3570,7 +4065,7 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {selectedNode.type === "background" && selectedNode.content.mediaKind === "video" && (
+            {selectedNode?.type === "background" && selectedNode.content.mediaKind === "video" && (
               <>
                 <label className="text-[10px]">Opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
                 <input
@@ -3613,7 +4108,7 @@ export function VisualEditorOverlay() {
 
             {/* Advanced Size UI removed - use visual resize handles instead */}
 
-            {selectedNode.type === "section" && (
+            {selectedNode?.type === "section" && (
               <>
                 {selectedNode.id === "navigation" && (
                   <>
@@ -3634,7 +4129,7 @@ export function VisualEditorOverlay() {
 
             {isSimpleEditableBox && (
               <>
-                {selectedNode.type === "card" && !isLatestReleaseCard && !isAboutTextCard && !isPressKitResourceCard && !isPressKitManagerCard && !isExtraNodeId(selectedNode.id) && (
+                {selectedNode.type === "card" && !isLatestReleaseCard && !isAboutTextCard && !isContactCard && !isPressKitResourceCard && !isPressKitManagerCard && !isBandMemberCard && !isExtraNodeId(selectedNode.id) && (
                   <>
                     <label className="text-xs font-semibold">Card Text</label>
                     <textarea

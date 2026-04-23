@@ -90,6 +90,32 @@ export async function loadHomeEditorState(perspective: "published" | "drafts" = 
       "about-copy-button",
     ])
 
+    const isLiveDocDrivenNodeId = (nodeId: string): boolean => {
+      return (
+        nodeId === "live-section" ||
+        nodeId === "live-section-bg-image" ||
+        nodeId === "live-section-see-shows-button" ||
+        nodeId === "live-stream-header" ||
+        nodeId === "live-stream-platforms-group" ||
+        nodeId === "live-stream-platforms-title" ||
+        nodeId === "live-social-platforms-group" ||
+        nodeId === "live-social-platforms-title" ||
+        nodeId === "live-upcoming-title" ||
+        nodeId === "live-section-concerts-container" ||
+        nodeId === "live-upcoming-list" ||
+        nodeId === "live-upcoming-empty" ||
+        nodeId === "live-upcoming-empty-text" ||
+        nodeId === "live-history-title" ||
+        nodeId === "live-history-list" ||
+        nodeId === "live-history-empty" ||
+        nodeId === "live-history-empty-text" ||
+        nodeId.startsWith("live-streaming-") ||
+        nodeId.startsWith("live-social-") ||
+        nodeId.startsWith("live-upcoming-event-") ||
+        nodeId.startsWith("live-history-event-")
+      )
+    }
+
     const nodes = raw
       .map((raw): HomeEditorNodeOverride | null => {
         if (!raw || typeof raw !== "object") return null
@@ -101,7 +127,8 @@ export async function loadHomeEditorState(perspective: "published" | "drafts" = 
           HERO_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
           INTRO_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
           RELEASE_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
-          ABOUT_DOC_DRIVEN_NODE_IDS.has(nodeId)
+          ABOUT_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
+          isLiveDocDrivenNodeId(nodeId)
         ) return null
         const nodeType = typeof n.nodeType === "string" ? n.nodeType : typeof n.type === "string" ? n.type : "text"
         const geometry = (n.geometry && typeof n.geometry === "object" ? n.geometry : {}) as Record<string, unknown>

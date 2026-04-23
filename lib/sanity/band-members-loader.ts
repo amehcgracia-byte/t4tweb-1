@@ -6,6 +6,8 @@ export interface BandMemberData {
   fullName: string
   role: string
   image: string
+  photoDescription?: string
+  group?: "band" | "colab"
 }
 
 export interface BandMembersLoadResult {
@@ -23,11 +25,19 @@ const DEFAULT_BAND_HEADER_TITLE = "Meet the Band"
 const DEFAULT_BAND_HEADER_DESCRIPTION = "Five musicians from diverse backgrounds, united by a passion for rhythm and groove."
 
 const FALLBACK_MEMBERS: BandMemberData[] = [
-  { id: 1, fullName: "Janosch Puhe", role: "Main Vocals", image: "/images/members/Janosch Puhe2.JPG" },
-  { id: 2, fullName: "J.Ma Garcia Lopez", role: "Keys and Synth", image: "/images/members/J.Ma Garcia Lopez2.JPG" },
-  { id: 3, fullName: "Otto Lorenz Contreras", role: "Drums", image: "/images/members/Otto Lorenz Contreras.JPG" },
-  { id: 4, fullName: "Robii Crowford", role: "Electric Guitar", image: "/images/members/Robii Crowford.JPG" },
-  { id: 5, fullName: "Tarik Benatmane", role: "Electric Bass", image: "/images/members/Tarik Benatmane.JPG" },
+  { id: 1, fullName: "Janosch Puhe", role: "Main Vocals", image: "/images/members/Janosch Puhe2.JPG", group: "band" },
+  { id: 2, fullName: "J.Ma Garcia Lopez", role: "Keys and Synth", image: "/images/members/J.Ma Garcia Lopez2.JPG", group: "band" },
+  { id: 3, fullName: "Otto Lorenz Contreras", role: "Drums", image: "/images/members/Otto Lorenz Contreras.JPG", group: "band" },
+  { id: 4, fullName: "Robii Crowford", role: "Electric Guitar", image: "/images/members/Robii Crowford.JPG", group: "band" },
+  { id: 5, fullName: "Tarik Benatmane", role: "Electric Bass", image: "/images/members/Tarik Benatmane.JPG", group: "band" },
+]
+
+const FALLBACK_COLLABS: BandMemberData[] = [
+  { id: 6, fullName: "Valentin Pfeifer", role: "Musician Colab", image: FALLBACK_MEMBERS[0].image, group: "colab" },
+  { id: 7, fullName: "Angèle Tremsal", role: "Musician Colab", image: FALLBACK_MEMBERS[1].image, group: "colab" },
+  { id: 8, fullName: "Mario Kuwahara", role: "Musician Colab", image: FALLBACK_MEMBERS[2].image, group: "colab" },
+  { id: 9, fullName: "Mariam and Alex", role: "Musician Colab", image: FALLBACK_MEMBERS[3].image, group: "colab" },
+  { id: 10, fullName: "Moritz Weber", role: "Musician Colab", image: FALLBACK_MEMBERS[4].image, group: "colab" },
 ]
 
 function normalizeElementStyleEntry(value: unknown): Record<string, unknown> | null {
@@ -89,19 +99,36 @@ export async function loadBandMembersData(
     const query = `*[_type == "bandMember"] | order(order asc){
       fullName,
       role,
+      photoDescription,
+      group,
+      memberGroup,
+      category,
       "imageUrl": portraitImage.asset->url
     }`
-    const fetched = await client.fetch<Array<{ fullName?: string; role?: string; imageUrl?: string }> | null>(query)
+    const fetched = await client.fetch<Array<{
+      fullName?: string
+      role?: string
+      photoDescription?: string
+      group?: string
+      memberGroup?: string
+      category?: string
+      imageUrl?: string
+    }> | null>(query)
 
-    const members =
+    const loadedMembers =
       !Array.isArray(fetched) || fetched.length === 0
         ? FALLBACK_MEMBERS
         : fetched.map((member, index) => ({
             id: index + 1,
             fullName: member.fullName?.trim() || FALLBACK_MEMBERS[index]?.fullName || `Member ${index + 1}`,
             role: member.role?.trim() || FALLBACK_MEMBERS[index]?.role || "Musician",
+            photoDescription: member.photoDescription?.trim() || "",
+            group: (member.group || member.memberGroup || member.category)?.toLowerCase() === "colab" ? "colab" as const : "band" as const,
             image: member.imageUrl || FALLBACK_MEMBERS[index]?.image || FALLBACK_MEMBERS[0].image,
           }))
+    const members = loadedMembers.some((member) => member.group === "colab")
+      ? loadedMembers
+      : [...loadedMembers, ...FALLBACK_COLLABS]
 
     // Load band members settings (styles/layout materialized from editor)
     const settingsQuery = `*[_type == "bandMembersSettings"][0]{
@@ -131,7 +158,7 @@ export async function loadBandMembersData(
   } catch (error) {
     console.error("[loadBandMembersData]", error)
     return {
-      members: FALLBACK_MEMBERS,
+      members: [...FALLBACK_MEMBERS, ...FALLBACK_COLLABS],
       backgroundImageUrl: DEFAULT_BAND_BACKGROUND,
       headerEyebrow: DEFAULT_BAND_HEADER_EYEBROW,
       headerTitle: DEFAULT_BAND_HEADER_TITLE,

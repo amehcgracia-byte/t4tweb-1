@@ -3,7 +3,7 @@ import { SectionDivider } from "@/components/section-divider"
 import { AboutSection } from "@/components/about-section"
 import { PressKitSection } from "@/components/press-kit-section"
 import { BandMembersSectionSimple } from "@/components/band-members-section-simple"
-import { LiveSectionSimple } from "@/components/live-section-simple"
+import { LiveSection } from "@/components/live-section"
 import { ContactSection } from "@/components/contact-section"
 import { Footer } from "@/components/footer"
 import { Navigation } from "@/components/navigation"
@@ -93,13 +93,9 @@ export default async function HomePage({ perspective = "published", isEditorRout
             />
           </SceneSection>
 
-          <SectionDivider editorId="section-divider-band-live" state={getEditorNodeState(homeEditorNodes, "section-divider-band-live")} />
-
           <SceneSection id="live">
-            <LiveSectionSimple data={liveData} />
+            <LiveSection data={liveData} />
           </SceneSection>
-
-          <SectionDivider editorId="section-divider-live-contact" state={getEditorNodeState(homeEditorNodes, "section-divider-live-contact")} />
 
           <SceneSection id="contact">
             <ContactSection data={contactData} />
@@ -144,13 +140,9 @@ export default async function HomePage({ perspective = "published", isEditorRout
             />
           </SceneSection>
 
-          <SectionDivider editorId="section-divider-band-live" state={getEditorNodeState(homeEditorNodes, "section-divider-band-live")} />
-
           <SceneSection id="live">
-            <LiveSectionSimple data={liveData} />
+            <LiveSection data={liveData} />
           </SceneSection>
-
-          <SectionDivider editorId="section-divider-live-contact" state={getEditorNodeState(homeEditorNodes, "section-divider-live-contact")} />
 
           <SceneSection id="contact">
             <ContactSection data={contactData} />

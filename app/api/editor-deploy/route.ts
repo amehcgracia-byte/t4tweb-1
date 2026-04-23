@@ -49,18 +49,30 @@ interface DeployNodePayload {
     alt?: string
     role?: string
     email?: string
+    photoDescription?: string
+    group?: "band" | "colab"
     videoUrl?: string
     videoSources?: Array<{ type?: string; url?: string; youtubeId?: string; enabled?: boolean; order?: number }>
     backgroundVideoSources?: Array<{ type?: string; url?: string; youtubeId?: string }>
     concerts?: Array<{
       _editorId?: number
+      eventName?: string
       date?: string
       time?: string
+      venue?: string
+      city?: string
+      country?: string
+      address?: string
+      genre?: string
+      capacity?: string
+      locationUrl?: string
       locationName?: string
       locationLink?: string
       style?: string
       price?: string
       status?: string
+      ticketUrl?: string
+      imageUrl?: string
     }>
     mediaKind?: "image" | "video"
     gradientEnabled?: boolean
@@ -107,6 +119,13 @@ interface DeployStepResult {
   step: "checking" | "saving" | "publishing" | "revalidating"
   ok: boolean
   message: string
+}
+
+type LivePlatformPatch = {
+  id: string
+  name: string
+  href: string
+  category: "streaming" | "social"
 }
 
 interface NodeVerificationResult {
@@ -176,7 +195,7 @@ const BAND_MEMBERS_LAYOUT_IDS = new Set([
   "member-item-4",
 ])
 
-const BAND_MEMBER_SUBNODE_FIELDS = new Set(["name", "role", "number", "image"])
+const BAND_MEMBER_SUBNODE_FIELDS = new Set(["name", "role", "number", "image", "description"])
 const OBSOLETE_EDITOR_NODE_IDS = new Set(["band-members-header"])
 const BAND_MEMBER_CARD_NODE_ID = /^member-item-\d+$/
 
@@ -188,11 +207,13 @@ const CONTACT_NODE_IDS = new Set([
   "contact-header-title",
   "contact-header-description",
   "contact-email",
+  "contact-email-button",
   "contact-email-title",
   "contact-email-description",
   "contact-email-address",
   "contact-middle-text",
   "contact-telegram",
+  "contact-telegram-button",
   "contact-telegram-title",
   "contact-telegram-description",
   "contact-telegram-handle",
@@ -870,15 +891,15 @@ function mergeDeployTextEffectsIntoTarget(target: Record<string, unknown>, st: R
   if (typeof st.gradientEnd === "string") target.gradientEnd = st.gradientEnd
 }
 
-function parseBandMemberNodeId(nodeId: string): { index: number; field: "name" | "role" | "number" | "image" | null } | null {
-  const match = /^member-item-(\d+)(?:-(name|role|number|image))?$/.exec(nodeId)
+function parseBandMemberNodeId(nodeId: string): { index: number; field: "name" | "role" | "number" | "image" | "description" | null } | null {
+  const match = /^member-item-(\d+)(?:-(name|role|number|image|description))?$/.exec(nodeId)
   if (!match) return null
   const index = Number(match[1])
   if (!Number.isFinite(index)) return null
   const field = match[2]
   return {
     index,
-    field: BAND_MEMBER_SUBNODE_FIELDS.has(field) ? field as "name" | "role" | "number" | "image" : null,
+    field: BAND_MEMBER_SUBNODE_FIELDS.has(field) ? field as "name" | "role" | "number" | "image" | "description" : null,
   }
 }
 
@@ -973,7 +994,7 @@ function buildContactContentPatch(
     if (node.id === "contact-header-description" && text) patch.description = text
     if (node.id === "contact-middle-text" && text) patch.middleText = text
 
-    if (node.id === "contact-email" && href) {
+    if ((node.id === "contact-email" || node.id === "contact-email-button") && href) {
       baseMethods[0] = { ...baseMethods[0], href }
       methodsDirty = true
     }
@@ -993,7 +1014,7 @@ function buildContactContentPatch(
       methodsDirty = true
     }
 
-    if (node.id === "contact-telegram" && href) {
+    if ((node.id === "contact-telegram" || node.id === "contact-telegram-button") && href) {
       baseMethods[1] = { ...baseMethods[1], href }
       methodsDirty = true
     }
@@ -1018,6 +1039,7 @@ function buildContactContentPatch(
 function buildFooterContentPatch(
   nodes: DeployNodePayload[],
   existing: {
+    logoHref?: string
     socialLinks?: Array<{ id?: string; name?: string; href?: string }>
   }
 ): Record<string, unknown> {
@@ -1042,6 +1064,7 @@ function buildFooterContentPatch(
 
     if (node.id === "footer-description" && text) patch.description = text
     if (node.id === "footer-copyright" && text) patch.copyright = text.replace(/^©\s*/, "")
+    if (node.id === "footer-logo" && href) patch.logoHref = href
     if (node.id === "footer-cta") {
       if (text) patch.ctaLabel = text
       if (href) patch.ctaHref = href
@@ -1306,7 +1329,7 @@ function buildPressKitContentPatch(
 }
 
 function parseLiveConcertNodeId(nodeId: string): { listType: "upcoming" | "history"; editorId: number; field: string | null } | null {
-  const match = /^live-(upcoming|history)-event-(\d+)(?:-(date|time|locationName|locationLink|style|price|status|venue|city|country|genre|capacity|locationUrl))?$/.exec(nodeId)
+  const match = /^live-(upcoming|history)-event-(\d+)(?:-(eventName|date|time|locationName|locationLink|style|price|status|venue|city|country|genre|capacity|locationUrl|ticketUrl|address|imageUrl))?$/.exec(nodeId)
   if (!match) return null
   const editorId = Number(match[2])
   if (!Number.isFinite(editorId)) return null
@@ -1319,31 +1342,55 @@ function parseLiveConcertNodeId(nodeId: string): { listType: "upcoming" | "histo
 
 function normalizeLiveConcertForSanity(concert: {
   _editorId?: number
+  eventName?: string
   date?: string
   time?: string
+  venue?: string
+  city?: string
+  country?: string
+  address?: string
+  genre?: string
+  capacity?: string
+  locationUrl?: string
   locationName?: string
   locationLink?: string
   style?: string
   price?: string
   status?: string
+  ticketUrl?: string
+  imageUrl?: string
 }, fallbackEditorId: number): Record<string, unknown> {
   const editorId = typeof concert._editorId === "number" ? concert._editorId : fallbackEditorId
-  const locationName = typeof concert.locationName === "string" ? concert.locationName.trim() : ""
+  const venue = typeof concert.venue === "string" ? concert.venue.trim() : ""
+  const locationName = typeof concert.locationName === "string" ? concert.locationName.trim() : venue
   const locationLink = typeof concert.locationLink === "string" ? concert.locationLink.trim() : ""
-  const style = typeof concert.style === "string" && concert.style.trim() ? concert.style.trim() : "World Music"
+  const locationUrl = typeof concert.locationUrl === "string" && concert.locationUrl.trim() ? concert.locationUrl.trim() : locationLink
+  const ticketUrl = typeof concert.ticketUrl === "string" ? concert.ticketUrl.trim() : ""
+  const style = typeof concert.style === "string" && concert.style.trim()
+    ? concert.style.trim()
+    : typeof concert.genre === "string" && concert.genre.trim()
+      ? concert.genre.trim()
+      : "World Music"
   const priceText = typeof concert.price === "string" ? concert.price.trim() : ""
+  const eventName = typeof concert.eventName === "string" ? concert.eventName.trim() : ""
   return {
     editorId,
+    eventName,
     date: typeof concert.date === "string" ? concert.date.trim() : "",
     time: typeof concert.time === "string" ? concert.time.trim() : "",
+    venue: venue || locationName,
     locationName,
     locationLink,
+    locationUrl,
+    ticketUrl,
+    address: typeof concert.address === "string" ? concert.address.trim() : "",
+    city: typeof concert.city === "string" ? concert.city.trim() : "",
+    country: typeof concert.country === "string" ? concert.country.trim() : "",
     style,
+    genre: style,
+    capacity: typeof concert.capacity === "string" ? concert.capacity.trim() : "",
     priceText,
     status: typeof concert.status === "string" && concert.status.trim() ? concert.status.trim() : "Upcoming",
-    venue: locationName,
-    genre: style,
-    ticketUrl: locationLink,
     updatedAt: new Date().toISOString(),
   }
 }
@@ -1372,9 +1419,11 @@ function collectLiveConcertPatches(nodes: DeployNodePayload[]): Map<number, Reco
       const href = typeof node.content.href === "string" ? node.content.href.trim() : ""
       if (parsed.field === "price") {
         patch.priceText = text.replace(/^€/, "")
+      } else if (parsed.field === "ticketUrl") {
+        patch.ticketUrl = href || text
       } else if (parsed.field === "locationUrl" || parsed.field === "locationLink") {
         patch.locationLink = href || text
-        patch.ticketUrl = href || text
+        patch.locationUrl = href || text
       } else if (parsed.field === "venue" || parsed.field === "locationName") {
         patch.locationName = text
         patch.venue = text
@@ -1388,6 +1437,22 @@ function collectLiveConcertPatches(nodes: DeployNodePayload[]): Map<number, Reco
     patches.set(parsed.editorId, patch)
   }
   return patches
+}
+
+function collectLivePlatformPatches(nodes: DeployNodePayload[]): { streamingPlatforms: LivePlatformPatch[]; socialPlatforms: LivePlatformPatch[] } {
+  const streamingPlatforms: LivePlatformPatch[] = []
+  const socialPlatforms: LivePlatformPatch[] = []
+  for (const node of nodes) {
+    if (!node.explicitContent || !/^live-(streaming|social)-/.test(node.id)) continue
+    const href = typeof node.content.href === "string" ? node.content.href.trim() : ""
+    const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+    const category = node.id.startsWith("live-social-") ? "social" : "streaming"
+    const name = text || node.label.replace(/^Streaming:\s*|^Social:\s*/i, "").trim() || node.id
+    const entry: LivePlatformPatch = { id: node.id, name, href, category }
+    if (category === "social") socialPlatforms.push(entry)
+    else streamingPlatforms.push(entry)
+  }
+  return { streamingPlatforms, socialPlatforms }
 }
 
 function getEnvDiagnostics(): DeployEnvDiagnostics {
@@ -1758,7 +1823,7 @@ export async function POST(request: Request) {
         socialLinks?: Array<{ id?: string; name?: string; href?: string }>
         elementStyles?: Record<string, Record<string, unknown>>
       } | null>(
-        `*[_type == $footerType][0]{ _id, logo{asset->{_id}}, logoAlt, description, ctaLabel, ctaHref, copyright, socialLinks[]{ id, name, href }, elementStyles }`,
+        `*[_type == $footerType][0]{ _id, logo{asset->{_id}}, logoAlt, logoHref, description, ctaLabel, ctaHref, copyright, socialLinks[]{ id, name, href }, elementStyles }`,
         { footerType: SANITY_DOC_FOOTER }
       ),
     ])
@@ -2680,6 +2745,9 @@ export async function POST(request: Request) {
     }
 
     const liveSectionPatch: Record<string, unknown> = {}
+    const livePlatformPatches = collectLivePlatformPatches(payload.nodes)
+    if (livePlatformPatches.streamingPlatforms.length > 0) liveSectionPatch.streamingPlatforms = livePlatformPatches.streamingPlatforms
+    if (livePlatformPatches.socialPlatforms.length > 0) liveSectionPatch.socialPlatforms = livePlatformPatches.socialPlatforms
     const liveConcertsContainerNode = payload.nodes.find((node) => node.id === "live-section-concerts-container" && node.explicitContent && Array.isArray(node.content.concerts))
     if (liveConcertsContainerNode) {
       liveSectionPatch.concertsManagedByEditor = true
@@ -2791,6 +2859,22 @@ export async function POST(request: Request) {
 
     let bandMembersDocumentId: string | null = null
     const bandMembersContentPatches = new Map<number, Record<string, unknown>>()
+    const bandMemberCardSnapshots = new Map<number, Record<string, unknown>>()
+    for (const node of payload.nodes) {
+      const parsed = parseBandMemberNodeId(node.id)
+      if (!parsed || parsed.field !== null) continue
+      const snapshot: Record<string, unknown> = {}
+      const fullName = typeof node.content.title === "string"
+        ? node.content.title.trim()
+        : typeof node.content.text === "string"
+          ? node.content.text.split("\n")[0]?.trim()
+          : ""
+      if (fullName) snapshot.fullName = fullName
+      if (typeof node.content.role === "string" && node.content.role.trim()) snapshot.role = node.content.role.trim()
+      if (typeof node.content.photoDescription === "string") snapshot.photoDescription = node.content.photoDescription.trim()
+      snapshot.group = node.content.group === "colab" ? "colab" : "band"
+      if (Object.keys(snapshot).length > 0) bandMemberCardSnapshots.set(parsed.index, snapshot)
+    }
     for (const node of payload.nodes) {
       if (!node.explicitContent) continue
       const parsed = parseBandMemberNodeId(node.id)
@@ -2810,6 +2894,9 @@ export async function POST(request: Request) {
         } else if (imageField) {
           patch.portraitImage = imageField
         }
+      } else if (parsed.field === "description") {
+        const text = typeof node.content.text === "string" ? node.content.text.trim() : ""
+        patch.photoDescription = text
       } else if (parsed.field === "number") {
         skippedNodes.push(`${node.id}:number-is-derived-from-member-order`)
       }
@@ -2902,23 +2989,55 @@ export async function POST(request: Request) {
       }
     }
 
-    if (bandMembersContentPatches.size > 0) {
+    if (bandMembersContentPatches.size > 0 || bandMemberCardSnapshots.size > 0) {
       const existingBandMembers = await writeClient.fetch<Array<{
         _id: string
         order?: number
         fullName?: string
         role?: string
+        photoDescription?: string
+        group?: string
         portraitImage?: { asset?: { _ref?: string; _id?: string } }
       }>>(
-        `*[_type == "bandMember"] | order(order asc){ _id, order, fullName, role, portraitImage{asset->{_id}} }`
+        `*[_type == "bandMember"] | order(order asc){ _id, order, fullName, role, photoDescription, group, portraitImage{asset->{_id}} }`
       )
 
-      for (const [index, patch] of bandMembersContentPatches.entries()) {
+      const bandMemberIndexes = new Set<number>([
+        ...Array.from(bandMembersContentPatches.keys()),
+        ...Array.from(bandMemberCardSnapshots.keys()),
+      ])
+      for (const index of bandMemberIndexes) {
+        const snapshot = bandMemberCardSnapshots.get(index) || {}
+        const patch: Record<string, unknown> = {
+          ...snapshot,
+          ...bandMembersContentPatches.get(index),
+          order: index + 1,
+        }
         const target = existingBandMembers[index]
         if (!target?._id) {
-          skippedNodes.push(`member-item-${index}:missing-band-member-doc`)
+          if (!snapshot?.fullName) {
+            skippedNodes.push(`member-item-${index}:missing-band-member-doc`)
+            continue
+          }
+          const createPayload: Record<string, unknown> & { _type: string } = {
+            _type: "bandMember",
+            fullName: snapshot.fullName,
+            role: snapshot.role || "Musician",
+            photoDescription: snapshot.photoDescription || "",
+            group: snapshot.group === "colab" ? "colab" : "band",
+            order: index + 1,
+            updatedAt: new Date().toISOString(),
+          }
+          if (patch.portraitImage) createPayload.portraitImage = patch.portraitImage
+          const created = await writeClient.create(createPayload)
+          log("band member created", { index, docId: created._id })
+          if (!persistedFields.includes("bandMember.fields")) persistedFields.push("bandMember.fields")
+          for (const nodeId of [`member-item-${index}`, `member-item-${index}-name`, `member-item-${index}-role`, `member-item-${index}-description`]) {
+            if (!persistedNodes.includes(nodeId)) persistedNodes.push(nodeId)
+          }
           continue
         }
+        if (Object.keys(patch).length === 0) continue
         const patchWithTimestamp = { ...patch, updatedAt: new Date().toISOString() }
         await writeClient.patch(toPublishedDocumentId(target._id)).set(patchWithTimestamp).commit()
         if (!persistedFields.includes("bandMember.fields")) persistedFields.push("bandMember.fields")
@@ -2929,6 +3048,8 @@ export async function POST(request: Request) {
               ? `member-item-${index}-role`
               : field === "portraitImage"
                 ? `member-item-${index}-image`
+                : field === "photoDescription"
+                  ? `member-item-${index}-description`
                 : `member-item-${index}`
           if (!persistedNodes.includes(nodeId)) persistedNodes.push(nodeId)
         }
@@ -3081,7 +3202,7 @@ export async function POST(request: Request) {
 
     let homeEditorStateDocumentId: string | null = null
     const homeEditorStateNodes = Array.isArray(payload.nodes)
-      ? payload.nodes.filter((node) => node.id !== "nav-logo" && !HERO_NODE_IDS.has(node.id) && !INTRO_NODE_IDS.has(node.id) && !RELEASE_NODE_IDS.has(node.id) && !OBSOLETE_EDITOR_NODE_IDS.has(node.id) && !ABOUT_NODE_IDS.has(node.id) && !PRESS_KIT_NODE_IDS.has(node.id) && !isBandMembersNodeId(node.id))
+      ? payload.nodes.filter((node) => node.id !== "nav-logo" && !HERO_NODE_IDS.has(node.id) && !INTRO_NODE_IDS.has(node.id) && !RELEASE_NODE_IDS.has(node.id) && !OBSOLETE_EDITOR_NODE_IDS.has(node.id) && !ABOUT_NODE_IDS.has(node.id) && !PRESS_KIT_NODE_IDS.has(node.id) && !isBandMembersNodeId(node.id) && !isLiveNodeId(node.id))
       : []
     if (homeEditorStateNodes.length > 0) {
       const homeStateDocument = {
@@ -3414,9 +3535,11 @@ export async function POST(request: Request) {
       writeClient.fetch<Array<{
         fullName?: string
         role?: string
+        photoDescription?: string
+        group?: string
         portraitImage?: { asset?: { _ref?: string; _id?: string } }
       }>>(
-        `*[_type == "bandMember"] | order(order asc){ fullName, role, portraitImage{asset->{_id}} }`
+        `*[_type == "bandMember"] | order(order asc){ fullName, role, photoDescription, group, portraitImage{asset->{_id}} }`
       ),
       writeClient.fetch<{
         elementStyles?: Record<string, Record<string, unknown>>
@@ -3434,13 +3557,14 @@ export async function POST(request: Request) {
         elementStyles?: Record<string, Record<string, unknown>>
         logo?: { asset?: { _ref?: string; _id?: string } }
         logoAlt?: string
+        logoHref?: string
         description?: string
         ctaLabel?: string
         ctaHref?: string
         copyright?: string
         socialLinks?: Array<{ id?: string; name?: string; href?: string }>
       } | null>(
-        `*[_type == $type][0]{ elementStyles, logo{asset->{_id}}, logoAlt, description, ctaLabel, ctaHref, copyright, socialLinks[]{ id, name, href } }`,
+        `*[_type == $type][0]{ elementStyles, logo{asset->{_id}}, logoAlt, logoHref, description, ctaLabel, ctaHref, copyright, socialLinks[]{ id, name, href } }`,
         { type: SANITY_DOC_FOOTER }
       ),
       writeClient.fetch<{ nodesJson?: string } | null>(
@@ -4533,6 +4657,9 @@ export async function POST(request: Request) {
         } else if (parsed?.field === "role") {
           expected.role = typeof node.content.text === "string" ? node.content.text.trim() : ""
           readBack.role = member?.role
+        } else if (parsed?.field === "description") {
+          expected.photoDescription = typeof node.content.text === "string" ? node.content.text.trim() : ""
+          readBack.photoDescription = member?.photoDescription
         } else if (parsed?.field === "image") {
           const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
           expected.portraitImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
@@ -4568,7 +4695,7 @@ export async function POST(request: Request) {
         expected.middleText = typeof node.content.text === "string" ? node.content.text.trim() : ""
         readBack.middleText = contactReadback?.middleText
         addContactLayoutReadback()
-      } else if (nodeId === "contact-email" && node.explicitContent && writeContentKeys.has("href")) {
+      } else if ((nodeId === "contact-email" || nodeId === "contact-email-button") && node.explicitContent && writeContentKeys.has("href")) {
         storageTarget = "contactSection.contactMethods[0]"
         expected.href = typeof node.content.href === "string" ? node.content.href.trim() : ""
         readBack.href = contactReadback?.contactMethods?.[0]?.href
@@ -4591,7 +4718,7 @@ export async function POST(request: Request) {
         readBack.label = contactReadback?.contactMethods?.[0]?.label
         readBack.href = contactReadback?.contactMethods?.[0]?.href
         addContactLayoutReadback()
-      } else if (nodeId === "contact-telegram" && node.explicitContent && writeContentKeys.has("href")) {
+      } else if ((nodeId === "contact-telegram" || nodeId === "contact-telegram-button") && node.explicitContent && writeContentKeys.has("href")) {
         storageTarget = "contactSection.contactMethods[1]"
         expected.href = typeof node.content.href === "string" ? node.content.href.trim() : ""
         readBack.href = contactReadback?.contactMethods?.[1]?.href
@@ -4614,11 +4741,17 @@ export async function POST(request: Request) {
       } else if (isContactNodeIdChanged && (node.explicitPosition || node.explicitSize || expectedScale !== undefined || node.explicitStyle)) {
         storageTarget = "contactSection.elementStyles"
         addContactLayoutReadback()
-      } else if (nodeId === "footer-logo" && node.explicitContent && writeContentKeys.has("src")) {
+      } else if (nodeId === "footer-logo" && node.explicitContent && (writeContentKeys.has("src") || writeContentKeys.has("href"))) {
         storageTarget = "footerSection.fields"
-        const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
-        expected.logoRef = parseSanityImageRefFromUrl(src, projectId, dataset)
-        readBack.logoRef = footerReadback?.logo?.asset?._ref ?? footerReadback?.logo?.asset?._id
+        if (writeContentKeys.has("src")) {
+          const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
+          expected.logoRef = parseSanityImageRefFromUrl(src, projectId, dataset)
+          readBack.logoRef = footerReadback?.logo?.asset?._ref ?? footerReadback?.logo?.asset?._id
+        }
+        if (writeContentKeys.has("href")) {
+          expected.logoHref = typeof node.content.href === "string" ? node.content.href.trim() : ""
+          readBack.logoHref = footerReadback?.logoHref
+        }
         addFooterLayoutReadback()
       } else if (nodeId === "footer-description" && node.explicitContent) {
         storageTarget = "footerSection.fields"

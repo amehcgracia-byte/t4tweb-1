@@ -18,13 +18,15 @@ export function ContactSection({ data }: ContactSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
-  const emailCardRef = useRef<HTMLAnchorElement>(null)
+  const emailCardRef = useRef<HTMLDivElement>(null)
   const emailTitleRef = useRef<HTMLHeadingElement>(null)
   const emailDescRef = useRef<HTMLParagraphElement>(null)
+  const emailButtonRef = useRef<HTMLAnchorElement>(null)
   const emailAddrRef = useRef<HTMLSpanElement>(null)
-  const telegramCardRef = useRef<HTMLAnchorElement>(null)
+  const telegramCardRef = useRef<HTMLDivElement>(null)
   const telegramTitleRef = useRef<HTMLHeadingElement>(null)
   const telegramDescRef = useRef<HTMLParagraphElement>(null)
+  const telegramButtonRef = useRef<HTMLAnchorElement>(null)
   const telegramHandleRef = useRef<HTMLSpanElement>(null)
   const middleTextRef = useRef<HTMLParagraphElement>(null)
   const { opacity, y } = useScrollAnimation(sectionRef)
@@ -65,13 +67,27 @@ export function ContactSection({ data }: ContactSectionProps) {
       const existing = getElementById('contact-email')
       registerEditable({
         id: 'contact-email',
-        type: 'link',
+        type: 'card',
         label: 'Contact Email',
         parentId: null,
         element: emailCardRef.current,
         originalRect: emailCardRef.current.getBoundingClientRect(),
         transform: existing?.transform || { x: 0, y: 0 },
         dimensions: existing?.dimensions || { width: emailCardRef.current.offsetWidth, height: emailCardRef.current.offsetHeight },
+      })
+    }
+
+    if (emailButtonRef.current) {
+      const existing = getElementById('contact-email-button')
+      registerEditable({
+        id: 'contact-email-button',
+        type: 'button',
+        label: 'Contact Email Button',
+        parentId: null,
+        element: emailButtonRef.current,
+        originalRect: emailButtonRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: emailButtonRef.current.offsetWidth, height: emailButtonRef.current.offsetHeight },
       })
     }
 
@@ -121,13 +137,27 @@ export function ContactSection({ data }: ContactSectionProps) {
       const existing = getElementById('contact-telegram')
       registerEditable({
         id: 'contact-telegram',
-        type: 'link',
+        type: 'card',
         label: 'Contact Telegram',
         parentId: null,
         element: telegramCardRef.current,
         originalRect: telegramCardRef.current.getBoundingClientRect(),
         transform: existing?.transform || { x: 0, y: 0 },
         dimensions: existing?.dimensions || { width: telegramCardRef.current.offsetWidth, height: telegramCardRef.current.offsetHeight },
+      })
+    }
+
+    if (telegramButtonRef.current) {
+      const existing = getElementById('contact-telegram-button')
+      registerEditable({
+        id: 'contact-telegram-button',
+        type: 'button',
+        label: 'Contact Telegram Button',
+        parentId: null,
+        element: telegramButtonRef.current,
+        originalRect: telegramButtonRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: telegramButtonRef.current.offsetWidth, height: telegramButtonRef.current.offsetHeight },
       })
     }
 
@@ -191,10 +221,12 @@ export function ContactSection({ data }: ContactSectionProps) {
       unregisterEditable('contact-section')
       unregisterEditable('contact-bg-image')
       unregisterEditable('contact-email')
+      unregisterEditable('contact-email-button')
       unregisterEditable('contact-email-title')
       unregisterEditable('contact-email-description')
       unregisterEditable('contact-email-address')
       unregisterEditable('contact-telegram')
+      unregisterEditable('contact-telegram-button')
       unregisterEditable('contact-telegram-title')
       unregisterEditable('contact-telegram-description')
       unregisterEditable('contact-telegram-handle')
@@ -249,7 +281,7 @@ export function ContactSection({ data }: ContactSectionProps) {
       <div className="section-photo-fade-top" />
       <div className="section-photo-fade-bottom" />
 
-      <div className="relative z-10 mx-auto w-full max-w-5xl min-h-screen flex flex-col justify-end">
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center py-24 md:py-32">
         <motion.div ref={headerRef} style={isEditing ? headerStyle : { ...headerStyle, opacity, y }} className="mb-10 md:mb-12">
           <div>
           <SectionHeader
@@ -266,17 +298,15 @@ export function ContactSection({ data }: ContactSectionProps) {
 
         {/* Contact Options */}
         <div className="flex flex-col items-stretch justify-center gap-4 md:flex-row md:items-center md:gap-8">
-          <motion.a
+          <motion.div
             ref={emailCardRef}
             data-editor-node-id="contact-email"
-            data-editor-node-type="button"
+            data-editor-node-type="card"
             data-editor-node-label="Contacto Email"
-            data-editor-grouped="true"
             initial={isEditing ? false : { opacity: 0, x: -20 }}
             whileInView={isEditing ? undefined : { opacity: 1, x: 0 }}
             whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
             transition={isEditing ? undefined : { duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
-            href={emailHref}
             style={getElementLayoutStyle(elementStyles, "contact-email")}
             className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
               isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
@@ -302,7 +332,15 @@ export function ContactSection({ data }: ContactSectionProps) {
               className="mb-3 text-sm text-muted-foreground md:mb-4 md:text-base">
               {emailDescription}
             </p>
-            <span className={`inline-flex max-w-full items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium md:text-sm ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
+            <a
+              ref={emailButtonRef}
+              data-editor-node-id="contact-email-button"
+              data-editor-node-type="button"
+              data-editor-node-label="Botón Email"
+              href={emailHref}
+              className={`inline-flex max-w-full items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium md:text-sm ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
+              style={getElementLayoutStyle(elementStyles, "contact-email-button")}
+            >
               <span 
                 ref={emailAddrRef}
                 data-editor-node-id="contact-email-address"
@@ -312,8 +350,8 @@ export function ContactSection({ data }: ContactSectionProps) {
                 className="truncate">
                 {emailAddress}
               </span>
-            </span>
-          </motion.a>
+            </a>
+          </motion.div>
 
           <div className="px-4 text-center">
             <p
@@ -332,19 +370,15 @@ export function ContactSection({ data }: ContactSectionProps) {
             </p>
           </div>
 
-          <motion.a
+          <motion.div
             ref={telegramCardRef}
             data-editor-node-id="contact-telegram"
-            data-editor-node-type="button"
+            data-editor-node-type="card"
             data-editor-node-label="Contacto Telegram"
-            data-editor-grouped="true"
             initial={isEditing ? false : { opacity: 0, x: 20 }}
             whileInView={isEditing ? undefined : { opacity: 1, x: 0 }}
             whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
             transition={isEditing ? undefined : { duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
-            href={telegramHref}
-            target="_blank"
-            rel="noopener noreferrer"
             style={getElementLayoutStyle(elementStyles, "contact-telegram")}
             className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
               isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
@@ -370,7 +404,17 @@ export function ContactSection({ data }: ContactSectionProps) {
               className="mb-3 text-sm text-muted-foreground md:mb-4 md:text-base">
               {telegramDescription}
             </p>
-            <span className={`inline-flex max-w-full items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium md:text-sm ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
+            <a
+              ref={telegramButtonRef}
+              data-editor-node-id="contact-telegram-button"
+              data-editor-node-type="button"
+              data-editor-node-label="Botón Telegram"
+              href={telegramHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`inline-flex max-w-full items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium md:text-sm ${CAMPAIGN_PRIMARY_CTA_CLASS}`}
+              style={getElementLayoutStyle(elementStyles, "contact-telegram-button")}
+            >
               <span 
                 ref={telegramHandleRef}
                 data-editor-node-id="contact-telegram-handle"
@@ -380,8 +424,8 @@ export function ContactSection({ data }: ContactSectionProps) {
                 className="truncate">
                 {telegramHandle}
               </span>
-            </span>
-          </motion.a>
+            </a>
+          </motion.div>
         </div>
       </div>
     </section>

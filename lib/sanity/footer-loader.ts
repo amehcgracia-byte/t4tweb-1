@@ -10,6 +10,7 @@ export interface FooterLinkData {
 export interface FooterData {
   logoUrl: string
   logoAlt: string
+  logoHref: string
   description: string
   ctaLabel: string
   ctaHref: string
@@ -23,6 +24,7 @@ const DEFAULT_LOGO_URL = "/images/t4tPics/logo-white.png"
 const FALLBACK_FOOTER: FooterData = {
   logoUrl: DEFAULT_LOGO_URL,
   logoAlt: "Tales for the Tillerman",
+  logoHref: "#top",
   description: "Tales for the Tillerman is a Berlin-based collective blending world music, funk, soul, and reggae. Join us on social media and streaming platforms.",
   ctaLabel: "Book the Band",
   ctaHref: "https://www.bandsintown.com/e/108124718-tales-for-the-tillerman-at-mauerpark?came_from=250&utm_medium=web&utm_source=artist_page&utm_campaign=search_bar",
@@ -99,6 +101,7 @@ export async function loadFooterData(perspective: "published" | "drafts" = "publ
     const fetched = await client.fetch<{
       logoUrl?: string
       logoAlt?: string
+      logoHref?: string
       description?: string
       ctaLabel?: string
       ctaHref?: string
@@ -109,6 +112,7 @@ export async function loadFooterData(perspective: "published" | "drafts" = "publ
       `*[_type == "footerSection"][0]{
         "logoUrl": logo.asset->url,
         logoAlt,
+        logoHref,
         description,
         ctaLabel,
         ctaHref,
@@ -127,6 +131,7 @@ export async function loadFooterData(perspective: "published" | "drafts" = "publ
     return {
       logoUrl: fetched.logoUrl || FALLBACK_FOOTER.logoUrl,
       logoAlt: fetched.logoAlt?.trim() || FALLBACK_FOOTER.logoAlt,
+      logoHref: fetched.logoHref?.trim() || FALLBACK_FOOTER.logoHref,
       description: fetched.description?.trim() || FALLBACK_FOOTER.description,
       ctaLabel: fetched.ctaLabel?.trim() || FALLBACK_FOOTER.ctaLabel,
       ctaHref: fetched.ctaHref?.trim() || FALLBACK_FOOTER.ctaHref,

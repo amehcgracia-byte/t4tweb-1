@@ -13,7 +13,7 @@ interface FooterProps {
 export function Footer({ data }: FooterProps) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const footerRef = useRef<HTMLElement>(null)
-  const logoRef = useRef<HTMLDivElement>(null)
+  const logoRef = useRef<HTMLAnchorElement>(null)
   const descRef = useRef<HTMLParagraphElement>(null)
   const ctaRef = useRef<HTMLAnchorElement>(null)
   const socialGroupRef = useRef<HTMLDivElement>(null)
@@ -132,6 +132,7 @@ export function Footer({ data }: FooterProps) {
 
   const elementStyles = data.elementStyles
   const footerCopyright = data.copyright.startsWith("©") ? data.copyright : `© ${data.copyright}`
+  const footerLogoHref = data.logoHref?.trim() || "#top"
 
   return (
     <footer 
@@ -145,13 +146,15 @@ export function Footer({ data }: FooterProps) {
       
       <div className="mx-auto max-w-4xl px-4 py-10 text-center sm:px-6 sm:py-12 flex flex-col items-center gap-10">
         
-        <div 
+        <a
           ref={logoRef}
           data-editor-node-id="footer-logo"
           data-editor-node-type="image"
           data-editor-node-label="Footer Logo"
+          href={footerLogoHref}
           style={getElementLayoutStyle(elementStyles, "footer-logo")}
-          className="mb-4 sm:mb-6">
+          className="mb-4 sm:mb-6 block"
+          aria-label="Back to top">
           <Image
             src={data.logoUrl}
             alt={data.logoAlt}
@@ -159,7 +162,7 @@ export function Footer({ data }: FooterProps) {
             height={160}
             className="mx-auto h-auto w-[clamp(6rem,24vw,9.5rem)] object-contain"
           />
-        </div>
+        </a>
 
         <p 
           ref={descRef}
