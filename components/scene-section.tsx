@@ -22,6 +22,7 @@ export function SceneSection({ id, children, className = "" }: SceneSectionProps
       id={id}
       data-editor-node-id={`scene-section-${id}`}
       data-editor-node-type="section"
+      data-editor-section-family="scene"
       data-editor-node-label={`Scene Section: ${id}`}
       className={`relative min-h-[85vh] min-h-[85dvh] w-full overflow-x-clip ${className}`}
     >

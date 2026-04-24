@@ -1,5 +1,4 @@
 import { HeroSection } from "@/components/hero-section"
-import { SectionDivider } from "@/components/section-divider"
 import { AboutSection } from "@/components/about-section"
 import { PressKitSection } from "@/components/press-kit-section"
 import { BandMembersSectionSimple } from "@/components/band-members-section-simple"
@@ -30,10 +29,6 @@ function isHeroExtraNode(node: { nodeId: string; content?: { parentSection?: str
   return node.nodeId.startsWith("extra-") && node.content?.parentSection === "hero-section"
 }
 
-function getEditorNodeState(nodes: Awaited<ReturnType<typeof loadHomeEditorState>>, nodeId: string) {
-  return nodes.find((node) => node.nodeId === nodeId) || null
-}
-
 export default async function HomePagePublic() {
   const [heroData, navigationData, introBannerData, latestReleaseData, aboutData, pressKitData, bandMembersData, liveData, contactData, footerData, homeEditorNodes] = await Promise.all([
     loadHeroData("published"),
@@ -57,27 +52,17 @@ export default async function HomePagePublic() {
 
       <HeroSection data={heroData} extraNodes={heroExtraNodes} />
 
-      <SectionDivider editorId="section-divider-hero-intro" state={getEditorNodeState(homeEditorNodes, "section-divider-hero-intro")} />
-
       <IntroBannerSection data={introBannerData} />
 
-      <SectionDivider editorId="section-divider-intro-release" state={getEditorNodeState(homeEditorNodes, "section-divider-intro-release")} />
-
       <LatestReleaseCorrect data={latestReleaseData} />
-
-      <SectionDivider editorId="section-divider-release-about" state={getEditorNodeState(homeEditorNodes, "section-divider-release-about")} />
 
       <SceneSection id="about">
         <AboutSection data={aboutData} />
       </SceneSection>
 
-      <SectionDivider editorId="section-divider-about-press" state={getEditorNodeState(homeEditorNodes, "section-divider-about-press")} />
-
       <SceneSection id="press-kit">
         <PressKitSection data={pressKitData} />
       </SceneSection>
-
-      <SectionDivider editorId="section-divider-press-band" state={getEditorNodeState(homeEditorNodes, "section-divider-press-band")} />
 
       <SceneSection id="band">
         <BandMembersSectionSimple
@@ -92,8 +77,6 @@ export default async function HomePagePublic() {
       <SceneSection id="contact">
         <ContactSection data={contactData} />
       </SceneSection>
-
-      <SectionDivider editorId="section-divider-contact-footer" state={getEditorNodeState(homeEditorNodes, "section-divider-contact-footer")} />
 
       <Footer data={footerData} />
       <ExtraNodesRenderer nodes={homeEditorNodes} />

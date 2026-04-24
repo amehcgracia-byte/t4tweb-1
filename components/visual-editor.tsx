@@ -167,6 +167,7 @@ function createPersistOnlyNode(nodeId: string, hydrated?: HydratedNodeOverride |
 export interface RuntimeEntry {
   id: string
   type: NodeType
+  sectionFamily?: "content" | "scene" | "divider"
   sectionId: string
   label: string
   isGrouped: boolean
@@ -261,6 +262,48 @@ const typePriority: Record<NodeType, number> = {
   image: 3,
   group: 2,
   overlay: 3,
+}
+
+function getSectionFamilyFromElement(el: HTMLElement, id: string, type: NodeType): "content" | "scene" | "divider" | undefined {
+  if (el.dataset.editorSectionDivider === "true" || isSectionDividerNodeId(id)) return "divider"
+  if (type !== "section") return undefined
+  if (el.dataset.editorSectionFamily === "scene" || id.startsWith("scene-section-")) return "scene"
+  return "content"
+}
+
+function isContentSectionEntry(entry: RuntimeEntry): boolean {
+  return entry.type === "section" && entry.sectionFamily === "content"
+}
+
+function isSceneSectionEntry(entry: RuntimeEntry): boolean {
+  return entry.type === "section" && entry.sectionFamily === "scene"
+}
+
+function isDividerEntry(entry: RuntimeEntry): boolean {
+  return entry.sectionFamily === "divider" || isSectionDividerNodeId(entry.id)
+}
+
+function isPointInsideRect(x: number, y: number, rect: DOMRect): boolean {
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+}
+
+function getSectionEdgeThreshold(rect: DOMRect, family: RuntimeEntry["sectionFamily"]): number {
+  const minDimension = Math.max(0, Math.min(rect.width, rect.height))
+  const base = family === "scene" ? 40 : 28
+  return Math.min(base, Math.max(12, Math.round(minDimension * 0.12)))
+}
+
+function isPointOnSectionEdge(entry: RuntimeEntry, x: number, y: number): boolean {
+  if (entry.type !== "section") return false
+  const rect = entry.element.getBoundingClientRect()
+  if (!isPointInsideRect(x, y, rect)) return false
+  const edge = getSectionEdgeThreshold(rect, entry.sectionFamily)
+  return (
+    x <= rect.left + edge ||
+    x >= rect.right - edge ||
+    y <= rect.top + edge ||
+    y >= rect.bottom - edge
+  )
 }
 
 
@@ -695,9 +738,11 @@ function scanRegistry(): Map<string, RuntimeEntry> {
     const sectionId = el.dataset.editorSectionId || "root"
     const label = el.dataset.editorNodeLabel || id
     const isGrouped = parseGrouped(el.dataset.editorGrouped || null)
+    const sectionFamily = getSectionFamilyFromElement(el, id, type)
     map.set(id, {
       id,
       type,
+      sectionFamily,
       sectionId,
       label,
       isGrouped,
@@ -716,6 +761,7 @@ function areRuntimeEntriesEquivalent(a: RuntimeEntry, b: RuntimeEntry): boolean 
   return (
     a.id === b.id &&
     a.type === b.type &&
+    a.sectionFamily === b.sectionFamily &&
     a.sectionId === b.sectionId &&
     a.label === b.label &&
     a.isGrouped === b.isGrouped &&
@@ -1582,9 +1628,23 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       const entry = registry.get(nodeId!)
       if (!entry || !entry.eligible) continue
       if (!candidates.find((c) => c.id === entry.id)) candidates.push(entry)
+
+      const sceneAncestor = bound.parentElement?.closest<HTMLElement>("[data-editor-section-family='scene'][data-editor-node-id], [data-editor-node-id^='scene-section-']")
+      const sceneNodeId = sceneAncestor?.dataset.editorNodeId
+      if (sceneNodeId) {
+        const sceneEntry = registry.get(sceneNodeId)
+        if (sceneEntry?.eligible && !candidates.find((c) => c.id === sceneEntry.id)) {
+          candidates.push(sceneEntry)
+        }
+      }
     }
 
     if (candidates.length === 0) return null
+
+    const sectionCandidates = candidates.filter((c) => c.type === "section")
+    const edgedSections = sectionCandidates.filter((c) => isPointOnSectionEdge(c, x, y))
+    const directCenterCandidates = candidates.filter((c) => c.type !== "section" && c.type !== "background")
+    const backgroundCandidates = candidates.filter((c) => c.type === "background" && !isDividerEntry(c))
 
     const navigationEntry = candidates.find((c) => c.id === "navigation")
     if (navigationEntry) {
@@ -1608,8 +1668,25 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    const sectionDividerEntry = candidates.find((c) => isSectionDividerNodeId(c.id))
-    if (sectionDividerEntry) return sectionDividerEntry
+    if (directCenterCandidates.length > 0) {
+      directCenterCandidates.sort((a, b) => typePriority[a.type] - typePriority[b.type])
+      const directBest = directCenterCandidates[0]
+      if (directBest) return directBest
+    }
+
+    if (edgedSections.length > 0) {
+      const edgedContentSections = edgedSections.filter(isContentSectionEntry)
+      const edgedSceneSections = edgedSections.filter(isSceneSectionEntry)
+      if (edgedContentSections.length > 0) return edgedContentSections[0]
+      if (edgedSceneSections.length > 0) return edgedSceneSections[0]
+      return edgedSections[0]
+    }
+
+    if (backgroundCandidates.length > 0) {
+      backgroundCandidates.sort((a, b) => typePriority[a.type] - typePriority[b.type])
+      const backgroundBest = backgroundCandidates[0]
+      if (backgroundBest) return backgroundBest
+    }
 
     candidates.sort((a, b) => typePriority[a.type] - typePriority[b.type])
 
@@ -1623,10 +1700,57 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         if (groupedEntry) return groupedEntry
       }
     }
+    const contentSections = candidates.filter(isContentSectionEntry)
+    const sceneSections = candidates.filter(isSceneSectionEntry)
+    const dividerEntry = candidates.find(isDividerEntry)
+    const meaningfulChild = candidates.find((c) => c.type !== "section" && c.type !== "background" && c.type !== "image")
+
+    if (contentSections.length > 0 && sceneSections.length > 0) {
+      const primaryContent = contentSections[0]
+      const sceneWithContent = sceneSections.find((scene) => {
+        const sceneRect = scene.element.getBoundingClientRect()
+        const contentRect = primaryContent.element.getBoundingClientRect()
+        return (
+          contentRect.left >= sceneRect.left &&
+          contentRect.right <= sceneRect.right &&
+          contentRect.top >= sceneRect.top &&
+          contentRect.bottom <= sceneRect.bottom
+        )
+      }) || sceneSections[0]
+
+      const sceneRect = sceneWithContent.element.getBoundingClientRect()
+      const contentRect = primaryContent.element.getBoundingClientRect()
+      const borderThreshold = 36
+      const nearSceneBorder =
+        x <= sceneRect.left + borderThreshold ||
+        x >= sceneRect.right - borderThreshold ||
+        y <= sceneRect.top + borderThreshold ||
+        y >= sceneRect.bottom - borderThreshold
+
+      const insideContentCore =
+        x >= contentRect.left + 12 &&
+        x <= contentRect.right - 12 &&
+        y >= contentRect.top + 12 &&
+        y <= contentRect.bottom - 12
+
+      if (nearSceneBorder && !insideContentCore) return sceneWithContent
+      if (insideContentCore) return primaryContent
+      return primaryContent
+    }
+
+    const edgedContentSections = edgedSections.filter(isContentSectionEntry)
+    const edgedSceneSections = edgedSections.filter(isSceneSectionEntry)
+
+    if (!meaningfulChild && edgedContentSections.length > 0) return edgedContentSections[0]
+    if (!meaningfulChild && edgedSceneSections.length > 0) return edgedSceneSections[0]
+    if (dividerEntry) return dividerEntry
+
     if (best.type !== "section") return best
 
     const child = candidates.find((c) => c.type !== "section")
     if (child) return child
+
+    if (edgedSections.length > 0) return edgedSections[0]
 
     return best
   }, [registry])
@@ -1746,7 +1870,9 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
 
 function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
   const boxRef = useRef<HTMLDivElement>(null)
-  const isSection = entry.type === "section"
+  const isContentSection = isContentSectionEntry(entry)
+  const isSceneSection = isSceneSectionEntry(entry)
+  const isDivider = isDividerEntry(entry)
 
   useEffect(() => {
     let rafId: number | null = null
@@ -1779,8 +1905,12 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
       <div
         ref={boxRef}
         className={`absolute border-2 ${
-          isSection
+          isContentSection
             ? "border-[#22c55e] shadow-[0_0_0_1px_rgba(34,197,94,0.35),0_0_12px_rgba(34,197,94,0.2)]"
+            : isSceneSection
+              ? "border-[#3b82f6] shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_0_12px_rgba(59,130,246,0.2)]"
+              : isDivider
+                ? "border-white/20 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]"
             : "border-[#FF8C21] shadow-[0_0_0_1px_rgba(255,140,33,0.3),0_0_12px_rgba(255,140,33,0.15)]"
         }`}
       >
@@ -1789,7 +1919,12 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
             key={handle}
             data-editor-resize-handle={handle}
             data-editor-resize-node-id={entry.id}
-            className={`absolute h-3 w-3 rounded-sm border border-white bg-[#FF8C21] shadow ${
+            className={`absolute h-3 w-3 rounded-sm border border-white shadow ${
+              isContentSection ? "bg-[#22c55e]" :
+              isSceneSection ? "bg-[#3b82f6]" :
+              isDivider ? "bg-white/50" :
+              "bg-[#FF8C21]"
+            } ${
               handle === "nw" ? "-left-2 -top-2 cursor-nwse-resize" :
               handle === "n" ? "left-1/2 -top-2 -translate-x-1/2 cursor-ns-resize" :
               handle === "ne" ? "-right-2 -top-2 cursor-nesw-resize" :
