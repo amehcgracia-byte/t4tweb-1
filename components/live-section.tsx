@@ -165,7 +165,7 @@ export function LiveSection({ data }: LiveSectionProps) {
       data-editor-node-type="section"
       data-editor-node-label="Live Section"
       className="relative min-h-screen overflow-hidden bg-black"
-      style={getElementLayoutStyle(data.elementStyles, "live-section")}
+      style={getElementLayoutStyle(data.elementStyles, "live-section", { includeGeometry: true })}
     >
       <div
         className="absolute inset-0 z-0"
@@ -173,7 +173,7 @@ export function LiveSection({ data }: LiveSectionProps) {
         data-editor-node-type="background"
         data-editor-media-kind="image"
         data-editor-node-label="Live Section Background Image"
-        style={getElementLayoutStyle(data.elementStyles, "live-section-bg-image")}
+        style={getElementLayoutStyle(data.elementStyles, "live-section-bg-image", { includeGeometry: true })}
       >
         <Image
           src={data.backgroundImageUrl}

@@ -78,18 +78,6 @@ export function PressKitSection({ data }: PressKitSectionProps) {
   const pressKitManagerTitle = data.managerTitle
   const pressKitBgSrc = data.backgroundImageUrl
 
-  const resourceVariants = {
-    hidden: { opacity: 0, y: 12 },
-    visible: (custom: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: custom * 0.08,
-        duration: 0.42,
-      },
-      }),
-  }
-
   useEffect(() => {
     if (!isEditing) return
 
@@ -292,10 +280,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
 
           <motion.div
             ref={mainCardRef}
-            initial={isEditing ? false : { opacity: 0, y: 12 }}
-            whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
-            viewport={isEditing ? undefined : { once: true, amount: 0.2 }}
-            transition={isEditing ? undefined : { duration: 0.45 }}
+            initial={false}
             className="mb-10 md:mb-12">
             <div 
               className="rounded-xl border border-border bg-card/35 p-4 text-center shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-6 md:p-9"
@@ -364,10 +349,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
                 <motion.a
                   ref={(el) => { resourceRefs.current[index] = el }}
                   key={resource.title}
-                  custom={index}
-                  initial={isEditing ? false : "hidden"}
-                  whileInView={isEditing ? undefined : "visible"}
-                  variants={resourceVariants}
+                  initial={false}
                   whileHover={isEditing ? undefined : { y: -2 }}
                   transition={isEditing ? undefined : { type: "spring", stiffness: 320, damping: 22 }}
                   href="#"
@@ -541,8 +523,7 @@ function ManagerCard({
     <>
       <motion.button
         ref={managerRef}
-        initial={isEditing ? false : { opacity: 0, y: 12 }}
-        whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
+        initial={false}
         whileHover={isEditing ? undefined : { y: -2 }}
         transition={isEditing ? undefined : { duration: 0.45, delay: 0.06, type: "spring", stiffness: 320, damping: 22 }}
         onClick={(event) => {

@@ -54,23 +54,18 @@ export default async function HomePage({ perspective = "published", isEditorRout
     <main className="relative overflow-x-clip bg-black">
       {isEditorRoute ? (
         <HomeEditorOverridesProvider nodes={homeEditorNodes}>
-          <ExtraNodesRenderer nodes={homeEditorNodes} />
           <RibbonsBlock />
           <Navigation data={navigationData} />
 
-          <HeroSection data={heroData} extraNodes={heroExtraNodes} />
+          <HeroSection data={heroData} />
 
           <IntroBannerSection data={introBannerData} />
 
           <LatestReleaseCorrect data={latestReleaseData} />
 
-          <SceneSection id="about">
-            <AboutSection data={aboutData} />
-          </SceneSection>
+          <AboutSection data={aboutData} sectionId="about" />
 
-          <SceneSection id="press-kit">
-            <PressKitSection data={pressKitData} />
-          </SceneSection>
+          <PressKitSection data={pressKitData} />
 
           <SceneSection id="band">
             <BandMembersSectionSimple
@@ -99,13 +94,9 @@ export default async function HomePage({ perspective = "published", isEditorRout
 
           <LatestReleaseCorrect data={latestReleaseData} />
 
-          <SceneSection id="about">
-            <AboutSection data={aboutData} />
-          </SceneSection>
+          <AboutSection data={aboutData} sectionId="about" />
 
-          <SceneSection id="press-kit">
-            <PressKitSection data={pressKitData} />
-          </SceneSection>
+          <PressKitSection data={pressKitData} />
 
           <SceneSection id="band">
             <BandMembersSectionSimple

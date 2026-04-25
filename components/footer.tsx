@@ -140,7 +140,7 @@ export function Footer({ data }: FooterProps) {
       data-editor-node-id="footer-section"
       data-editor-node-type="section"
       data-editor-node-label="Footer Section"
-      style={getElementLayoutStyle(elementStyles, "footer-section")}
+      style={getElementLayoutStyle(elementStyles, "footer-section", { includeGeometry: true })}
       className="bg-black">
       <div className="h-8 bg-gradient-to-b from-black/30 to-black sm:h-10 sm:from-black/20 md:h-12" />
       

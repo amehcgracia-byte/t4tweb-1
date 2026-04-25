@@ -252,7 +252,7 @@ export function Navigation({ data }: { data: NavigationData }) {
               </div>
               <span
                 ref={brandNameRef}
-                className="hidden font-serif text-lg font-medium tracking-wide text-white sm:text-xl md:block lg:text-2xl"
+                className="hidden font-serif text-lg font-medium tracking-wide text-white sm:text-xl lg:block lg:text-2xl"
                 data-editor-node-id="nav-brand-name"
                 data-editor-node-type="text"
                 data-editor-node-label="Brand Name"
@@ -262,7 +262,7 @@ export function Navigation({ data }: { data: NavigationData }) {
               </span>
             </a>
 
-            <div className="hidden items-center gap-0.5 md:flex md:gap-1 lg:gap-2">
+            <div className="hidden items-center gap-0.5 lg:flex lg:gap-2">
               {navLinks.map((link, index) => (
                 <a 
                   key={link.href} 
@@ -290,7 +290,7 @@ export function Navigation({ data }: { data: NavigationData }) {
               </a>
             </div>
 
-            <div className="flex shrink-0 items-center md:hidden">
+            <div className="flex shrink-0 items-center lg:hidden">
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -314,7 +314,7 @@ export function Navigation({ data }: { data: NavigationData }) {
         {isMobileMenuOpen && (
           <div
             id="mobile-nav-panel"
-            className="max-h-[calc(100dvh-4.5rem)] overflow-y-auto border-t border-white/10 pb-5 pt-2.5 md:hidden"
+            className="max-h-[calc(100dvh-4.5rem)] overflow-y-auto border-t border-white/10 pb-5 pt-2.5 lg:hidden"
             style={{ maxHeight: "calc(100vh - 4.5rem)" }}
           >
             <div className="rounded-xl border border-white/10 bg-black/95 px-2 backdrop-blur-sm">

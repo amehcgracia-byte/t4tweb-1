@@ -197,6 +197,21 @@ const BAND_MEMBERS_LAYOUT_IDS = new Set([
 
 const BAND_MEMBER_SUBNODE_FIELDS = new Set(["name", "role", "number", "image", "description"])
 const OBSOLETE_EDITOR_NODE_IDS = new Set(["band-members-header"])
+
+function isObsoleteGhostExtraNode(node: DeployNodePayload): boolean {
+  const parentSection = typeof node.content?.parentSection === "string" ? node.content.parentSection : ""
+  const text = typeof node.content?.text === "string" ? node.content.text.trim() : ""
+
+  if (node.id === "extra-hero-section-text-1" && parentSection === "hero-section" && text === "Funk, Soul and World Music") {
+    return true
+  }
+
+  if (node.id === "extra-hero-section-overlay-2" && parentSection === "hero-section" && node.type === "overlay") {
+    return true
+  }
+
+  return false
+}
 const BAND_MEMBER_CARD_NODE_ID = /^member-item-\d+$/
 
 const CONTACT_NODE_IDS = new Set([
@@ -638,6 +653,8 @@ function resolveSanityImagePatch(
 
 function shouldVerifyInHomeEditorState(node: DeployNodePayload): boolean {
   if (OBSOLETE_EDITOR_NODE_IDS.has(node.id)) return false
+  if (isObsoleteGhostExtraNode(node)) return false
+  if (node.id.startsWith("scene-section-")) return false
   if (node.id === "intro-banner-gif") return false
   if (RELEASE_NODE_IDS.has(node.id)) return false
   if (ABOUT_NODE_IDS.has(node.id)) return false
@@ -3202,7 +3219,7 @@ export async function POST(request: Request) {
 
     let homeEditorStateDocumentId: string | null = null
     const homeEditorStateNodes = Array.isArray(payload.nodes)
-      ? payload.nodes.filter((node) => node.id !== "nav-logo" && !HERO_NODE_IDS.has(node.id) && !INTRO_NODE_IDS.has(node.id) && !RELEASE_NODE_IDS.has(node.id) && !OBSOLETE_EDITOR_NODE_IDS.has(node.id) && !ABOUT_NODE_IDS.has(node.id) && !PRESS_KIT_NODE_IDS.has(node.id) && !isBandMembersNodeId(node.id) && !isLiveNodeId(node.id))
+      ? payload.nodes.filter((node) => node.id !== "nav-logo" && !node.id.startsWith("scene-section-") && !HERO_NODE_IDS.has(node.id) && !INTRO_NODE_IDS.has(node.id) && !RELEASE_NODE_IDS.has(node.id) && !OBSOLETE_EDITOR_NODE_IDS.has(node.id) && !isObsoleteGhostExtraNode(node) && !ABOUT_NODE_IDS.has(node.id) && !PRESS_KIT_NODE_IDS.has(node.id) && !isBandMembersNodeId(node.id) && !isLiveNodeId(node.id))
       : []
     if (homeEditorStateNodes.length > 0) {
       const homeStateDocument = {

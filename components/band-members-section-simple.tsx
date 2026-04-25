@@ -26,7 +26,8 @@ function getBandMemberCardStyle(
 export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult }) {
   const sectionRef = useRef<HTMLElement>(null)
   const [members, setMembers] = useState<BandMemberData[]>(data.members)
-  const [activeIndex, setActiveIndex] = useState<number>(0)
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const { opacity, y } = useScrollAnimation(sectionRef)
@@ -42,6 +43,12 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
   useEffect(() => {
     setMembers(data.members)
   }, [data.members])
+
+  useEffect(() => {
+    if (activeIndex === null) return
+    if (activeIndex < members.length) return
+    setActiveIndex(null)
+  }, [activeIndex, members.length])
 
   useEffect(() => {
     const onEditorBandMemberFocus = (event: Event) => {
@@ -100,13 +107,31 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
   }))
   const bandMembers = membersWithIndex.filter((member) => member.group !== "colab")
   const colabMembers = membersWithIndex.filter((member) => member.group === "colab")
-  const activeMember = membersWithIndex[activeIndex]
+  const activeMember = activeIndex === null ? null : (membersWithIndex[activeIndex] ?? null)
+  const visibleMemberIndex = isMobile || modalOpen ? activeIndex : (isEditing ? activeIndex : hoveredIndex)
 
-  const renderMemberPhoto = (blockMembers: typeof membersWithIndex, imagePriorityOffset: number) => {
-    const activeBlockMember = blockMembers.find((member) => member.editorIndex === activeIndex) || blockMembers[0]
+  const isMemberHighlighted = (memberIndex: number) =>
+    visibleMemberIndex !== null && visibleMemberIndex === memberIndex
+
+  const renderMemberPhoto = (
+    blockMembers: typeof membersWithIndex,
+    imagePriorityOffset: number,
+    align: "left" | "right"
+  ) => {
+    const activeBlockMember =
+      visibleMemberIndex === null
+        ? null
+        : blockMembers.find((member) => member.editorIndex === visibleMemberIndex) || null
+    const showPreviewBlock = Boolean(activeBlockMember) || isMobile || modalOpen
     return (
       <div
-        className="relative hidden max-h-[78vh] min-h-[420px] overflow-hidden rounded-3xl bg-zinc-950 shadow-2xl lg:block lg:aspect-[3/4]"
+        className={`pointer-events-none absolute top-0 hidden h-full w-[min(34vw,520px)] overflow-hidden rounded-[2rem] transition-[opacity,transform,background-color,box-shadow] duration-300 ease-out lg:block ${
+          align === "left" ? "-left-28 xl:-left-40" : "-right-28 xl:-right-40"
+        } ${
+          showPreviewBlock
+            ? "translate-x-0 bg-zinc-950/90 opacity-100 shadow-2xl"
+            : `${align === "left" ? "-translate-x-10" : "translate-x-10"} bg-transparent opacity-0 shadow-none`
+        }`}
         style={getElementLayoutStyle(data.elementStyles || {}, "band-members-photo-container")}
       >
         {blockMembers.map((member, blockIndex) => (
@@ -117,11 +142,11 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
               opacity: activeBlockMember?.editorIndex === member.editorIndex ? 1 : 0,
               scale: activeBlockMember?.editorIndex === member.editorIndex ? 1 : 1.08,
             }}
-            transition={{ duration: 0.6, ease: "easeInOut" }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
             className="absolute inset-0"
           >
             <div
-              className="absolute inset-0"
+              className="absolute inset-0 overflow-hidden rounded-[2rem]"
               data-editor-node-id={`member-item-${member.editorIndex}-image`}
               data-editor-node-type="image"
               data-editor-node-label={`${member.fullName} photo`}
@@ -137,11 +162,12 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
                 priority={imagePriorityOffset + blockIndex === 0}
               />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-br from-black/15 via-black/20 to-black/75" />
+            <div className="absolute inset-0 rounded-[2rem] ring-1 ring-white/10" />
             <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
               <p
                 data-member-photo-description-index={member.editorIndex}
-                className={`bg-gradient-to-r from-white via-white to-orange-400 bg-clip-text text-xl font-semibold leading-snug text-transparent ${member.photoDescription ? "" : "hidden"}`}
+                className={`max-w-[22rem] bg-gradient-to-r from-white via-white to-orange-400 bg-clip-text text-lg font-semibold leading-snug tracking-[0.01em] text-transparent drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)] md:text-xl ${member.photoDescription ? "" : "hidden"}`}
               >
                 {member.photoDescription || ""}
               </p>
@@ -153,13 +179,21 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
   }
 
   const renderMemberCards = (blockMembers: typeof membersWithIndex) => (
-    <div className="space-y-2.5 md:space-y-4">
+    <div className="space-y-3.5 md:space-y-4.5">
       {blockMembers.map((member) => (
         <motion.div
           key={`${member.group}-${member.editorIndex}-card`}
           onClick={() => handleMemberClick(member.editorIndex)}
-          onMouseEnter={() => (!isEditing && !isMobile) && setActiveIndex(member.editorIndex)}
-          whileHover={isEditing ? undefined : { scale: 1.02, x: 8 }}
+          onMouseEnter={() => {
+            if (isEditing || isMobile) return
+            setHoveredIndex(member.editorIndex)
+            setActiveIndex(member.editorIndex)
+          }}
+          onMouseLeave={() => {
+            if (isEditing || isMobile) return
+            setHoveredIndex(null)
+          }}
+          whileHover={isEditing ? undefined : { scale: 1.015, y: -2 }}
           transition={isEditing ? undefined : { type: "spring", stiffness: 400, damping: 25 }}
           data-editor-node-id={`member-item-${member.editorIndex}`}
           data-editor-node-type="card"
@@ -172,23 +206,23 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
           role="button"
           tabIndex={0}
           aria-label={`${member.fullName} card`}
-          className={`group flex min-h-[62px] w-full touch-manipulation items-center justify-between rounded-xl border p-3.5 text-left transition-all duration-300 md:min-h-[88px] md:rounded-2xl md:p-6
+          className={`group flex min-h-[84px] w-full touch-manipulation items-center justify-center rounded-2xl border px-5 py-4 text-center transition-all duration-300 md:min-h-[108px] md:rounded-[1.75rem] md:px-8 md:py-6
             ${
-              activeIndex === member.editorIndex
-                ? "border-orange-500 bg-zinc-900/80"
-                : "border-white/10 hover:border-white/20 bg-black/40 hover:bg-zinc-950"
+              isMemberHighlighted(member.editorIndex)
+                ? "border-orange-500/80 bg-zinc-900/85 shadow-[0_18px_48px_rgba(0,0,0,0.28)]"
+                : "border-white/10 bg-black/45 hover:border-white/25 hover:bg-zinc-950/90"
             }`}
           style={getBandMemberCardStyle(data.elementStyles || {}, `member-item-${member.editorIndex}`)}
         >
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 text-center">
             <h4
               data-editor-node-id={`member-item-${member.editorIndex}-name`}
               data-editor-node-type="text"
               data-editor-node-label={`${member.fullName} name`}
               data-member-name-index={member.editorIndex}
               style={getElementLayoutStyle(data.elementStyles || {}, `member-item-${member.editorIndex}-name`)}
-              className={`truncate text-base font-medium transition-colors md:text-xl ${
-                activeIndex === member.editorIndex ? "text-white" : "text-white/80 group-hover:text-white"
+              className={`truncate text-xl font-semibold tracking-[0.01em] transition-colors md:text-[1.9rem] ${
+                isMemberHighlighted(member.editorIndex) ? "text-white" : "text-white/80 group-hover:text-white"
               }`}
             >
               {member.fullName}
@@ -199,27 +233,12 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
               data-editor-node-label={`${member.fullName} role`}
               data-member-role-index={member.editorIndex}
               style={getElementLayoutStyle(data.elementStyles || {}, `member-item-${member.editorIndex}-role`)}
-              className={`mt-0.5 text-xs transition-colors md:mt-1 md:text-sm ${
-                activeIndex === member.editorIndex ? "text-orange-400" : "text-white/50"
+              className={`mt-1.5 text-[0.84rem] uppercase tracking-[0.28em] transition-colors md:mt-2.5 md:text-[0.92rem] ${
+                isMemberHighlighted(member.editorIndex) ? "text-orange-300" : "text-white/45"
               }`}
             >
               {member.role}
             </p>
-          </div>
-
-          <div
-            data-editor-node-id={`member-item-${member.editorIndex}-number`}
-            data-editor-node-type="text"
-            data-editor-node-label={`${member.fullName} number`}
-            data-member-number-index={member.editorIndex}
-            style={getElementLayoutStyle(data.elementStyles || {}, `member-item-${member.editorIndex}-number`)}
-            className={`ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-mono text-xs transition-all md:h-8 md:w-8 ${
-              activeIndex === member.editorIndex
-                ? "border-orange-500 bg-orange-950 text-orange-400"
-                : "border-white/20 text-white/40 group-hover:border-white/40"
-            }`}
-          >
-            {member.number}
           </div>
         </motion.div>
       ))}
@@ -233,7 +252,7 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
       data-editor-node-type="section"
       data-editor-node-label="Sección Miembros de la Banda"
       className="relative isolate min-h-screen w-full overflow-hidden bg-black"
-      style={getElementLayoutStyle(data.elementStyles || {}, "band-members-section")}
+      style={getElementLayoutStyle(data.elementStyles || {}, "band-members-section", { includeGeometry: true })}
     >
       {/* Fondo full width */}
       <div 
@@ -242,7 +261,7 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo banda"
         className="absolute inset-0 z-0"
-        style={getElementLayoutStyle(data.elementStyles || {}, "band-members-bg")}
+        style={getElementLayoutStyle(data.elementStyles || {}, "band-members-bg", { includeGeometry: true })}
       >
         <Image
           src={data.backgroundImageUrl}
@@ -275,9 +294,11 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
         </motion.div>
 
         <div className="space-y-14 pb-16 lg:space-y-20">
-          <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-2 lg:gap-14">
-            {renderMemberPhoto(bandMembers, 0)}
-            {renderMemberCards(bandMembers)}
+          <div className="relative min-h-[420px] lg:min-h-[640px]">
+            {renderMemberPhoto(bandMembers, 0, "left")}
+            <div className="relative z-10 ml-auto max-w-[41rem] lg:pr-8 lg:py-10 xl:pr-12">
+              {renderMemberCards(bandMembers)}
+            </div>
           </div>
 
           {colabMembers.length > 0 && (
@@ -291,9 +312,11 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
               >
                 Musician Colabs
               </h3>
-              <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-2 lg:gap-14">
-                {renderMemberCards(colabMembers)}
-                {renderMemberPhoto(colabMembers, bandMembers.length)}
+              <div className="relative min-h-[420px] lg:min-h-[640px]">
+                {renderMemberPhoto(colabMembers, bandMembers.length, "right")}
+                <div className="relative z-10 mr-auto max-w-[41rem] lg:pl-8 lg:py-10 xl:pl-12">
+                  {renderMemberCards(colabMembers)}
+                </div>
               </div>
             </div>
           )}

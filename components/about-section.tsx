@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react"
 import type { CSSProperties } from "react"
 import Image from "next/image"
-import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import { buildHeroStandardLayoutStyle, getElementLayoutStyle, roundLayoutPx } from "@/lib/hero-layout-styles"
 import type { AboutData } from "@/lib/sanity/about-loader"
 import { useVisualEditor } from "@/components/visual-editor"
 
 interface AboutSectionProps {
   className?: string
   data: AboutData
+  sectionId?: string
 }
 
 function getAboutBoxStyle(elementStyles: AboutData["elementStyles"], nodeId: string): CSSProperties {
@@ -53,9 +54,38 @@ function getAboutEditorAttrs(elementStyles: AboutData["elementStyles"], nodeId: 
 
 function getAboutSectionStyle(elementStyles: AboutData["elementStyles"]): CSSProperties {
   const rawStyle = elementStyles["about-section"]
+  const width = rawStyle?.width
   const height = rawStyle?.height
-  const includeGeometry = typeof height !== "number" || height >= 640
-  const style = { ...getElementLayoutStyle(elementStyles, "about-section", { includeGeometry }) }
+  const x = rawStyle?.x
+  const y = rawStyle?.y
+  const scale = rawStyle?.scale
+  const includeGeometry =
+    typeof width !== "number" ||
+    typeof height !== "number" ||
+    typeof x !== "number" ||
+    typeof y !== "number" ||
+    (width >= 320 && height >= 240 && Math.abs(x) <= 2400 && Math.abs(y) <= 2400)
+  const style = { ...getElementLayoutStyle(elementStyles, "about-section", { includeGeometry: false }) }
+  if (
+    includeGeometry &&
+    typeof x === "number" &&
+    typeof y === "number" &&
+    (x !== 0 || y !== 0 || (typeof scale === "number" && scale !== 1))
+  ) {
+    Object.assign(
+      style,
+      buildHeroStandardLayoutStyle({
+        x: roundLayoutPx(x),
+        y: roundLayoutPx(y),
+        scale: typeof scale === "number" ? scale : undefined,
+        width: typeof width === "number" ? roundLayoutPx(width) : undefined,
+        height: typeof height === "number" ? roundLayoutPx(height) : undefined,
+      })
+    )
+  } else if (includeGeometry) {
+    if (typeof width === "number") style.width = `${roundLayoutPx(width)}px`
+    if (typeof height === "number") style.height = `${roundLayoutPx(height)}px`
+  }
   if (typeof rawStyle?.backgroundColor === "string") style.backgroundColor = rawStyle.backgroundColor
   delete style.opacity
   return style
@@ -97,7 +127,7 @@ function getAboutCopyButtonStyle(elementStyles: AboutData["elementStyles"]): CSS
   return style
 }
 
-export function AboutSection({ className = "", data }: AboutSectionProps) {
+export function AboutSection({ className = "", data, sectionId }: AboutSectionProps) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
@@ -276,6 +306,7 @@ export function AboutSection({ className = "", data }: AboutSectionProps) {
   return (
     <section
       ref={sectionRef}
+      id={sectionId}
       data-editor-node-id="about-section"
       data-editor-node-type="section"
       data-editor-node-label="About Section"

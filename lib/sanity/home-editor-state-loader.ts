@@ -6,6 +6,23 @@ interface HomeEditorStateRaw {
   nodesJson?: string
 }
 
+function isObsoleteGhostExtraNode(rawNode: Record<string, unknown>, nodeId: string): boolean {
+  const content = (rawNode.content && typeof rawNode.content === "object" ? rawNode.content : {}) as Record<string, unknown>
+  const parentSection = typeof content.parentSection === "string" ? content.parentSection : ""
+  const text = typeof content.text === "string" ? content.text.trim() : ""
+  const nodeType = typeof rawNode.nodeType === "string" ? rawNode.nodeType : typeof rawNode.type === "string" ? rawNode.type : ""
+
+  if (nodeId === "extra-hero-section-text-1" && parentSection === "hero-section" && text === "Funk, Soul and World Music") {
+    return true
+  }
+
+  if (nodeId === "extra-hero-section-overlay-2" && parentSection === "hero-section" && nodeType === "overlay") {
+    return true
+  }
+
+  return false
+}
+
 function createReadClient(perspective: "published" | "drafts" = "published") {
   const config: any = {
     projectId: resolveSanityProjectId(),
@@ -124,6 +141,8 @@ export async function loadHomeEditorState(perspective: "published" | "drafts" = 
         if (!nodeId) return null
         if (
           LEGACY_NODE_IDS.has(nodeId) ||
+          isObsoleteGhostExtraNode(n, nodeId) ||
+          nodeId.startsWith("scene-section-") ||
           HERO_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
           INTRO_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
           RELEASE_DOC_DRIVEN_NODE_IDS.has(nodeId) ||

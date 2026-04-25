@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, type CSSProperties } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
@@ -12,6 +12,17 @@ import type { ContactSectionData } from "@/lib/sanity/contact-loader"
 
 interface ContactSectionProps {
   data: ContactSectionData
+}
+
+function getSafeContactSectionStyle(
+  elementStyles: ContactSectionData["elementStyles"]
+): CSSProperties {
+  const style = { ...getElementLayoutStyle(elementStyles, "contact-section", { includeGeometry: true }) }
+  const rawHeight = typeof style.height === "number" ? style.height : typeof style.height === "string" ? Number.parseFloat(style.height) : null
+  if (typeof rawHeight === "number" && Number.isFinite(rawHeight) && rawHeight <= 16) {
+    delete style.height
+  }
+  return style
 }
 
 export function ContactSection({ data }: ContactSectionProps) {
@@ -258,7 +269,7 @@ export function ContactSection({ data }: ContactSectionProps) {
       data-editor-node-id="contact-section"
       data-editor-node-type="section"
       data-editor-node-label="Sección de Contacto"
-      style={getElementLayoutStyle(elementStyles, "contact-section")}
+      style={getSafeContactSectionStyle(elementStyles)}
       className="relative min-h-[82vh] min-h-[82dvh] overflow-hidden sm:min-h-screen sm:min-h-[100dvh]">
       <div 
         ref={bgRef}
@@ -266,7 +277,7 @@ export function ContactSection({ data }: ContactSectionProps) {
         data-editor-node-type="background"
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo contacto"
-        style={getElementLayoutStyle(elementStyles, "contact-bg-image")}
+        style={getElementLayoutStyle(elementStyles, "contact-bg-image", { includeGeometry: true })}
         className="absolute inset-0 -z-10">
         <Image
           src={contactBgSrc}

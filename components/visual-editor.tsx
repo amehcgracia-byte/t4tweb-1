@@ -167,6 +167,7 @@ function createPersistOnlyNode(nodeId: string, hydrated?: HydratedNodeOverride |
 export interface RuntimeEntry {
   id: string
   type: NodeType
+  isExtraNode: boolean
   sectionFamily?: "content" | "scene" | "divider"
   sectionId: string
   label: string
@@ -261,7 +262,7 @@ const typePriority: Record<NodeType, number> = {
   section: 5,
   image: 3,
   group: 2,
-  overlay: 3,
+  overlay: 6,
 }
 
 function getSectionFamilyFromElement(el: HTMLElement, id: string, type: NodeType): "content" | "scene" | "divider" | undefined {
@@ -277,6 +278,10 @@ function isContentSectionEntry(entry: RuntimeEntry): boolean {
 
 function isSceneSectionEntry(entry: RuntimeEntry): boolean {
   return entry.type === "section" && entry.sectionFamily === "scene"
+}
+
+function isPriorityRuntimeCard(entry: RuntimeEntry): boolean {
+  return /^member-item-\d+$/.test(entry.id) || /^press-kit-resource-(0|1)$/.test(entry.id) || entry.id === "press-kit-manager"
 }
 
 function isDividerEntry(entry: RuntimeEntry): boolean {
@@ -498,6 +503,10 @@ function createExtraNodeFromHydrated(nodeId: string, hydrated: HydratedNodeOverr
     explicitPosition: Boolean(hydrated.explicitPosition),
     explicitSize: Boolean(hydrated.explicitSize),
   }
+}
+
+function roundExtraNodeNumber(value: number): number {
+  return Math.round(value * 1000) / 1000
 }
 
 function isNavbarTextPatternNodeId(nodeId: string): boolean {
@@ -722,10 +731,7 @@ export function useVisualEditor() {
 
 function scanRegistry(): Map<string, RuntimeEntry> {
   const map = new Map<string, RuntimeEntry>()
-  // Buscar tanto data-editor-node-id como data-extra-node-id
-  const editorElements = document.querySelectorAll<HTMLElement>("[data-editor-node-id]")
-  const extraElements = document.querySelectorAll<HTMLElement>("[data-extra-node-id]")
-  const allElements = Array.from(editorElements).concat(Array.from(extraElements))
+  const allElements = Array.from(document.querySelectorAll<HTMLElement>("[data-editor-node-id]"))
   
   allElements.forEach((el) => {
     if (el.dataset.editorDeleted === "true") return
@@ -742,6 +748,7 @@ function scanRegistry(): Map<string, RuntimeEntry> {
     map.set(id, {
       id,
       type,
+      isExtraNode: el.dataset.editorExtraNode === "true" || Boolean(el.dataset.extraNodeId),
       sectionFamily,
       sectionId,
       label,
@@ -1491,18 +1498,9 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
                 entry.element.style.display = "none"
                 deletedIdsRef.current.add(command.nodeId)
           } else {
-            // Para extra nodes, también marcamos como eliminado para que scanRegistry lo ignore
             entry.element.dataset.editorDeleted = "true"
             entry.element.style.display = "none"
             deletedIdsRef.current.add(command.nodeId)
-            // Guardar en sessionStorage para persistir la eliminación local entre refreshes
-            if (typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
-              try {
-                window.sessionStorage.setItem(`extra-node-deleted:${command.nodeId}`, "true")
-              } catch {
-                // Ignore sessionStorage errors
-              }
-            }
           }
             }
           }
@@ -1528,14 +1526,6 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             entry.element.dataset.editorDeleted = "true"
             entry.element.style.display = "none"
             deletedIdsRef.current.add(command.nodeId)
-            // Para extra nodes, guardar en sessionStorage
-            if (isExtraNodeId(command.nodeId) && typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
-              try {
-                window.sessionStorage.setItem(`extra-node-deleted:${command.nodeId}`, "true")
-              } catch {
-                // Ignore sessionStorage errors
-              }
-            }
           }
           next.delete(command.nodeId)
           if (selectedId === command.nodeId) {
@@ -1569,14 +1559,6 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           setSelectedId(id)
           setOpenPanel(true)
           
-          // Limpiar sessionStorage si este node (copia) estaba marcado como eliminado
-          if (typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
-            try {
-              window.sessionStorage.removeItem(`extra-node-deleted:${id}`)
-            } catch {
-              // Ignore sessionStorage errors
-            }
-          }
           break
         }
         default:
@@ -1645,6 +1627,8 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const edgedSections = sectionCandidates.filter((c) => isPointOnSectionEdge(c, x, y))
     const directCenterCandidates = candidates.filter((c) => c.type !== "section" && c.type !== "background")
     const backgroundCandidates = candidates.filter((c) => c.type === "background" && !isDividerEntry(c))
+    const directExtraCandidates = directCenterCandidates.filter((c) => c.isExtraNode && c.type !== "overlay")
+    const backgroundExtraCandidates = backgroundCandidates.filter((c) => c.isExtraNode)
 
     const navigationEntry = candidates.find((c) => c.id === "navigation")
     if (navigationEntry) {
@@ -1668,8 +1652,28 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    const priorityCards = directCenterCandidates.filter(isPriorityRuntimeCard)
+    if (priorityCards.length > 0) {
+      priorityCards.sort((a, b) => a.rect.width * a.rect.height - b.rect.width * b.rect.height)
+      return priorityCards[0]
+    }
+
+    if (directExtraCandidates.length > 0) {
+      directExtraCandidates.sort((a, b) => {
+        const priorityDiff = typePriority[a.type] - typePriority[b.type]
+        if (priorityDiff !== 0) return priorityDiff
+        return a.rect.width * a.rect.height - b.rect.width * b.rect.height
+      })
+      const directExtraBest = directExtraCandidates[0]
+      if (directExtraBest) return directExtraBest
+    }
+
     if (directCenterCandidates.length > 0) {
-      directCenterCandidates.sort((a, b) => typePriority[a.type] - typePriority[b.type])
+      directCenterCandidates.sort((a, b) => {
+        const priorityDiff = typePriority[a.type] - typePriority[b.type]
+        if (priorityDiff !== 0) return priorityDiff
+        return a.rect.width * a.rect.height - b.rect.width * b.rect.height
+      })
       const directBest = directCenterCandidates[0]
       if (directBest) return directBest
     }
@@ -1682,13 +1686,27 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       return edgedSections[0]
     }
 
+    if (backgroundExtraCandidates.length > 0) {
+      backgroundExtraCandidates.sort((a, b) => a.rect.width * a.rect.height - b.rect.width * b.rect.height)
+      const backgroundExtraBest = backgroundExtraCandidates[0]
+      if (backgroundExtraBest) return backgroundExtraBest
+    }
+
     if (backgroundCandidates.length > 0) {
-      backgroundCandidates.sort((a, b) => typePriority[a.type] - typePriority[b.type])
+      backgroundCandidates.sort((a, b) => {
+        const priorityDiff = typePriority[a.type] - typePriority[b.type]
+        if (priorityDiff !== 0) return priorityDiff
+        return a.rect.width * a.rect.height - b.rect.width * b.rect.height
+      })
       const backgroundBest = backgroundCandidates[0]
       if (backgroundBest) return backgroundBest
     }
 
-    candidates.sort((a, b) => typePriority[a.type] - typePriority[b.type])
+    candidates.sort((a, b) => {
+      const priorityDiff = typePriority[a.type] - typePriority[b.type]
+      if (priorityDiff !== 0) return priorityDiff
+      return a.rect.width * a.rect.height - b.rect.width * b.rect.height
+    })
 
     const best = candidates[0]
     if (best && HERO_TEXT_PATTERN_NODE_IDS.has(best.id)) return best
@@ -1961,14 +1979,19 @@ function ExtraNodesLayer({ nodes, registry }: { nodes: Map<string, EditorNode>; 
         if (existingEntry?.element?.dataset.editorSsrExtraNode === "true") return null
         const parent = document.querySelector<HTMLElement>(`[data-editor-node-id="${node.sectionId}"]`)
         if (!parent) return null
+        const scale = typeof node.style.scale === "number" && Number.isFinite(node.style.scale) ? roundExtraNodeNumber(Math.max(0.1, node.style.scale)) : 1
+        const x = roundExtraNodeNumber(node.geometry.x)
+        const y = roundExtraNodeNumber(node.geometry.y)
+        const width = roundExtraNodeNumber(Math.max(8, node.geometry.width))
+        const height = roundExtraNodeNumber(Math.max(8, node.geometry.height))
 
         const baseStyle: CSSProperties = {
           position: "absolute",
           left: 0,
           top: 0,
-          width: `${Math.max(8, node.geometry.width)}px`,
-          height: `${Math.max(8, node.geometry.height)}px`,
-          transform: `translate(${node.geometry.x}px, ${node.geometry.y}px)`,
+          width: `${width}px`,
+          height: `${height}px`,
+          transform: scale !== 1 ? `translate(${x}px, ${y}px) scale(${scale})` : `translate(${x}px, ${y}px)`,
           transformOrigin: "top left",
           zIndex: kind === "overlay" || kind === "shade" || kind === "background-image" || kind === "section-divider" ? 8 : 20,
           color: node.style.color,
@@ -1978,21 +2001,23 @@ function ExtraNodesLayer({ nodes, registry }: { nodes: Map<string, EditorNode>; 
           fontWeight: node.style.fontWeight,
           fontStyle: node.style.fontStyle,
           textDecoration: node.style.textDecoration,
+          textAlign: node.style.textAlign,
           display: kind === "button" ? "inline-flex" : kind === "text" || kind === "background-image" ? "block" : "flex",
           alignItems: kind === "text" ? undefined : "center",
-          justifyContent: kind === "text" ? undefined : "center",
+          justifyContent: kind === "text" ? undefined : node.style.textAlign === "left" ? "flex-start" : node.style.textAlign === "right" ? "flex-end" : "center",
           padding: kind === "text" || kind === "background-image" || kind === "section-divider" || kind === "shade" ? undefined : kind === "button" ? "0 18px" : "16px",
           borderRadius: kind === "text" || kind === "section-divider" ? undefined : kind === "button" ? "8px" : "8px",
           border: kind === "card" ? "1px solid rgba(255,255,255,0.18)" : undefined,
           backdropFilter: kind === "overlay" || kind === "shade" ? "blur(2px)" : undefined,
           pointerEvents: "auto",
+          whiteSpace: kind === "text" ? "pre-wrap" : undefined,
           overflow: "hidden",
         }
         if (kind === "section") {
           baseStyle.minHeight = `${Math.max(120, node.geometry.height)}px`
         }
         if (kind === "shade" || kind === "section-divider") {
-          baseStyle.background = `linear-gradient(180deg, ${node.style.gradientStart || node.style.backgroundColor || "rgba(0,0,0,0.55)"}, ${node.style.gradientEnd || "rgba(0,0,0,0)"})`
+          baseStyle.backgroundImage = `linear-gradient(180deg, ${node.style.gradientStart || node.style.backgroundColor || "rgba(0,0,0,0.55)"}, ${node.style.gradientEnd || "rgba(0,0,0,0)"})`
         }
         if (kind === "background-image" && typeof node.style.opacity === "number") {
           baseStyle.opacity = node.style.opacity
@@ -2001,7 +2026,7 @@ function ExtraNodesLayer({ nodes, registry }: { nodes: Map<string, EditorNode>; 
           baseStyle.textShadow = TEXT_EMPHASIS_SHADOW
         }
         if ((kind === "text" || kind === "button") && node.style.gradientEnabled) {
-          baseStyle.background = `linear-gradient(90deg, ${node.style.gradientStart || "#FFB15A"}, ${node.style.gradientEnd || "#FF6C00"})`
+          baseStyle.backgroundImage = `linear-gradient(90deg, ${node.style.gradientStart || "#FFB15A"}, ${node.style.gradientEnd || "#FF6C00"})`
           baseStyle.backgroundClip = "text"
           baseStyle.WebkitBackgroundClip = "text"
           baseStyle.WebkitTextFillColor = "transparent"
@@ -2009,12 +2034,35 @@ function ExtraNodesLayer({ nodes, registry }: { nodes: Map<string, EditorNode>; 
         }
 
         const commonProps = {
+          "data-extra-node-id": node.id,
           "data-editor-node-id": node.id,
           "data-editor-node-type": node.type,
           "data-editor-node-label": node.label,
           "data-editor-section-id": node.sectionId,
           "data-editor-extra-node": "true",
           "data-editor-extra-node-kind": kind,
+          "data-editor-explicit-content": String(Boolean(node.explicitContent)),
+          "data-editor-explicit-style": String(Boolean(node.explicitStyle)),
+          "data-editor-explicit-position": String(Boolean(node.explicitPosition)),
+          "data-editor-explicit-size": String(Boolean(node.explicitSize)),
+          "data-editor-geometry-x": String(roundExtraNodeNumber(node.geometry.x)),
+          "data-editor-geometry-y": String(roundExtraNodeNumber(node.geometry.y)),
+          "data-editor-geometry-width": String(roundExtraNodeNumber(node.geometry.width)),
+          "data-editor-geometry-height": String(roundExtraNodeNumber(node.geometry.height)),
+          "data-editor-style-scale": String(scale),
+          "data-editor-style-color": node.style.color,
+          "data-editor-style-background-color": node.style.backgroundColor,
+          "data-editor-style-text-align": node.style.textAlign,
+          "data-editor-style-text-shadow-enabled": typeof node.style.textShadowEnabled === "boolean" ? String(node.style.textShadowEnabled) : undefined,
+          "data-editor-style-gradient-enabled": typeof node.style.gradientEnabled === "boolean" ? String(node.style.gradientEnabled) : undefined,
+          "data-editor-style-gradient-start": node.style.gradientStart,
+          "data-editor-style-gradient-end": node.style.gradientEnd,
+          "data-editor-content-text": node.content.text,
+          "data-editor-href": node.content.href,
+          "data-editor-src": node.content.src,
+          "data-editor-alt": node.content.alt,
+          "data-editor-media-kind": kind === "background-image" ? "image" : undefined,
+          "data-editor-section-divider": kind === "section-divider" ? "true" : undefined,
           style: baseStyle,
         }
 
@@ -2382,15 +2430,6 @@ export function VisualEditorOverlay() {
     setSelectedIds([nodeId])
     setAddMenuOpen(false)
     setAddMessage(null)
-    
-    // Limpiar sessionStorage si este node estaba marcado como eliminado previamente
-    if (typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
-      try {
-        window.sessionStorage.removeItem(`extra-node-deleted:${nodeId}`)
-      } catch {
-        // Ignore sessionStorage errors
-      }
-    }
   }
 
   const selectedBandMemberIndex = extractBandMemberIndex(selectedNode?.id)
@@ -2801,21 +2840,6 @@ export function VisualEditorOverlay() {
         baselineNodeSignaturesRef.current = baseline
         dirtyNodeIdsRef.current.clear()
         
-        // Limpiar sessionStorage de extra nodes eliminados (porque ahora están persistidos en Sanity)
-        if (typeof window !== "undefined" && typeof window.sessionStorage !== "undefined") {
-          try {
-            const keysToRemove: string[] = []
-            for (let i = 0; i < window.sessionStorage.length; i++) {
-              const key = window.sessionStorage.key(i)
-              if (key?.startsWith("extra-node-deleted:")) {
-                keysToRemove.push(key)
-              }
-            }
-            keysToRemove.forEach(key => window.sessionStorage.removeItem(key))
-          } catch {
-            // Ignore sessionStorage errors
-          }
-        }
       }
     } catch (error) {
       setDeployStatus("failed")
@@ -4020,6 +4044,7 @@ export function VisualEditorOverlay() {
                     const requiresSanityAsset =
                       selectedNode.id === "hero-logo" ||
                       selectedNode.id === "hero-bg-image" ||
+                      selectedNode.id === "band-members-bg" ||
                       selectedNode.id === "live-section-bg-image" ||
                       selectedNode.id === "contact-bg-image" ||
                       selectedNode.id === "footer-logo" ||

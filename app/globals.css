@@ -990,6 +990,131 @@ section {
   }
 }
 
+@media (max-width: 1024px) {
+  .public-home [data-editor-node-id="navigation"],
+  .public-home [data-editor-node-id="navigation-inner"],
+  .public-home [data-editor-node-id="hero-section"],
+  .public-home [data-editor-node-id="intro-section"],
+  .public-home [data-editor-node-id="latest-release-section"],
+  .public-home [data-editor-node-id="about-section"],
+  .public-home [data-editor-node-id="press-kit-section"],
+  .public-home [data-editor-node-id="band-members-section"],
+  .public-home [data-editor-node-id="live-section"],
+  .public-home [data-editor-node-id="contact-section"],
+  .public-home [data-editor-node-id="footer-section"] {
+    transform: none !important;
+    width: auto !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .public-home [data-editor-node-id="intro-section"],
+  .public-home [data-editor-node-id="press-kit-section"],
+  .public-home [data-editor-node-id="band-members-section"],
+  .public-home [data-editor-node-id="live-section"],
+  .public-home [data-editor-node-id="contact-section"],
+  .public-home [data-editor-node-id="footer-section"] {
+    min-height: auto !important;
+  }
+
+  .public-home [data-editor-node-id="hero-bg-image"],
+  .public-home [data-editor-node-id="intro-banner-gif"],
+  .public-home [data-editor-node-id="latest-release-bg"],
+  .public-home [data-editor-node-id="about-bg-image"],
+  .public-home [data-editor-node-id="press-kit-bg"],
+  .public-home [data-editor-node-id="band-members-bg"],
+  .public-home [data-editor-node-id="live-section-bg-image"],
+  .public-home [data-editor-node-id="contact-bg-image"] {
+    transform: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+  }
+
+  .public-home [data-editor-node-id="hero-title"],
+  .public-home [data-editor-node-id="hero-logo"],
+  .public-home [data-editor-node-id="hero-subtitle"],
+  .public-home [data-editor-node-id="hero-scroll-indicator"],
+  .public-home [data-editor-node-id="hero-scroll-label"],
+  .public-home [data-editor-node-id="intro-banner-text"],
+  .public-home [data-editor-node-id="intro-book-button"],
+  .public-home [data-editor-node-id="intro-press-button"],
+  .public-home [data-editor-node-id="latest-release-card"],
+  .public-home [data-editor-node-id="latest-release-title"],
+  .public-home [data-editor-node-id="latest-release-subtitle"],
+  .public-home [data-editor-node-id="latest-release-watch-button"],
+  .public-home [data-editor-node-id="latest-release-shows-button"],
+  .public-home [data-editor-node-id="about-header-eyebrow"],
+  .public-home [data-editor-node-id="about-header-title"],
+  .public-home [data-editor-node-id="about-text-card"],
+  .public-home [data-editor-node-id="about-text-1"],
+  .public-home [data-editor-node-id="about-text-2"],
+  .public-home [data-editor-node-id="about-tags"],
+  .public-home [data-editor-node-id="about-copy-button"],
+  .public-home [data-editor-node-id="press-kit-main-card"],
+  .public-home [data-editor-node-id="press-kit-title"],
+  .public-home [data-editor-node-id="press-kit-description"],
+  .public-home [data-editor-node-id="press-kit-download-button"],
+  .public-home [data-editor-node-id="press-kit-resource-0"],
+  .public-home [data-editor-node-id="press-kit-resource-1"],
+  .public-home [data-editor-node-id="press-kit-manager"],
+  .public-home [data-editor-node-id="band-members-colabs-title"],
+  .public-home [data-editor-node-id="live-section-see-shows-button"],
+  .public-home [data-editor-node-id="live-stream-platforms-group"],
+  .public-home [data-editor-node-id="live-social-platforms-group"],
+  .public-home [data-editor-node-id="live-upcoming-title"],
+  .public-home [data-editor-node-id="live-history-title"],
+  .public-home [data-editor-node-id="live-section-concerts-container"],
+  .public-home [data-editor-node-id="contact-email"],
+  .public-home [data-editor-node-id="contact-telegram"],
+  .public-home [data-editor-node-id="contact-middle-text"],
+  .public-home [data-editor-node-id="footer-logo"],
+  .public-home [data-editor-node-id="footer-description"],
+  .public-home [data-editor-node-id="footer-cta"],
+  .public-home [data-editor-node-id="footer-social-group"],
+  .public-home [data-editor-node-id="footer-divider"],
+  .public-home [data-editor-node-id="footer-copyright"] {
+    transform: none !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+  }
+
+  .public-home [data-editor-node-id="latest-release-card"],
+  .public-home [data-editor-node-id="about-text-card"],
+  .public-home [data-editor-node-id="press-kit-main-card"],
+  .public-home [data-editor-node-id="contact-email"],
+  .public-home [data-editor-node-id="contact-telegram"],
+  .public-home [data-editor-node-id="footer-divider"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .public-home [data-editor-node-id^="member-item-"],
+  .public-home [data-editor-node-id^="live-upcoming-event-"],
+  .public-home [data-editor-node-id^="live-history-event-"],
+  .public-home [data-editor-node-id^="live-streaming-"],
+  .public-home [data-editor-node-id^="live-social-"],
+  .public-home [data-editor-node-id^="contact-email-"],
+  .public-home [data-editor-node-id^="contact-telegram-"],
+  .public-home [data-editor-node-id^="footer-social-"] {
+    transform: none !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .public-home [data-editor-node-id^="live-upcoming-event-"],
+  .public-home [data-editor-node-id^="live-history-event-"] {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .public-home [data-editor-node-id^="extra-"] {
+    display: none !important;
+  }
+}
+
 /* ============================================================================
    VISUAL EDITOR
    ============================================================================ */
@@ -1036,5 +1161,4 @@ body[data-editor-mode="true"] [data-editor-node-id]:hover {
 .resize-handle {
   pointer-events: auto !important;
 }
-
 

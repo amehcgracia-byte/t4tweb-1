@@ -46,7 +46,7 @@ export default async function HomePagePublic() {
   const heroExtraNodes = homeEditorNodes.filter(isHeroExtraNode)
 
   return (
-    <main className="relative overflow-x-clip bg-black">
+    <main className="public-home relative overflow-x-clip bg-black">
       <RibbonsBlock />
       <Navigation data={navigationData} />
 
@@ -56,13 +56,9 @@ export default async function HomePagePublic() {
 
       <LatestReleaseCorrect data={latestReleaseData} />
 
-      <SceneSection id="about">
-        <AboutSection data={aboutData} />
-      </SceneSection>
+      <AboutSection data={aboutData} sectionId="about" />
 
-      <SceneSection id="press-kit">
-        <PressKitSection data={pressKitData} />
-      </SceneSection>
+      <PressKitSection data={pressKitData} />
 
       <SceneSection id="band">
         <BandMembersSectionSimple
