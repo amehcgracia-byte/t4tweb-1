@@ -30,7 +30,6 @@ export function SceneSection({ id, children, className = "" }: SceneSectionProps
           <motion.div
             style={{
               opacity: contentAnimations.opacity,
-              y: contentAnimations.y,
             }}
             className="w-full"
           >

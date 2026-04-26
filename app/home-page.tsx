@@ -57,7 +57,7 @@ export default async function HomePage({ perspective = "published", isEditorRout
           <RibbonsBlock />
           <Navigation data={navigationData} />
 
-          <HeroSection data={heroData} />
+          <HeroSection data={heroData} extraNodes={heroExtraNodes} editorExtraNodesInteractive />
 
           <IntroBannerSection data={introBannerData} />
 
@@ -82,6 +82,7 @@ export default async function HomePage({ perspective = "published", isEditorRout
           </SceneSection>
 
           <Footer data={footerData} />
+          <ExtraNodesRenderer nodes={homeEditorNodes} allowPointerEvents />
         </HomeEditorOverridesProvider>
       ) : (
         <>

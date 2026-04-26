@@ -107,12 +107,27 @@ export async function loadHomeEditorState(perspective: "published" | "drafts" = 
       "about-copy-button",
     ])
 
+    const CONTACT_DOC_DRIVEN_NODE_IDS = new Set([
+      "contact-section",
+    ])
+
+    const FOOTER_DOC_DRIVEN_NODE_IDS = new Set([
+      "footer-section",
+    ])
+
     const isLiveDocDrivenNodeId = (nodeId: string): boolean => {
       return (
         nodeId === "live-section" ||
         nodeId === "live-section-bg-image" ||
+        nodeId === "live-see-shows-header" ||
+        nodeId === "live-see-shows-header-eyebrow" ||
+        nodeId === "live-see-shows-header-title" ||
+        nodeId === "live-see-shows-header-description" ||
         nodeId === "live-section-see-shows-button" ||
         nodeId === "live-stream-header" ||
+        nodeId === "live-stream-header-eyebrow" ||
+        nodeId === "live-stream-header-title" ||
+        nodeId === "live-stream-header-description" ||
         nodeId === "live-stream-platforms-group" ||
         nodeId === "live-stream-platforms-title" ||
         nodeId === "live-social-platforms-group" ||
@@ -147,6 +162,8 @@ export async function loadHomeEditorState(perspective: "published" | "drafts" = 
           INTRO_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
           RELEASE_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
           ABOUT_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
+          CONTACT_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
+          FOOTER_DOC_DRIVEN_NODE_IDS.has(nodeId) ||
           isLiveDocDrivenNodeId(nodeId)
         ) return null
         const nodeType = typeof n.nodeType === "string" ? n.nodeType : typeof n.type === "string" ? n.type : "text"

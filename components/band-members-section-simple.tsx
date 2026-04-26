@@ -7,7 +7,8 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 import type { BandMemberData, BandMembersLoadResult } from "@/lib/sanity/band-members-loader"
-import { getElementLayoutStyle, roundLayoutPx } from "@/lib/hero-layout-styles"
+import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import { getSectionRootFlowStyle } from "@/lib/section-root-layout"
 
 function getBandMemberCardStyle(
   elementStyles: Record<string, Record<string, unknown>>,
@@ -26,27 +27,7 @@ function getBandMemberCardStyle(
 function getBandMembersSectionStyle(
   elementStyles: Record<string, Record<string, unknown>>
 ): CSSProperties {
-  const rawStyle = elementStyles["band-members-section"]
-  const style = { ...getElementLayoutStyle(elementStyles, "band-members-section", { includeGeometry: false }) }
-
-  if (typeof rawStyle?.x === "number" && rawStyle.x !== 0) {
-    style.marginLeft = `${roundLayoutPx(rawStyle.x)}px`
-  }
-  if (typeof rawStyle?.y === "number" && rawStyle.y !== 0) {
-    style.marginTop = `${roundLayoutPx(rawStyle.y)}px`
-  }
-  if (typeof rawStyle?.width === "number") {
-    style.width = `${Math.max(8, roundLayoutPx(rawStyle.width))}px`
-  }
-  if (typeof rawStyle?.height === "number") {
-    style.height = `${Math.max(8, roundLayoutPx(rawStyle.height))}px`
-  }
-
-  delete style.opacity
-  delete style.transform
-  delete style.transformOrigin
-
-  return style
+  return getSectionRootFlowStyle(elementStyles, "band-members-section")
 }
 
 export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult }) {

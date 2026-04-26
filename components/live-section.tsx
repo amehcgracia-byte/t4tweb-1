@@ -7,6 +7,7 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import { getSectionRootFlowStyle } from "@/lib/section-root-layout"
 import type { LiveConcert, LiveSectionData } from "@/lib/live-concerts-loader"
 
 interface LiveSectionProps {
@@ -125,7 +126,7 @@ export function LiveSection({ data }: LiveSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const [concerts, setConcerts] = useState<LiveConcert[]>(data.concerts)
   const [activeConcert, setActiveConcert] = useState<LiveConcert | null>(null)
-  const { opacity, y } = useScrollAnimation(sectionRef)
+  const { opacity } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
 
   useEffect(() => {
@@ -165,7 +166,7 @@ export function LiveSection({ data }: LiveSectionProps) {
       data-editor-node-type="section"
       data-editor-node-label="Live Section"
       className="relative min-h-screen overflow-hidden bg-black"
-      style={getElementLayoutStyle(data.elementStyles, "live-section", { includeGeometry: true })}
+      style={getSectionRootFlowStyle(data.elementStyles, "live-section")}
     >
       <div
         className="absolute inset-0 z-0"
@@ -190,13 +191,16 @@ export function LiveSection({ data }: LiveSectionProps) {
 
       <div className="relative z-20 w-full">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-          <motion.div style={isEditing ? undefined : { opacity, y }} className="mb-16 text-center">
+          <motion.div style={isEditing ? undefined : { opacity }} className="mb-16 text-center">
             <SectionHeader
               eyebrow="Live Performances"
               title="See All Shows"
               description="From intimate club dates to festivals and support slots, the live section now reads from one concert source and splits upcoming/history automatically."
               dataEditId="live-see-shows-header"
               dataEditLabel="Live See Shows Header"
+              disableMotion
+              elementStyles={data.elementStyles}
+              includeGeometry
             />
             <motion.a
               data-editor-node-id="live-section-see-shows-button"
@@ -227,6 +231,8 @@ export function LiveSection({ data }: LiveSectionProps) {
               className="mb-8"
               dataEditId="live-stream-header"
               dataEditLabel="Live Stream Header"
+              elementStyles={data.elementStyles}
+              includeGeometry
             />
 
             <div

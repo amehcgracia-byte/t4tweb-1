@@ -3,21 +3,24 @@
 import { useRef, useEffect, type CSSProperties } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import { getSectionRootFlowStyle } from "@/lib/section-root-layout"
 import type { ContactSectionData } from "@/lib/sanity/contact-loader"
 
 interface ContactSectionProps {
   data: ContactSectionData
 }
 
+const CONTACT_CARD_CLASS_NAME =
+  "group w-full rounded-xl border border-border bg-card/90 p-4 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg md:flex-1 md:max-[1024px]:max-w-full md:min-[1025px]:max-w-xs md:p-5 lg:p-7"
+
 function getSafeContactSectionStyle(
   elementStyles: ContactSectionData["elementStyles"]
 ): CSSProperties {
-  const style = { ...getElementLayoutStyle(elementStyles, "contact-section", { includeGeometry: true }) }
+  const style = getSectionRootFlowStyle(elementStyles, "contact-section")
   const rawHeight = typeof style.height === "number" ? style.height : typeof style.height === "string" ? Number.parseFloat(style.height) : null
   if (typeof rawHeight === "number" && Number.isFinite(rawHeight) && rawHeight <= 16) {
     delete style.height
@@ -40,9 +43,9 @@ export function ContactSection({ data }: ContactSectionProps) {
   const telegramButtonRef = useRef<HTMLAnchorElement>(null)
   const telegramHandleRef = useRef<HTMLSpanElement>(null)
   const middleTextRef = useRef<HTMLParagraphElement>(null)
-  const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()  // SectionHeader creates data-editor-node-id="contact-header-title" (with -title suffix),
   // so the editor stores overrides under "contact-header-title", not "contact-header".
+
   useEffect(() => {
     if (!isEditing) return
 
@@ -270,7 +273,7 @@ export function ContactSection({ data }: ContactSectionProps) {
       data-editor-node-type="section"
       data-editor-node-label="Sección de Contacto"
       style={getSafeContactSectionStyle(elementStyles)}
-      className="relative min-h-[82vh] min-h-[82dvh] overflow-hidden sm:min-h-screen sm:min-h-[100dvh]">
+      className="relative w-full max-w-full min-h-[82vh] min-h-[82dvh] overflow-hidden max-[1024px]:!min-h-0 sm:min-h-screen sm:min-h-[100dvh]">
       <div 
         ref={bgRef}
         data-editor-node-id="contact-bg-image"
@@ -293,7 +296,7 @@ export function ContactSection({ data }: ContactSectionProps) {
       <div className="section-photo-fade-bottom" />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center py-24 md:py-32">
-        <motion.div ref={headerRef} style={isEditing ? headerStyle : { ...headerStyle, opacity, y }} className="mb-10 md:mb-12">
+        <div ref={headerRef} style={headerStyle} className="mb-10 md:mb-12">
           <div>
           <SectionHeader
             eyebrow={data.eyebrow}
@@ -305,7 +308,7 @@ export function ContactSection({ data }: ContactSectionProps) {
             elementStyles={elementStyles}
           />
           </div>
-        </motion.div>
+        </div>
 
         {/* Contact Options */}
         <div className="flex flex-col items-stretch justify-center gap-4 md:flex-row md:items-center md:gap-8">
@@ -314,14 +317,11 @@ export function ContactSection({ data }: ContactSectionProps) {
             data-editor-node-id="contact-email"
             data-editor-node-type="card"
             data-editor-node-label="Contacto Email"
-            initial={isEditing ? false : { opacity: 0, x: -20 }}
-            whileInView={isEditing ? undefined : { opacity: 1, x: 0 }}
+            initial={false}
             whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
             transition={isEditing ? undefined : { duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
             style={getElementLayoutStyle(elementStyles, "contact-email")}
-            className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
-              isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
-            }`}>
+            className={CONTACT_CARD_CLASS_NAME}>
             <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/18 group-hover:bg-primary/26 md:mb-4 md:h-14 md:w-14">
               <EmailIcon className="h-6 w-6 text-primary md:h-7 md:w-7" />
             </div>
@@ -386,14 +386,11 @@ export function ContactSection({ data }: ContactSectionProps) {
             data-editor-node-id="contact-telegram"
             data-editor-node-type="card"
             data-editor-node-label="Contacto Telegram"
-            initial={isEditing ? false : { opacity: 0, x: 20 }}
-            whileInView={isEditing ? undefined : { opacity: 1, x: 0 }}
+            initial={false}
             whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
             transition={isEditing ? undefined : { duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
             style={getElementLayoutStyle(elementStyles, "contact-telegram")}
-            className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
-              isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
-            }`}>
+            className={CONTACT_CARD_CLASS_NAME}>
             <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/18 group-hover:bg-primary/26 md:mb-4 md:h-14 md:w-14">
               <TelegramIcon className="h-6 w-6 text-primary md:h-7 md:w-7" />
             </div>

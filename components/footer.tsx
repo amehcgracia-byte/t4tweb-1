@@ -4,6 +4,7 @@ import { useRef, useEffect } from "react"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import { getSectionRootFlowStyle } from "@/lib/section-root-layout"
 import type { FooterData } from "@/lib/sanity/footer-loader"
 
 interface FooterProps {
@@ -140,7 +141,7 @@ export function Footer({ data }: FooterProps) {
       data-editor-node-id="footer-section"
       data-editor-node-type="section"
       data-editor-node-label="Footer Section"
-      style={getElementLayoutStyle(elementStyles, "footer-section", { includeGeometry: true })}
+      style={getSectionRootFlowStyle(elementStyles, "footer-section")}
       className="bg-black">
       <div className="h-8 bg-gradient-to-b from-black/30 to-black sm:h-10 sm:from-black/20 md:h-12" />
       
