@@ -381,6 +381,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
 
   return (
     <section 
+      id="press-kit"
       ref={sectionRef} 
       className="relative min-h-[85vh] min-h-[85dvh] w-full overflow-hidden sm:min-h-screen sm:min-h-[100dvh]"
       {...getPressKitNodeAttrs(isEditorSurface, "press-kit-section", "section", "Press Kit Section")}

@@ -208,7 +208,7 @@ export function LiveSection({ data }: LiveSectionProps) {
               data-editor-node-label="See All Shows Button"
               whileHover={isEditing ? undefined : { scale: 1.02, y: -2 }}
               transition={isEditing ? undefined : { type: "spring", stiffness: 320, damping: 22 }}
-              href="https://www.bandsintown.com/"
+              href="https://www.bandsintown.com/a/15638928-tales-for-the-tillerman?noindex=1"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-3 rounded-xl bg-[#FF8C21] px-8 py-4 font-semibold text-white shadow-lg transition-all hover:bg-[#ff7c05]"
