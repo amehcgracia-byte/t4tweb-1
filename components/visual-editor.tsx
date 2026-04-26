@@ -406,6 +406,9 @@ const TEXT_TOOL_EXACT_IDS = new Set<string>([
   "about-text-2",
   "about-tags",
   "about-copy-button",
+  "press-kit-header-eyebrow",
+  "press-kit-header-title",
+  "press-kit-header-description",
   "press-kit-title",
   "press-kit-description",
   "press-kit-download-button",
@@ -456,6 +459,13 @@ const EXTRA_NODE_LIMITS: Record<ExtraNodeKind, number> = {
 
 function isExtraNodeId(nodeId: string): boolean {
   return nodeId.startsWith(EXTRA_NODE_PREFIX)
+}
+
+function isReservedGhostExtraNodeId(sectionId: string, kind: ExtraNodeKind, nodeId: string): boolean {
+  return (
+    (sectionId === "hero-section" && kind === "text" && nodeId === "extra-hero-section-text-1") ||
+    (sectionId === "hero-section" && kind === "overlay" && nodeId === "extra-hero-section-overlay-2")
+  )
 }
 
 function isSectionDividerNodeId(nodeId: string): boolean {
@@ -1004,6 +1014,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const historyIndexRef = useRef(-1)
   const transactionRef = useRef<{ active: boolean; baseline: Map<string, EditorNode> | null }>({ active: false, baseline: null })
   const deletedIdsRef = useRef<Set<string>>(new Set())
+  const providerNodesRef = useRef<Map<string, EditorNode>>(new Map())
   const refreshRegistry = useCallback(() => {
     const nextRegistry = scanRegistry()
     setRegistry((prev) => (areRegistryMapsEquivalent(prev, nextRegistry) ? prev : nextRegistry))
@@ -1030,6 +1041,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set isHydrated first - don't activate editor until hydration is complete
   }, [])
+
+  useEffect(() => {
+    providerNodesRef.current = nodes
+  }, [nodes])
 
   // Single synchronous hydration and editor activation effect
   // This runs once after the first client-side render to establish isHydrated and isEditing state
@@ -1565,6 +1580,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           break
       }
 
+      providerNodesRef.current = next
       if (shouldSnapshot && !transactionRef.current.active) snapshot(next)
       return next
     })
@@ -2394,7 +2410,7 @@ export function VisualEditorOverlay() {
     const xBase = Math.max(32, Math.min(Math.max(32, rect.width - preset.width - 32), 80 + existingCount * 18))
     extraNodeCounterRef.current += 1
     let nodeId = `${EXTRA_NODE_PREFIX}${sectionId}-${kind}-${extraNodeCounterRef.current}`
-    while (nodes.has(nodeId)) {
+    while (nodes.has(nodeId) || isReservedGhostExtraNodeId(sectionId, kind, nodeId)) {
       extraNodeCounterRef.current += 1
       nodeId = `${EXTRA_NODE_PREFIX}${sectionId}-${kind}-${extraNodeCounterRef.current}`
     }
@@ -2717,7 +2733,7 @@ export function VisualEditorOverlay() {
         nodeIds: changedNodeIds,
         dirtySet: Array.from(dirtyNodeIdsRef.current)
       })
-      const deployableNodes = Array.from(nodes.values())
+      const deployableNodes = Array.from(nodesRef.current.values())
       const nonPersistableNodes = deployableNodes
         .filter((node) => (node.type === "image" || (node.type === "background" && node.content.mediaKind === "image")) && !isPersistableImageSrc(node.content.src))
         .map((node) => node.id)
@@ -2836,7 +2852,7 @@ export function VisualEditorOverlay() {
       setDeployDetails(lines.join("\n"))
       if (backendStatus === "ok" || backendStatus === "partial") {
         const baseline = new Map<string, string>()
-        nodes.forEach((node, id) => baseline.set(id, getNodeSignature(node)))
+        nodesRef.current.forEach((node, id) => baseline.set(id, getNodeSignature(node)))
         baselineNodeSignaturesRef.current = baseline
         dirtyNodeIdsRef.current.clear()
         

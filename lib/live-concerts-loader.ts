@@ -473,10 +473,12 @@ export async function loadLiveSectionData(
         backgroundImageUrl?: string
         streamingPlatforms?: LivePlatformLink[]
         socialPlatforms?: LivePlatformLink[]
+        concertsManagedByEditor?: boolean
       } | null>(
         `*[_type == "liveSection"][0]{
           elementStyles,
           "backgroundImageUrl": backgroundImage.asset->url,
+          concertsManagedByEditor,
           streamingPlatforms,
           socialPlatforms
         }`
@@ -528,13 +530,18 @@ export async function loadLiveSectionData(
       ),
     ])
 
+    const concertsManagedByEditor = settings?.concertsManagedByEditor === true
     const concertsBase =
       Array.isArray(sanityConcerts) && sanityConcerts.length > 0
         ? sanityConcerts.map((concert, index) => normalizeConcert(concert, index))
-        : [...MANUAL_LIVE_CONCERTS]
+        : concertsManagedByEditor
+          ? []
+          : [...MANUAL_LIVE_CONCERTS]
     const wildAtHeartFallback = MANUAL_LIVE_CONCERTS.find((concert) => /wild at heart/i.test(concert.eventName)) || null
     const concerts =
-      wildAtHeartFallback && !concertsBase.some((concert) => /wild at heart/i.test(concert.eventName || concert.locationName || ""))
+      !concertsManagedByEditor &&
+      wildAtHeartFallback &&
+      !concertsBase.some((concert) => /wild at heart/i.test(concert.eventName || concert.locationName || ""))
         ? [...concertsBase, normalizeConcert(wildAtHeartFallback, concertsBase.length)].sort((a, b) => a.date.localeCompare(b.date))
         : concertsBase
 

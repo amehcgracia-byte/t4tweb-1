@@ -261,6 +261,10 @@ function toPublishedDocumentId(id: string): string {
   return id.startsWith("drafts.") ? id.slice("drafts.".length) : id
 }
 
+function toDraftDocumentId(id: string): string {
+  return id.startsWith("drafts.") ? id : `drafts.${id}`
+}
+
 function isNavLayoutId(id: string): boolean {
   return id === "navigation" || id === "navigation-inner" || id.startsWith("nav-")
 }
@@ -410,6 +414,9 @@ const ABOUT_BOX_NODE_IDS = new Set(["about-section", "about-text-card", ...ABOUT
 const PRESS_KIT_NODE_IDS = new Set([
   "press-kit-section",
   "press-kit-bg",
+  "press-kit-header-eyebrow",
+  "press-kit-header-title",
+  "press-kit-header-description",
   "press-kit-main-card",
   "press-kit-folder-icon",
   "press-kit-title",
@@ -419,7 +426,13 @@ const PRESS_KIT_NODE_IDS = new Set([
   "press-kit-resource-1",
   "press-kit-manager",
 ])
-const PRESS_KIT_TEXT_NODE_IDS = new Set(["press-kit-title", "press-kit-description"])
+const PRESS_KIT_TEXT_NODE_IDS = new Set([
+  "press-kit-header-eyebrow",
+  "press-kit-header-title",
+  "press-kit-header-description",
+  "press-kit-title",
+  "press-kit-description",
+])
 const PRESS_KIT_BUTTON_NODE_IDS = new Set(["press-kit-download-button"])
 const PRESS_KIT_IMAGE_NODE_IDS = new Set(["press-kit-bg"])
 const PRESS_KIT_BOX_NODE_IDS = new Set([
@@ -2824,8 +2837,10 @@ export async function POST(request: Request) {
       const currentIds = new Set(Array.from(liveConcertPatches.keys()).map((editorId) => `concert-${editorId}`))
       const staleConcerts = await writeClient.fetch<Array<{ _id: string }>>(`*[_type == $type]{ _id }`, { type: SANITY_DOC_CONCERT })
       for (const staleConcert of staleConcerts) {
-        if (!currentIds.has(toPublishedDocumentId(staleConcert._id))) {
-          await writeClient.delete(toPublishedDocumentId(staleConcert._id))
+        const publishedConcertId = toPublishedDocumentId(staleConcert._id)
+        if (!currentIds.has(publishedConcertId)) {
+          await writeClient.delete(publishedConcertId)
+          await writeClient.delete(toDraftDocumentId(publishedConcertId)).catch(() => null)
         }
       }
       if (!persistedNodes.includes("live-section-concerts-container")) persistedNodes.push("live-section-concerts-container")

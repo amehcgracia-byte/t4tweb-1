@@ -7,7 +7,7 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 import type { BandMemberData, BandMembersLoadResult } from "@/lib/sanity/band-members-loader"
-import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import { getElementLayoutStyle, roundLayoutPx } from "@/lib/hero-layout-styles"
 
 function getBandMemberCardStyle(
   elementStyles: Record<string, Record<string, unknown>>,
@@ -20,6 +20,32 @@ function getBandMemberCardStyle(
     style.backgroundColor = rawStyle.backgroundColor
     style.backgroundImage = "none"
   }
+  return style
+}
+
+function getBandMembersSectionStyle(
+  elementStyles: Record<string, Record<string, unknown>>
+): CSSProperties {
+  const rawStyle = elementStyles["band-members-section"]
+  const style = { ...getElementLayoutStyle(elementStyles, "band-members-section", { includeGeometry: false }) }
+
+  if (typeof rawStyle?.x === "number" && rawStyle.x !== 0) {
+    style.marginLeft = `${roundLayoutPx(rawStyle.x)}px`
+  }
+  if (typeof rawStyle?.y === "number" && rawStyle.y !== 0) {
+    style.marginTop = `${roundLayoutPx(rawStyle.y)}px`
+  }
+  if (typeof rawStyle?.width === "number") {
+    style.width = `${Math.max(8, roundLayoutPx(rawStyle.width))}px`
+  }
+  if (typeof rawStyle?.height === "number") {
+    style.height = `${Math.max(8, roundLayoutPx(rawStyle.height))}px`
+  }
+
+  delete style.opacity
+  delete style.transform
+  delete style.transformOrigin
+
   return style
 }
 
@@ -252,7 +278,7 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
       data-editor-node-type="section"
       data-editor-node-label="Sección Miembros de la Banda"
       className="relative isolate min-h-screen w-full overflow-hidden bg-black"
-      style={getElementLayoutStyle(data.elementStyles || {}, "band-members-section", { includeGeometry: true })}
+      style={getBandMembersSectionStyle(data.elementStyles || {})}
     >
       {/* Fondo full width */}
       <div 

@@ -39,7 +39,7 @@ function getParentSectionId(node: HomeEditorNodeOverride): string | null {
     : null
 }
 
-function buildExtraNodeStyle(node: HomeEditorNodeOverride, kind: ExtraNodeKind): CSSProperties {
+function buildExtraNodeStyle(node: HomeEditorNodeOverride, kind: ExtraNodeKind, allowPointerEvents: boolean): CSSProperties {
   const scale = typeof node.style.scale === "number" && Number.isFinite(node.style.scale) ? roundNodeNumber(Math.max(0.1, node.style.scale)) : 1
   const x = roundNodeNumber(node.geometry.x)
   const y = roundNodeNumber(node.geometry.y)
@@ -69,7 +69,7 @@ function buildExtraNodeStyle(node: HomeEditorNodeOverride, kind: ExtraNodeKind):
     borderRadius: kind === "text" || kind === "section-divider" ? undefined : "8px",
     border: kind === "card" ? "1px solid rgba(255,255,255,0.18)" : undefined,
     backdropFilter: kind === "overlay" || kind === "shade" ? "blur(2px)" : undefined,
-    pointerEvents: kind === "button" ? "auto" : "none",
+    pointerEvents: allowPointerEvents || kind === "button" ? "auto" : "none",
     whiteSpace: kind === "text" ? "pre-wrap" : undefined,
     overflow: "hidden",
   }
@@ -139,10 +139,10 @@ function buildExtraNodeAttrs(node: HomeEditorNodeOverride, kind: ExtraNodeKind, 
   return attrs
 }
 
-function renderExtraNode(node: HomeEditorNodeOverride, kind: ExtraNodeKind, parentSectionId: string, ssrInline: boolean) {
+function renderExtraNode(node: HomeEditorNodeOverride, kind: ExtraNodeKind, parentSectionId: string, ssrInline: boolean, allowPointerEvents: boolean) {
   const commonProps = {
     ...buildExtraNodeAttrs(node, kind, parentSectionId, ssrInline),
-    style: buildExtraNodeStyle(node, kind),
+    style: buildExtraNodeStyle(node, kind, allowPointerEvents),
   }
 
   if (kind === "button") {
@@ -178,9 +178,11 @@ function renderExtraNode(node: HomeEditorNodeOverride, kind: ExtraNodeKind, pare
 export function ExtraNodesRenderer({
   nodes,
   sectionId,
+  allowPointerEvents = false,
 }: {
   nodes: HomeEditorNodeOverride[]
   sectionId?: string
+  allowPointerEvents?: boolean
 }) {
   const mounted = useSyncExternalStore(subscribeAfterHydration, getMountedSnapshot, getServerSnapshot)
   const extraNodes = useMemo(
@@ -196,7 +198,7 @@ export function ExtraNodesRenderer({
         {extraNodes.map((node) => {
           const kind = getExtraNodeKind(node)
           if (!kind) return null
-          return renderExtraNode(node, kind, sectionId, true)
+          return renderExtraNode(node, kind, sectionId, true, allowPointerEvents)
         })}
       </>
     )
@@ -218,7 +220,7 @@ export function ExtraNodesRenderer({
         if (existing?.dataset.editorDeleted === "true") return null
         if (existing?.dataset.editorSsrExtraNode === "true") return null
         
-        return createPortal(renderExtraNode(node, kind, parentSectionId, false), parent)
+        return createPortal(renderExtraNode(node, kind, parentSectionId, false, allowPointerEvents), parent)
       })}
     </>
   )

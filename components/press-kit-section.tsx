@@ -4,19 +4,105 @@ import { useRef, useEffect, useState } from "react"
 import type { CSSProperties } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import { SectionHeader } from "@/components/section-header"
+import { usePathname } from "next/navigation"
 import { useVisualEditor } from "@/components/visual-editor"
-import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import { buildHeroStandardLayoutStyle, getElementLayoutStyle, roundLayoutPx } from "@/lib/hero-layout-styles"
 import type { PressKitData } from "@/lib/sanity/press-kit-loader"
 
 interface PressKitSectionProps {
   data: PressKitData
 }
 
-function getPressKitBoxStyle(elementStyles: PressKitData["elementStyles"], nodeId: string): CSSProperties {
-  const style = { ...getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: true }) }
-  const rawStyle = elementStyles[nodeId]
-  delete style.opacity
+const PRESS_KIT_HEADER_NODE_IDS = [
+  "press-kit-header-eyebrow",
+  "press-kit-header-title",
+  "press-kit-header-description",
+] as const
+
+async function triggerAssetDownload(url: string, fileName: string): Promise<void> {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Asset download failed with status ${response.status}`)
+  }
+  const blob = await response.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const anchor = document.createElement("a")
+  anchor.href = objectUrl
+  anchor.download = fileName
+  anchor.rel = "noopener"
+  anchor.style.display = "none"
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0)
+}
+
+function hasUsablePressKitSectionGeometry(rawStyle: Record<string, unknown> | undefined): boolean {
+  if (!rawStyle) return true
+  const width = rawStyle.width
+  const height = rawStyle.height
+  const x = rawStyle.x
+  const y = rawStyle.y
+  if (typeof width === "number" && width < 320) return false
+  if (typeof height === "number" && height < 240) return false
+  if (typeof x === "number" && Math.abs(x) > 2400) return false
+  if (typeof y === "number" && Math.abs(y) > 2400) return false
+  return true
+}
+
+function hasUsablePressKitHeaderGeometry(rawStyle: Record<string, unknown> | undefined): boolean {
+  if (!rawStyle) return true
+  const width = rawStyle.width
+  const height = rawStyle.height
+  const x = rawStyle.x
+  const y = rawStyle.y
+  if (typeof width === "number" && width < 80) return false
+  if (typeof height === "number" && height < 16) return false
+  if (typeof x === "number" && Math.abs(x) > 1600) return false
+  if (typeof y === "number" && Math.abs(y) > 1600) return false
+  return true
+}
+
+function getPressKitSectionStyle(elementStyles: PressKitData["elementStyles"], isEditing: boolean): CSSProperties {
+  const rawStyle = elementStyles["press-kit-section"]
+  const width = rawStyle?.width
+  const height = rawStyle?.height
+  const x = rawStyle?.x
+  const y = rawStyle?.y
+  const scale = rawStyle?.scale
+  const includeGeometry = hasUsablePressKitSectionGeometry(rawStyle)
+  const style = { ...getElementLayoutStyle(elementStyles, "press-kit-section", { includeGeometry: false }) }
+
+  if (
+    includeGeometry &&
+    typeof x === "number" &&
+    typeof y === "number" &&
+    (x !== 0 || y !== 0 || (typeof scale === "number" && scale !== 1))
+  ) {
+    Object.assign(
+      style,
+      buildHeroStandardLayoutStyle({
+        x: roundLayoutPx(x),
+        y: roundLayoutPx(y),
+        scale: typeof scale === "number" ? scale : undefined,
+        width: typeof width === "number" ? roundLayoutPx(width) : undefined,
+        height: typeof height === "number" ? roundLayoutPx(height) : undefined,
+      })
+    )
+  } else if (includeGeometry) {
+    if (typeof width === "number") style.width = `${roundLayoutPx(width)}px`
+    if (typeof height === "number") style.height = `${roundLayoutPx(height)}px`
+  }
+
+  if (!isEditing) {
+    if (typeof x === "number" && x !== 0) style.marginLeft = `${roundLayoutPx(x)}px`
+    if (typeof y === "number" && y !== 0) style.marginTop = `${roundLayoutPx(y)}px`
+    delete style.opacity
+    delete style.transform
+    delete style.transformOrigin
+    delete style.width
+    delete style.height
+  }
   if (typeof rawStyle?.backgroundColor === "string") {
     style.backgroundColor = rawStyle.backgroundColor
     style.backgroundImage = "none"
@@ -24,8 +110,46 @@ function getPressKitBoxStyle(elementStyles: PressKitData["elementStyles"], nodeI
   return style
 }
 
-function getPressKitNodeStyle(elementStyles: PressKitData["elementStyles"], nodeId: string): CSSProperties {
-  return getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: true })
+function getPressKitBoxStyle(elementStyles: PressKitData["elementStyles"], nodeId: string, isEditing: boolean): CSSProperties {
+  const style = { ...getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: isEditing }) }
+  const rawStyle = elementStyles[nodeId]
+  delete style.opacity
+  if (!isEditing) {
+    delete style.transform
+    delete style.transformOrigin
+    delete style.width
+    delete style.height
+  }
+  if (typeof rawStyle?.backgroundColor === "string") {
+    style.backgroundColor = rawStyle.backgroundColor
+    style.backgroundImage = "none"
+  }
+  return style
+}
+
+function getPressKitNodeStyle(elementStyles: PressKitData["elementStyles"], nodeId: string, isEditing: boolean): CSSProperties {
+  const style = getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: isEditing })
+  if (!isEditing) {
+    delete style.transform
+    delete style.transformOrigin
+    delete style.width
+    delete style.height
+  }
+  return style
+}
+
+function getPressKitHeaderNodeStyle(elementStyles: PressKitData["elementStyles"], nodeId: string, isEditing: boolean): CSSProperties {
+  const rawStyle = elementStyles[nodeId]
+  const includeGeometry = isEditing && hasUsablePressKitHeaderGeometry(rawStyle)
+  const style = { ...getElementLayoutStyle(elementStyles, nodeId, { includeGeometry }) }
+  if (!includeGeometry) {
+    delete style.transform
+    delete style.transformOrigin
+    delete style.width
+    delete style.height
+  }
+  if (!isEditing) delete style.opacity
+  return style
 }
 
 function getPressKitEditorAttrs(elementStyles: PressKitData["elementStyles"], nodeId: string): Record<string, string> {
@@ -56,18 +180,22 @@ function getPressKitEditorAttrs(elementStyles: PressKitData["elementStyles"], no
 }
 
 export function PressKitSection({ data }: PressKitSectionProps) {
-  const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
+  const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
+  const pathname = usePathname()
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
-  const headerRef = useRef<HTMLDivElement>(null)
+  const eyebrowRef = useRef<HTMLSpanElement>(null)
+  const headerTitleRef = useRef<HTMLHeadingElement>(null)
+  const headerDescriptionRef = useRef<HTMLParagraphElement>(null)
   const mainCardRef = useRef<HTMLDivElement>(null)
   const folderIconRef = useRef<HTMLDivElement>(null)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const descriptionRef = useRef<HTMLParagraphElement>(null)
   const downloadButtonRef = useRef<HTMLAnchorElement>(null)
-  const resourceRefs = useRef<(HTMLAnchorElement | null)[]>([])
+  const resourceRefs = useRef<(HTMLDivElement | null)[]>([])
   const managerRef = useRef<HTMLButtonElement>(null)
   const [activeGalleryIndex, setActiveGalleryIndex] = useState<number | null>(null)
+  const disableHeaderReveal = isEditing || pathname.startsWith("/editor")
 
   const visibleResources = data.resources.slice(0, 2)
   const pressKitTitle = data.pressKitTitle
@@ -82,6 +210,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
     if (!isEditing) return
 
     if (sectionRef.current) {
+      const existing = getElementById("press-kit-section")
       registerEditable({
         id: 'press-kit-section',
         type: 'section',
@@ -89,12 +218,13 @@ export function PressKitSection({ data }: PressKitSectionProps) {
         parentId: null,
         element: sectionRef.current,
         originalRect: sectionRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: sectionRef.current.offsetWidth, height: sectionRef.current.offsetHeight },
       })
     }
 
     if (bgRef.current) {
+      const existing = getElementById("press-kit-bg")
       registerEditable({
         id: 'press-kit-bg',
         type: 'image',
@@ -102,25 +232,55 @@ export function PressKitSection({ data }: PressKitSectionProps) {
         parentId: 'press-kit-section',
         element: bgRef.current,
         originalRect: bgRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: bgRef.current.offsetWidth, height: bgRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: bgRef.current.offsetWidth, height: bgRef.current.offsetHeight },
       })
     }
 
-    if (headerRef.current) {
+    if (eyebrowRef.current) {
+      const existing = getElementById("press-kit-header-eyebrow")
       registerEditable({
-        id: 'press-kit-header',
-        type: 'text',
-        label: 'Press Kit Header',
-        parentId: 'press-kit-section',
-        element: headerRef.current,
-        originalRect: headerRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: headerRef.current.offsetWidth, height: headerRef.current.offsetHeight },
+        id: "press-kit-header-eyebrow",
+        type: "text",
+        label: "Press Kit Header Eyebrow",
+        parentId: "press-kit-section",
+        element: eyebrowRef.current,
+        originalRect: eyebrowRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: eyebrowRef.current.offsetWidth, height: eyebrowRef.current.offsetHeight },
+      })
+    }
+
+    if (headerTitleRef.current) {
+      const existing = getElementById("press-kit-header-title")
+      registerEditable({
+        id: "press-kit-header-title",
+        type: "text",
+        label: "Press Kit Header Title",
+        parentId: "press-kit-section",
+        element: headerTitleRef.current,
+        originalRect: headerTitleRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: headerTitleRef.current.offsetWidth, height: headerTitleRef.current.offsetHeight },
+      })
+    }
+
+    if (headerDescriptionRef.current) {
+      const existing = getElementById("press-kit-header-description")
+      registerEditable({
+        id: "press-kit-header-description",
+        type: "text",
+        label: "Press Kit Header Description",
+        parentId: "press-kit-section",
+        element: headerDescriptionRef.current,
+        originalRect: headerDescriptionRef.current.getBoundingClientRect(),
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: headerDescriptionRef.current.offsetWidth, height: headerDescriptionRef.current.offsetHeight },
       })
     }
 
     if (folderIconRef.current) {
+      const existing = getElementById("press-kit-folder-icon")
       registerEditable({
         id: 'press-kit-folder-icon',
         type: 'box',
@@ -128,12 +288,13 @@ export function PressKitSection({ data }: PressKitSectionProps) {
         parentId: 'press-kit-section',
         element: folderIconRef.current,
         originalRect: folderIconRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: folderIconRef.current.offsetWidth, height: folderIconRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: folderIconRef.current.offsetWidth, height: folderIconRef.current.offsetHeight },
       })
     }
 
     if (mainCardRef.current) {
+      const existing = getElementById("press-kit-main-card")
       registerEditable({
         id: 'press-kit-main-card',
         type: 'box',
@@ -141,12 +302,13 @@ export function PressKitSection({ data }: PressKitSectionProps) {
         parentId: 'press-kit-section',
         element: mainCardRef.current,
         originalRect: mainCardRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: mainCardRef.current.offsetWidth, height: mainCardRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: mainCardRef.current.offsetWidth, height: mainCardRef.current.offsetHeight },
       })
     }
 
     if (titleRef.current) {
+      const existing = getElementById("press-kit-title")
       registerEditable({
         id: 'press-kit-title',
         type: 'text',
@@ -154,12 +316,13 @@ export function PressKitSection({ data }: PressKitSectionProps) {
         parentId: 'press-kit-section',
         element: titleRef.current,
         originalRect: titleRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: titleRef.current.offsetWidth, height: titleRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: titleRef.current.offsetWidth, height: titleRef.current.offsetHeight },
       })
     }
 
     if (descriptionRef.current) {
+      const existing = getElementById("press-kit-description")
       registerEditable({
         id: 'press-kit-description',
         type: 'text',
@@ -167,12 +330,13 @@ export function PressKitSection({ data }: PressKitSectionProps) {
         parentId: 'press-kit-section',
         element: descriptionRef.current,
         originalRect: descriptionRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: descriptionRef.current.offsetWidth, height: descriptionRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: descriptionRef.current.offsetWidth, height: descriptionRef.current.offsetHeight },
       })
     }
 
     if (downloadButtonRef.current) {
+      const existing = getElementById("press-kit-download-button")
       registerEditable({
         id: 'press-kit-download-button',
         type: 'button',
@@ -180,8 +344,8 @@ export function PressKitSection({ data }: PressKitSectionProps) {
         parentId: 'press-kit-section',
         element: downloadButtonRef.current,
         originalRect: downloadButtonRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: downloadButtonRef.current.offsetWidth, height: downloadButtonRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: downloadButtonRef.current.offsetWidth, height: downloadButtonRef.current.offsetHeight },
       })
     }
 
@@ -189,6 +353,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
     resourceRefs.current = resourceRefs.current.slice(0, visibleResources.length)
     resourceRefs.current.forEach((ref, index) => {
       if (ref) {
+        const existing = getElementById(`press-kit-resource-${index}`)
         registerEditable({
           id: `press-kit-resource-${index}`,
           type: 'card',
@@ -196,13 +361,14 @@ export function PressKitSection({ data }: PressKitSectionProps) {
           parentId: 'press-kit-section',
           element: ref,
           originalRect: ref.getBoundingClientRect(),
-          transform: { x: 0, y: 0 },
-          dimensions: { width: ref.offsetWidth, height: ref.offsetHeight },
+          transform: existing?.transform || { x: 0, y: 0 },
+          dimensions: existing?.dimensions || { width: ref.offsetWidth, height: ref.offsetHeight },
         })
       }
     })
 
     if (managerRef.current) {
+      const existing = getElementById("press-kit-manager")
       registerEditable({
         id: 'press-kit-manager',
         type: 'card',
@@ -210,14 +376,17 @@ export function PressKitSection({ data }: PressKitSectionProps) {
         parentId: 'press-kit-section',
         element: managerRef.current,
         originalRect: managerRef.current.getBoundingClientRect(),
-        transform: { x: 0, y: 0 },
-        dimensions: { width: managerRef.current.offsetWidth, height: managerRef.current.offsetHeight },
+        transform: existing?.transform || { x: 0, y: 0 },
+        dimensions: existing?.dimensions || { width: managerRef.current.offsetWidth, height: managerRef.current.offsetHeight },
       })
     }
 
     return () => {
       unregisterEditable('press-kit-section')
       unregisterEditable('press-kit-bg')
+      unregisterEditable("press-kit-header-eyebrow")
+      unregisterEditable("press-kit-header-title")
+      unregisterEditable("press-kit-header-description")
       unregisterEditable('press-kit-folder-icon')
       unregisterEditable('press-kit-main-card')
       unregisterEditable('press-kit-title')
@@ -226,7 +395,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
       visibleResources.forEach((_, i) => unregisterEditable(`press-kit-resource-${i}`))
       unregisterEditable('press-kit-manager')
     }
-  }, [isEditing, registerEditable, unregisterEditable, visibleResources])
+  }, [getElementById, isEditing, registerEditable, unregisterEditable, visibleResources])
 
   return (
     <section 
@@ -236,7 +405,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
       data-editor-node-type="section"
       data-editor-node-label="Press Kit Section"
       {...getPressKitEditorAttrs(data.elementStyles, "press-kit-section")}
-      style={getPressKitBoxStyle(data.elementStyles, "press-kit-section")}>
+      style={getPressKitSectionStyle(data.elementStyles, isEditing)}>
       <div
         ref={bgRef}
         className="absolute inset-0 -z-10"
@@ -246,7 +415,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
         data-editor-node-label="Background Image"
         data-editor-src={pressKitBgSrc}
         {...getPressKitEditorAttrs(data.elementStyles, "press-kit-bg")}
-        style={getPressKitNodeStyle(data.elementStyles, "press-kit-bg")}
+        style={getPressKitNodeStyle(data.elementStyles, "press-kit-bg", isEditing)}
       >
         <Image
           src={pressKitBgSrc}
@@ -256,25 +425,63 @@ export function PressKitSection({ data }: PressKitSectionProps) {
           sizes="100vw"
         />
       </div>
-      <div className="section-photo-scrim" />
-      <div className="section-photo-fade-top" />
-      <div className="section-photo-fade-bottom" />
+      <div className="section-photo-scrim pointer-events-none" />
+      <div className="section-photo-fade-top pointer-events-none" />
+      <div className="section-photo-fade-bottom pointer-events-none" />
 
       <div className="relative z-20">
         <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
           <motion.div 
-            ref={headerRef}
             className="mb-10 md:mb-12"
           >
-            <div>
-              <SectionHeader
-              eyebrow="Media Resources"
-              title="Professional Press Materials"
-              description="Everything you need for press coverage, event promotion, and booking information."
-              dataEditId="press-kit-header"
-              dataEditType="text"
-              dataEditLabel="Press Kit Header"
-            />
+            <div className="mx-auto max-w-3xl text-center">
+              <motion.span
+                ref={eyebrowRef}
+                initial={disableHeaderReveal ? false : { opacity: 0, y: 8 }}
+                whileInView={disableHeaderReveal ? undefined : { opacity: 1, y: 0 }}
+                viewport={disableHeaderReveal ? undefined : { once: true, amount: 0.25 }}
+                transition={disableHeaderReveal ? undefined : { duration: 0.4 }}
+                className="mb-[var(--spacing-sm)] block text-[length:var(--text-small)] font-semibold uppercase tracking-[0.2em] text-primary"
+                data-editor-node-id="press-kit-header-eyebrow"
+                data-editor-node-type="text"
+                data-editor-node-label="Press Kit Header Eyebrow"
+                {...getPressKitEditorAttrs(data.elementStyles, "press-kit-header-eyebrow")}
+                style={getPressKitHeaderNodeStyle(data.elementStyles, "press-kit-header-eyebrow", isEditing)}
+              >
+                Media Resources
+              </motion.span>
+
+              <motion.h2
+                ref={headerTitleRef}
+                initial={disableHeaderReveal ? false : { opacity: 0, y: 10 }}
+                whileInView={disableHeaderReveal ? undefined : { opacity: 1, y: 0 }}
+                viewport={disableHeaderReveal ? undefined : { once: true, amount: 0.25 }}
+                transition={disableHeaderReveal ? undefined : { duration: 0.45, delay: 0.04 }}
+                className="mb-[var(--spacing-md)] text-balance font-serif text-[length:var(--text-h2)] leading-[var(--line-height-tight)] text-foreground"
+                data-editor-node-id="press-kit-header-title"
+                data-editor-node-type="text"
+                data-editor-node-label="Press Kit Header Title"
+                {...getPressKitEditorAttrs(data.elementStyles, "press-kit-header-title")}
+                style={getPressKitHeaderNodeStyle(data.elementStyles, "press-kit-header-title", isEditing)}
+              >
+                Professional Press Materials
+              </motion.h2>
+
+              <motion.p
+                ref={headerDescriptionRef}
+                initial={disableHeaderReveal ? false : { opacity: 0, y: 10 }}
+                whileInView={disableHeaderReveal ? undefined : { opacity: 1, y: 0 }}
+                viewport={disableHeaderReveal ? undefined : { once: true, amount: 0.25 }}
+                transition={disableHeaderReveal ? undefined : { duration: 0.45, delay: 0.08 }}
+                className="mx-auto max-w-2xl text-[length:var(--text-body)] leading-[var(--line-height-relaxed)] text-muted-foreground"
+                data-editor-node-id="press-kit-header-description"
+                data-editor-node-type="text"
+                data-editor-node-label="Press Kit Header Description"
+                {...getPressKitEditorAttrs(data.elementStyles, "press-kit-header-description")}
+                style={getPressKitHeaderNodeStyle(data.elementStyles, "press-kit-header-description", isEditing)}
+              >
+                Everything you need for press coverage, event promotion, and booking information.
+              </motion.p>
             </div>
           </motion.div>
 
@@ -288,7 +495,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
               data-editor-node-type="card"
               data-editor-node-label="Main Press Kit Card"
               {...getPressKitEditorAttrs(data.elementStyles, "press-kit-main-card")}
-              style={getPressKitBoxStyle(data.elementStyles, "press-kit-main-card")}
+              style={getPressKitBoxStyle(data.elementStyles, "press-kit-main-card", isEditing)}
             >
               <div
                 ref={folderIconRef}
@@ -297,7 +504,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
                 data-editor-node-type="card"
                 data-editor-node-label="Folder Icon"
                 {...getPressKitEditorAttrs(data.elementStyles, "press-kit-folder-icon")}
-                style={getPressKitBoxStyle(data.elementStyles, "press-kit-folder-icon")}
+                style={getPressKitBoxStyle(data.elementStyles, "press-kit-folder-icon", isEditing)}
               >
                 <FolderIcon className="h-8 w-8 text-[#FF8C21] sm:h-9 sm:w-9 md:h-10 md:w-10" />
               </div>
@@ -308,7 +515,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
                 data-editor-node-type="text"
                 data-editor-node-label="Press Kit Title"
                 {...getPressKitEditorAttrs(data.elementStyles, "press-kit-title")}
-                style={getPressKitNodeStyle(data.elementStyles, "press-kit-title")}>
+                style={getPressKitNodeStyle(data.elementStyles, "press-kit-title", isEditing)}>
                 {pressKitTitle}
               </h3>
               <p 
@@ -318,13 +525,15 @@ export function PressKitSection({ data }: PressKitSectionProps) {
                 data-editor-node-type="text"
                 data-editor-node-label="Press Kit Description"
                 {...getPressKitEditorAttrs(data.elementStyles, "press-kit-description")}
-                style={getPressKitNodeStyle(data.elementStyles, "press-kit-description")}>
+                style={getPressKitNodeStyle(data.elementStyles, "press-kit-description", isEditing)}>
                 {pressKitDescription}
               </p>
               <a
                 ref={downloadButtonRef}
                 href={pressKitButtonHref}
                 download={pressKitButtonFileName}
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={(event) => {
                   if (isEditing) event.preventDefault()
                 }}
@@ -335,7 +544,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
                 data-editor-download-name={pressKitButtonFileName}
                 data-editor-download-url={pressKitButtonHref}
                 {...getPressKitEditorAttrs(data.elementStyles, "press-kit-download-button")}
-                style={getPressKitBoxStyle(data.elementStyles, "press-kit-download-button")}>
+                style={getPressKitBoxStyle(data.elementStyles, "press-kit-download-button", isEditing)}>
                 <DownloadIcon className="h-6 w-6" />
                 {pressKitButtonLabel}
               </a>
@@ -346,19 +555,20 @@ export function PressKitSection({ data }: PressKitSectionProps) {
             {visibleResources.map((resource, index) => {
               const Icon = ImageIcon
               return (
-                <motion.a
+                <motion.div
                   ref={(el) => { resourceRefs.current[index] = el }}
                   key={resource.title}
                   initial={false}
                   whileHover={isEditing ? undefined : { y: -2 }}
                   transition={isEditing ? undefined : { type: "spring", stiffness: 320, damping: 22 }}
-                  href="#"
-                  onClick={(event) => {
-                    event.preventDefault()
+                  onClick={() => {
                     if (isEditing) return
                     setActiveGalleryIndex(index)
                   }}
-                  className="group rounded-xl border border-border bg-card/35 p-4 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg sm:rounded-2xl sm:p-5"
+                  className="group cursor-pointer rounded-xl border border-border bg-card/35 p-4 shadow-md backdrop-blur-sm transition-all duration-300 hover:border-[#FF8C21]/45 hover:shadow-lg sm:rounded-2xl sm:p-5"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!isEditing) setActiveGalleryIndex(index) } }}
                   data-editor-node-id={`press-kit-resource-${index}`}
                   data-editor-node-type="card"
                   data-editor-node-label={`Resource: ${resource.title}`}
@@ -367,14 +577,14 @@ export function PressKitSection({ data }: PressKitSectionProps) {
                   data-editor-resource-description={resource.description}
                   data-editor-resource-assets={JSON.stringify(resource.assets)}
                   {...getPressKitEditorAttrs(data.elementStyles, `press-kit-resource-${index}`)}
-                  style={getPressKitBoxStyle(data.elementStyles, `press-kit-resource-${index}`)}
+                  style={getPressKitBoxStyle(data.elementStyles, `press-kit-resource-${index}`, isEditing)}
                 >
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-muted-foreground transition-colors group-hover:text-foreground">
                     <Icon />
                   </div>
                   <h3 className="mb-1 font-medium text-foreground" data-editor-resource-title>{resource.title}</h3>
                   <p className="text-sm text-muted-foreground" data-editor-resource-description>{resource.description}</p>
-                </motion.a>
+                </motion.div>
               )
             })}
 
@@ -386,14 +596,13 @@ export function PressKitSection({ data }: PressKitSectionProps) {
               managerRole={data.managerRole}
               managerEmail={data.managerEmail}
               managerPhotoUrl={data.managerPhotoUrl}
-              managerStyle={getPressKitBoxStyle(data.elementStyles, "press-kit-manager")}
+              managerStyle={getPressKitBoxStyle(data.elementStyles, "press-kit-manager", isEditing)}
               managerAttrs={getPressKitEditorAttrs(data.elementStyles, "press-kit-manager")}
             />
           </div>
         </div>
       </div>
 
-      <div className="section-photo-fade-bottom" />
       {activeGalleryIndex !== null && visibleResources[activeGalleryIndex] && (
         <ResourceGalleryModal
           resource={visibleResources[activeGalleryIndex]}
@@ -411,6 +620,8 @@ function ResourceGalleryModal({
   resource: PressKitData["resources"][number]
   onClose: () => void
 }) {
+  const [downloadingAssetUrl, setDownloadingAssetUrl] = useState<string | null>(null)
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-5" onClick={onClose}>
       <div
@@ -441,13 +652,27 @@ function ResourceGalleryModal({
                 key={`${asset.url}-${asset.label}`}
                 href={asset.url}
                 download={asset.fileName}
+                onClick={async (event) => {
+                  event.preventDefault()
+                  if (downloadingAssetUrl === asset.url) return
+                  try {
+                    setDownloadingAssetUrl(asset.url)
+                    await triggerAssetDownload(asset.url, asset.fileName)
+                  } catch (error) {
+                    console.error("[press-kit-asset-download]", { assetUrl: asset.url, error })
+                  } finally {
+                    setDownloadingAssetUrl((current) => (current === asset.url ? null : current))
+                  }
+                }}
                 className="group overflow-hidden rounded-lg border border-border bg-background/60 shadow-sm transition-all hover:border-[#FF8C21]/50 hover:shadow-md"
                 aria-label={`Download ${asset.label}`}
               >
                 <div className="relative aspect-square w-full bg-secondary">
                   <img src={asset.url} alt={asset.label} className="h-full w-full object-cover" />
                 </div>
-                <div className="truncate px-2 py-2 text-xs font-medium text-foreground">{asset.label}</div>
+                <div className="truncate px-2 py-2 text-xs font-medium text-foreground">
+                  {downloadingAssetUrl === asset.url ? `Downloading ${asset.label}` : asset.label}
+                </div>
               </a>
             ))}
           </div>

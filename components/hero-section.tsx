@@ -189,7 +189,15 @@ function getHeroEditorGeometryAttrs(elementStyles: HeroData["elementStyles"], ta
   return attrs
 }
 
-export function HeroSection({ data, extraNodes = [] }: { data: HeroData; extraNodes?: HomeEditorNodeOverride[] }) {
+export function HeroSection({
+  data,
+  extraNodes = [],
+  editorExtraNodesInteractive = false,
+}: {
+  data: HeroData
+  extraNodes?: HomeEditorNodeOverride[]
+  editorExtraNodesInteractive?: boolean
+}) {
   const sectionRef = useRef<HTMLElement>(null)
 
   // Editable refs
@@ -506,7 +514,7 @@ export function HeroSection({ data, extraNodes = [] }: { data: HeroData; extraNo
         </div>
       </div>
 
-      <ExtraNodesRenderer nodes={extraNodes} sectionId="hero-section" />
+      <ExtraNodesRenderer nodes={extraNodes} sectionId="hero-section" allowPointerEvents={editorExtraNodesInteractive} />
     </section>
   )
 }
