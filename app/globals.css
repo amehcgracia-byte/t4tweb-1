@@ -1067,17 +1067,26 @@ section {
   .public-home [data-editor-node-id="live-section-concerts-container"],
   .public-home [data-editor-node-id="contact-email"],
   .public-home [data-editor-node-id="contact-telegram"],
-  .public-home [data-editor-node-id="contact-middle-text"],
-  .public-home [data-editor-node-id="footer-logo"],
-  .public-home [data-editor-node-id="footer-description"],
-  .public-home [data-editor-node-id="footer-cta"],
-  .public-home [data-editor-node-id="footer-social-group"],
-  .public-home [data-editor-node-id="footer-divider"],
-  .public-home [data-editor-node-id="footer-copyright"] {
+  .public-home [data-editor-node-id="contact-middle-text"] {
     transform: none !important;
     width: auto !important;
     height: auto !important;
     max-width: 100% !important;
+  }
+
+  .public-home [data-editor-node-id="hero-logo"] {
+    transform: none !important;
+    width: clamp(7rem, 30vw, 10rem) !important;
+    height: clamp(7rem, 30vw, 10rem) !important;
+    max-width: none !important;
+  }
+
+  .public-home [data-editor-node-id="hero-scroll-indicator"] {
+    transform: translateX(-50%) !important;
+    left: 50% !important;
+    bottom: 16rem !important;
+    width: auto !important;
+    height: auto !important;
   }
 
   .public-home [data-editor-node-id="latest-release-card"],
@@ -1112,6 +1121,12 @@ section {
 @media (max-width: 767px) {
   .public-home [data-editor-node-id^="extra-"] {
     display: none !important;
+  }
+}
+
+@media (max-width: 1279px) {
+  [data-editor-node-id="hero-title"] {
+    font-size: 41px !important;
   }
 }
 
@@ -1161,4 +1176,3 @@ body[data-editor-mode="true"] [data-editor-node-id]:hover {
 .resize-handle {
   pointer-events: auto !important;
 }
-

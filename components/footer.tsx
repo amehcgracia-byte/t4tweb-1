@@ -143,9 +143,9 @@ export function Footer({ data }: FooterProps) {
       data-editor-node-label="Footer Section"
       style={getSectionRootFlowStyle(elementStyles, "footer-section")}
       className="bg-black">
-      <div className="h-8 bg-gradient-to-b from-black/30 to-black sm:h-10 sm:from-black/20 md:h-12" />
+      <div className="h-6 bg-gradient-to-b from-black/30 to-black sm:h-8 sm:from-black/20 md:h-10" />
       
-      <div className="mx-auto max-w-4xl px-4 py-10 text-center sm:px-6 sm:py-12 flex flex-col items-center gap-10">
+      <div className="mx-auto flex max-w-4xl flex-col items-center gap-7 px-4 py-8 text-center sm:px-6 sm:py-10 sm:gap-8">
         
         <a
           ref={logoRef}
@@ -154,7 +154,7 @@ export function Footer({ data }: FooterProps) {
           data-editor-node-label="Footer Logo"
           href={footerLogoHref}
           style={getElementLayoutStyle(elementStyles, "footer-logo")}
-          className="mb-4 sm:mb-6 block"
+          className="block"
           aria-label="Back to top">
           <Image
             src={data.logoUrl}
@@ -171,11 +171,11 @@ export function Footer({ data }: FooterProps) {
           data-editor-node-type="text"
           data-editor-node-label="Footer Description"
           style={getElementLayoutStyle(elementStyles, "footer-description")}
-          className="mx-auto mb-5 max-w-2xl px-2 text-sm text-white/70 sm:mb-6 sm:text-lg">
+          className="mx-auto max-w-2xl px-2 text-sm text-white/70 sm:text-lg">
           {data.description}
         </p>
 
-        <div className="mb-7 px-2">
+        <div className="px-2">
           <a
             ref={ctaRef}
             data-editor-node-id="footer-cta"
@@ -196,7 +196,7 @@ export function Footer({ data }: FooterProps) {
           data-editor-grouped="true"
           data-link-group-summary="Footer Social Links"
           style={getElementLayoutStyle(elementStyles, "footer-social-group")}
-          className="mb-7 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+          className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           {data.socialLinks.map((link) => {
             const Icon = getFooterIcon(link.name, link.id)
             return (

@@ -15,7 +15,7 @@ interface ContactSectionProps {
 }
 
 const CONTACT_CARD_CLASS_NAME =
-  "group w-full rounded-xl border border-border bg-card/90 p-4 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg md:flex-1 md:max-[1024px]:max-w-full md:min-[1025px]:max-w-xs md:p-5 lg:p-7"
+  "group w-full rounded-xl border border-border bg-card/90 p-4 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg md:p-5 xl:flex-1 xl:max-w-xs xl:p-7"
 
 function getSafeContactSectionStyle(
   elementStyles: ContactSectionData["elementStyles"]
@@ -273,7 +273,7 @@ export function ContactSection({ data }: ContactSectionProps) {
       data-editor-node-type="section"
       data-editor-node-label="Sección de Contacto"
       style={getSafeContactSectionStyle(elementStyles)}
-      className="relative w-full max-w-full min-h-[82vh] min-h-[82dvh] overflow-hidden max-[1024px]:!min-h-0 sm:min-h-screen sm:min-h-[100dvh]">
+      className="relative w-full max-w-full overflow-hidden xl:min-h-screen xl:min-h-[100dvh]">
       <div 
         ref={bgRef}
         data-editor-node-id="contact-bg-image"
@@ -295,7 +295,7 @@ export function ContactSection({ data }: ContactSectionProps) {
       <div className="section-photo-fade-top" />
       <div className="section-photo-fade-bottom" />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center py-24 md:py-32">
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col justify-center px-4 py-16 sm:px-6 md:py-20 xl:min-h-screen xl:py-24">
         <div ref={headerRef} style={headerStyle} className="mb-10 md:mb-12">
           <div>
           <SectionHeader
@@ -311,7 +311,7 @@ export function ContactSection({ data }: ContactSectionProps) {
         </div>
 
         {/* Contact Options */}
-        <div className="flex flex-col items-stretch justify-center gap-4 md:flex-row md:items-center md:gap-8">
+        <div className="flex flex-col items-stretch justify-center gap-4 xl:flex-row xl:items-center xl:gap-8">
           <motion.div
             ref={emailCardRef}
             data-editor-node-id="contact-email"
@@ -364,7 +364,7 @@ export function ContactSection({ data }: ContactSectionProps) {
             </a>
           </motion.div>
 
-          <div className="px-4 text-center">
+          <div className="mx-auto max-w-md px-4 text-center">
             <p
               ref={middleTextRef}
               data-editor-node-id="contact-middle-text"

@@ -9,6 +9,8 @@ import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
+const HERO_MOBILE_BG_URL = "/images/sections/Hero bombe Phone version 2.png"
+
 function getRawElementStyle(elementStyles: HeroData["elementStyles"], targetId: string): Record<string, unknown> {
   const value = elementStyles?.[targetId]
   return value && typeof value === "object" ? value as Record<string, unknown> : {}
@@ -373,7 +375,7 @@ export function HeroSection({
       data-editor-node-type="section"
       data-editor-node-label="Hero Section"
       {...getHeroEditorGeometryAttrs(data.elementStyles, "hero-section")}
-      className="relative flex min-h-screen min-h-[100dvh] w-full items-stretch overflow-hidden bg-black"
+      className="relative flex min-h-[100svh] w-full items-stretch overflow-hidden bg-black xl:min-h-screen xl:min-h-[100dvh]"
       style={heroFrameStyle}
     >
       <div className="absolute inset-0 z-0">
@@ -391,32 +393,54 @@ export function HeroSection({
             className="absolute inset-0"
             style={getHeroBackgroundImageStyle(data.elementStyles)}
           >
-            <Image
-              src={content.bgUrl}
-              alt="Tales for the Tillerman live atmosphere"
-              fill
-              priority
-              unoptimized
-              sizes="100vw"
-              className="object-cover"
-              style={{ objectPosition: "center 15%" }}
-            />
+            <>
+              <Image
+                src={content.bgUrl}
+                alt="Tales for the Tillerman live atmosphere"
+                fill
+                priority
+                unoptimized
+                sizes="100vw"
+                className="hidden min-[1025px]:block object-cover"
+                style={{ objectPosition: "center 15%" }}
+              />
+              <Image
+                src={HERO_MOBILE_BG_URL}
+                alt="Tales for the Tillerman live atmosphere"
+                fill
+                priority
+                unoptimized
+                sizes="100vw"
+                className="object-cover opacity-30 blur-[3px] min-[1025px]:hidden"
+                style={{ objectPosition: "center -15%", transform: "scale(1.08)" }}
+              />
+              <Image
+                src={HERO_MOBILE_BG_URL}
+                alt="Tales for the Tillerman live atmosphere"
+                fill
+                priority
+                unoptimized
+                sizes="100vw"
+                className="object-contain min-[1025px]:hidden"
+                style={{ objectPosition: "center -15%" }}
+              />
+            </>
           </div>
         </motion.div>
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-36 bg-gradient-to-b from-black/20 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-1/2 bg-gradient-to-t from-black/42 via-black/10 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-24 bg-gradient-to-b from-black/28 to-transparent sm:h-28 xl:h-36 xl:from-black/20" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[44%] bg-gradient-to-t from-black/60 via-black/18 to-transparent sm:h-[46%] xl:h-1/2 xl:from-black/42" />
 
-      <div className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col justify-center px-4 sm:px-6 lg:px-8" style={heroFrameStyle}>
-        <div className="flex flex-col items-center pb-6 pt-8 text-center sm:pb-8 sm:pt-12">
+      <div className="relative z-10 flex min-h-[100svh] w-full flex-col justify-center px-4 sm:px-6 xl:min-h-screen xl:min-h-[100dvh] xl:px-8" style={heroFrameStyle}>
+        <div className="flex flex-col items-center pb-20 pt-16 text-center sm:pb-24 sm:pt-20 xl:pb-6 xl:pt-8">
           <h1
             ref={heroTitleRef}
             data-editor-node-id="hero-title"
             data-editor-node-type="text"
             data-editor-node-label="Hero Title"
             {...getHeroEditorGeometryAttrs(data.elementStyles, "hero-title")}
-            className="max-w-[880px] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-[3.9rem] mb-6"
+            className="order-1 mb-5 max-w-[880px] text-[1.24rem] font-semibold leading-tight tracking-tight text-white sm:text-[1.57rem] md:text-[1.9rem] lg:text-[2.6rem] xl:order-none xl:text-[3.9rem]"
             style={getHeroTextPatternStyle(data.elementStyles, "hero-title")}
           >
             {mainTitleText}
@@ -427,7 +451,7 @@ export function HeroSection({
             data-editor-node-type="image"
             data-editor-node-label="Hero Logo"
             {...getHeroEditorGeometryAttrs(data.elementStyles, "hero-logo")}
-            className="relative mt-2 mb-4 overflow-hidden"
+            className="relative order-3 mt-3 mb-4 overflow-hidden xl:order-none xl:mt-2"
             style={{
               ...{
                 width: "clamp(7rem, 24vw, 10rem)",
@@ -451,7 +475,7 @@ export function HeroSection({
             data-editor-node-type="text"
             data-editor-node-label="Subtítulo"
             {...getHeroEditorGeometryAttrs(data.elementStyles, "hero-subtitle")}
-            className="mt-1 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent sm:text-xs sm:tracking-[0.3em]"
+            className="order-2 mt-1 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] bg-gradient-to-r from-[#FFB15A] via-[#FF8C21] to-[#FF6C00] bg-clip-text text-transparent sm:text-xs sm:tracking-[0.3em] xl:order-none"
             style={getHeroTextPatternStyle(data.elementStyles, "hero-subtitle")}
           >
             {content.subtitle}
@@ -492,7 +516,7 @@ export function HeroSection({
         data-editor-node-label="Scroll Indicator"
         data-editor-grouped="true"
         {...getHeroEditorGeometryAttrs(data.elementStyles, "hero-scroll-indicator")}
-        className="absolute bottom-10 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2 text-white/80"
+        className="absolute bottom-16 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-2 text-white/80 sm:bottom-[4.5rem] xl:bottom-10"
         style={getHeroScrollIndicatorStyle(data.elementStyles)}
       >
         <span

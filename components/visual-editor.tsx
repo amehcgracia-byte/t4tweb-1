@@ -2722,6 +2722,33 @@ export function VisualEditorOverlay() {
     window.location.reload()
   }
 
+  const resetEditorToDefault = () => {
+    try {
+      window.sessionStorage.removeItem("__VISUAL_EDITOR_SESSION_STATE__")
+    } catch (e) {
+      // Silently fail
+    }
+
+    setSelectedId(null)
+    setSelectedIds([])
+    setOpenPanel(false)
+    setAddMenuOpen(false)
+    setAddMessage(null)
+    setDeployStatus(null)
+    setDeployDetails(null)
+    setDeployDetailsExpanded(false)
+    setCopyState("idle")
+    setHasNonPersistableUpload(false)
+    setVideoInputValues({})
+    setVideoApplyMessages({})
+    videoInputValuesRef.current = {}
+    setMarqueeRect(null)
+    dirtyNodeIdsRef.current.clear()
+    baselineNodeSignaturesRef.current.clear()
+
+    window.location.reload()
+  }
+
   const onDeploy = async () => {
     setDeployStatus("connecting")
     setDeployDetailsExpanded(false)
@@ -3317,7 +3344,16 @@ export function VisualEditorOverlay() {
         )}
       </div>
 
-      <div data-editor-toolbar className="fixed top-3 right-3 z-[9999] text-white">
+      <div data-editor-toolbar className="fixed top-3 right-3 z-[9999] flex items-start gap-2 text-white">
+        <button
+          type="button"
+          aria-label="Default"
+          title="Default"
+          onClick={resetEditorToDefault}
+          className="h-10 rounded-full border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white shadow-2xl backdrop-blur-sm hover:bg-white/20"
+        >
+          Default
+        </button>
         <div className="relative">
           <button
             type="button"

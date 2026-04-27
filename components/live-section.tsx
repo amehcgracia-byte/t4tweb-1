@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
@@ -126,7 +125,6 @@ export function LiveSection({ data }: LiveSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const [concerts, setConcerts] = useState<LiveConcert[]>(data.concerts)
   const [activeConcert, setActiveConcert] = useState<LiveConcert | null>(null)
-  const { opacity } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
 
   useEffect(() => {
@@ -165,7 +163,7 @@ export function LiveSection({ data }: LiveSectionProps) {
       data-editor-node-id="live-section"
       data-editor-node-type="section"
       data-editor-node-label="Live Section"
-      className="relative min-h-screen overflow-hidden bg-black"
+      className="relative overflow-hidden bg-black xl:min-h-screen"
       style={getSectionRootFlowStyle(data.elementStyles, "live-section")}
     >
       <div
@@ -190,8 +188,8 @@ export function LiveSection({ data }: LiveSectionProps) {
       <div className="section-photo-fade-bottom" />
 
       <div className="relative z-20 w-full">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-          <motion.div style={isEditing ? undefined : { opacity }} className="mb-16 text-center">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-14 xl:px-8 xl:py-16">
+          <div className="mb-12 text-center xl:mb-16">
             <SectionHeader
               eyebrow="Live Performances"
               title="See All Shows"
@@ -217,20 +215,16 @@ export function LiveSection({ data }: LiveSectionProps) {
               <BandsinTownIcon />
               Bandsintown
             </motion.a>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={isEditing ? false : { opacity: 0, y: 20 }}
-            whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
-            transition={isEditing ? undefined : { duration: 0.5, delay: 0.05 }}
-            className="mb-14"
-          >
+          <div className="mb-10 xl:mb-14">
             <SectionHeader
               eyebrow="Listen"
               title="Stream Our Music"
               className="mb-8"
               dataEditId="live-stream-header"
               dataEditLabel="Live Stream Header"
+              disableMotion
               elementStyles={data.elementStyles}
               includeGeometry
             />
@@ -317,7 +311,7 @@ export function LiveSection({ data }: LiveSectionProps) {
                 })}
               </div>
             </div>
-          </motion.div>
+          </div>
 
           <div
             data-editor-node-id="live-section-concerts-container"
@@ -329,12 +323,7 @@ export function LiveSection({ data }: LiveSectionProps) {
             className="relative"
             style={getElementLayoutStyle(data.elementStyles, "live-section-concerts-container")}
           >
-            <motion.div
-              initial={isEditing ? false : { opacity: 0, y: 20 }}
-              whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
-              transition={isEditing ? undefined : { duration: 0.5 }}
-              className="mb-12 min-h-[360px]"
-            >
+            <div className="mb-10">
               <h3
                 data-editor-node-id="live-upcoming-title"
                 data-editor-node-type="text"
@@ -482,13 +471,9 @@ export function LiveSection({ data }: LiveSectionProps) {
                   </p>
                 </div>
               )}
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={isEditing ? false : { opacity: 0, y: 20 }}
-              whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
-              transition={isEditing ? undefined : { duration: 0.5, delay: 0.05 }}
-            >
+            <div>
               <h3
                 data-editor-node-id="live-history-title"
                 data-editor-node-type="text"
@@ -636,7 +621,7 @@ export function LiveSection({ data }: LiveSectionProps) {
                   </p>
                 </div>
               )}
-            </motion.div>
+            </div>
           </div>
         </div>
       </div>

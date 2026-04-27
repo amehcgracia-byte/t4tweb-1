@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  allowedDevOrigins: ['192.168.178.120'],
   images: {
     // Cloudflare deployments can fail on the default Next.js image optimizer endpoint.
     // Keep Next/Image component behavior but serve original assets directly.

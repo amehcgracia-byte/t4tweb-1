@@ -2,9 +2,9 @@
 
 import { useRef, useEffect, useState } from "react"
 import type { CSSProperties } from "react"
+import { createPortal } from "react-dom"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import { usePathname } from "next/navigation"
 import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle, roundLayoutPx } from "@/lib/hero-layout-styles"
 import { getSectionRootFlowStyle } from "@/lib/section-root-layout"
@@ -74,16 +74,9 @@ function getPressKitSectionStyle(elementStyles: PressKitData["elementStyles"]): 
   return getSectionRootFlowStyle(elementStyles, "press-kit-section")
 }
 
-function getPressKitBoxStyle(elementStyles: PressKitData["elementStyles"], nodeId: string, isEditing: boolean): CSSProperties {
-  const style = { ...getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: isEditing }) }
+function getPressKitBoxStyle(elementStyles: PressKitData["elementStyles"], nodeId: string): CSSProperties {
+  const style = { ...getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: true }) }
   const rawStyle = elementStyles[nodeId]
-  delete style.opacity
-  if (!isEditing) {
-    delete style.transform
-    delete style.transformOrigin
-    delete style.width
-    delete style.height
-  }
   if (typeof rawStyle?.backgroundColor === "string") {
     style.backgroundColor = rawStyle.backgroundColor
     style.backgroundImage = "none"
@@ -91,20 +84,13 @@ function getPressKitBoxStyle(elementStyles: PressKitData["elementStyles"], nodeI
   return style
 }
 
-function getPressKitNodeStyle(elementStyles: PressKitData["elementStyles"], nodeId: string, isEditing: boolean): CSSProperties {
-  const style = getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: isEditing })
-  if (!isEditing) {
-    delete style.transform
-    delete style.transformOrigin
-    delete style.width
-    delete style.height
-  }
-  return style
+function getPressKitNodeStyle(elementStyles: PressKitData["elementStyles"], nodeId: string): CSSProperties {
+  return getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: true })
 }
 
-function getPressKitHeaderNodeStyle(elementStyles: PressKitData["elementStyles"], nodeId: string, isEditing: boolean): CSSProperties {
+function getPressKitHeaderNodeStyle(elementStyles: PressKitData["elementStyles"], nodeId: string): CSSProperties {
   const rawStyle = elementStyles[nodeId]
-  const includeGeometry = isEditing && hasUsablePressKitHeaderGeometry(rawStyle)
+  const includeGeometry = hasUsablePressKitHeaderGeometry(rawStyle)
   const style = { ...getElementLayoutStyle(elementStyles, nodeId, { includeGeometry }) }
   if (!includeGeometry) {
     delete style.transform
@@ -112,7 +98,6 @@ function getPressKitHeaderNodeStyle(elementStyles: PressKitData["elementStyles"]
     delete style.width
     delete style.height
   }
-  if (!isEditing) delete style.opacity
   return style
 }
 
@@ -145,14 +130,11 @@ function getPressKitEditorAttrs(elementStyles: PressKitData["elementStyles"], no
 }
 
 function getPressKitNodeAttrs(
-  enabled: boolean,
   nodeId: string,
   nodeType: string,
   nodeLabel: string,
   extraAttrs: Record<string, string> = {}
 ): Record<string, string> {
-  if (!enabled) return {}
-
   return {
     "data-editor-node-id": nodeId,
     "data-editor-node-type": nodeType,
@@ -163,7 +145,6 @@ function getPressKitNodeAttrs(
 
 export function PressKitSection({ data }: PressKitSectionProps) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
-  const pathname = usePathname()
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const eyebrowRef = useRef<HTMLSpanElement>(null)
@@ -186,8 +167,11 @@ export function PressKitSection({ data }: PressKitSectionProps) {
   const pressKitButtonFileName = data.pressKitButtonFileName
   const pressKitManagerTitle = data.managerTitle
   const pressKitBgSrc = data.backgroundImageUrl
-  const isEditorSurface = isEditing || pathname.startsWith("/editor")
-
+  const pressKitSectionStyle = getPressKitSectionStyle(data.elementStyles)
+  const pressKitOffsetX = typeof pressKitSectionStyle.marginLeft === "string" ? pressKitSectionStyle.marginLeft : "0px"
+  const pressKitOffsetY = typeof pressKitSectionStyle.marginTop === "string" ? pressKitSectionStyle.marginTop : "0px"
+  delete pressKitSectionStyle.marginLeft
+  delete pressKitSectionStyle.marginTop
   useEffect(() => {
     if (!isEditing) return
 
@@ -383,18 +367,22 @@ export function PressKitSection({ data }: PressKitSectionProps) {
     <section 
       id="press-kit"
       ref={sectionRef} 
-      className="relative min-h-[85vh] min-h-[85dvh] w-full overflow-hidden sm:min-h-screen sm:min-h-[100dvh]"
-      {...getPressKitNodeAttrs(isEditorSurface, "press-kit-section", "section", "Press Kit Section")}
-      style={getPressKitSectionStyle(data.elementStyles)}>
+      className="relative w-full overflow-hidden xl:min-h-screen xl:min-h-[100dvh] xl:ml-[var(--press-kit-offset-x)] xl:mt-[var(--press-kit-offset-y)]"
+      {...getPressKitNodeAttrs("press-kit-section", "section", "Press Kit Section")}
+      style={{
+        ...pressKitSectionStyle,
+        ["--press-kit-offset-x" as string]: pressKitOffsetX,
+        ["--press-kit-offset-y" as string]: pressKitOffsetY,
+      }}>
       <div
         ref={bgRef}
         className="absolute inset-0 -z-10"
-        {...getPressKitNodeAttrs(isEditorSurface, "press-kit-bg", "background", "Background Image", {
+        {...getPressKitNodeAttrs("press-kit-bg", "background", "Background Image", {
           "data-editor-media-kind": "image",
           "data-editor-src": pressKitBgSrc,
           ...getPressKitEditorAttrs(data.elementStyles, "press-kit-bg"),
         })}
-        style={getPressKitNodeStyle(data.elementStyles, "press-kit-bg", isEditing)}
+        style={getPressKitNodeStyle(data.elementStyles, "press-kit-bg")}
       >
         <Image
           src={pressKitBgSrc}
@@ -409,14 +397,14 @@ export function PressKitSection({ data }: PressKitSectionProps) {
       <div className="section-photo-fade-bottom pointer-events-none" />
 
       <div className="relative z-20">
-        <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
-          <div className="mb-10 md:mb-12">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 xl:px-8 xl:py-14">
+          <div className="mb-8 md:mb-10 xl:mb-12">
             <div className="mx-auto max-w-3xl text-center">
               <span
                 ref={eyebrowRef}
                 className="mb-[var(--spacing-sm)] block text-[length:var(--text-small)] font-semibold uppercase tracking-[0.2em] text-primary"
-                {...getPressKitNodeAttrs(isEditorSurface, "press-kit-header-eyebrow", "text", "Press Kit Header Eyebrow", getPressKitEditorAttrs(data.elementStyles, "press-kit-header-eyebrow"))}
-                style={getPressKitHeaderNodeStyle(data.elementStyles, "press-kit-header-eyebrow", isEditing)}
+                {...getPressKitNodeAttrs("press-kit-header-eyebrow", "text", "Press Kit Header Eyebrow", getPressKitEditorAttrs(data.elementStyles, "press-kit-header-eyebrow"))}
+                style={getPressKitHeaderNodeStyle(data.elementStyles, "press-kit-header-eyebrow")}
               >
                 Media Resources
               </span>
@@ -424,8 +412,8 @@ export function PressKitSection({ data }: PressKitSectionProps) {
               <h2
                 ref={headerTitleRef}
                 className="mb-[var(--spacing-md)] text-balance font-serif text-[length:var(--text-h2)] leading-[var(--line-height-tight)] text-foreground"
-                {...getPressKitNodeAttrs(isEditorSurface, "press-kit-header-title", "text", "Press Kit Header Title", getPressKitEditorAttrs(data.elementStyles, "press-kit-header-title"))}
-                style={getPressKitHeaderNodeStyle(data.elementStyles, "press-kit-header-title", isEditing)}
+                {...getPressKitNodeAttrs("press-kit-header-title", "text", "Press Kit Header Title", getPressKitEditorAttrs(data.elementStyles, "press-kit-header-title"))}
+                style={getPressKitHeaderNodeStyle(data.elementStyles, "press-kit-header-title")}
               >
                 Professional Press Materials
               </h2>
@@ -433,8 +421,8 @@ export function PressKitSection({ data }: PressKitSectionProps) {
               <p
                 ref={headerDescriptionRef}
                 className="mx-auto max-w-2xl text-[length:var(--text-body)] leading-[var(--line-height-relaxed)] text-muted-foreground"
-                {...getPressKitNodeAttrs(isEditorSurface, "press-kit-header-description", "text", "Press Kit Header Description", getPressKitEditorAttrs(data.elementStyles, "press-kit-header-description"))}
-                style={getPressKitHeaderNodeStyle(data.elementStyles, "press-kit-header-description", isEditing)}
+                {...getPressKitNodeAttrs("press-kit-header-description", "text", "Press Kit Header Description", getPressKitEditorAttrs(data.elementStyles, "press-kit-header-description"))}
+                style={getPressKitHeaderNodeStyle(data.elementStyles, "press-kit-header-description")}
               >
                 Everything you need for press coverage, event promotion, and booking information.
               </p>
@@ -444,32 +432,32 @@ export function PressKitSection({ data }: PressKitSectionProps) {
           <motion.div
             ref={mainCardRef}
             initial={false}
-            className="mb-10 md:mb-12">
+            className="mb-8 md:mb-10 xl:mb-12">
             <div 
               className="rounded-xl border border-border bg-card/35 p-4 text-center shadow-md backdrop-blur-sm sm:rounded-2xl sm:p-6 md:p-9"
-              {...getPressKitNodeAttrs(isEditorSurface, "press-kit-main-card", "card", "Main Press Kit Card", getPressKitEditorAttrs(data.elementStyles, "press-kit-main-card"))}
-              style={getPressKitBoxStyle(data.elementStyles, "press-kit-main-card", isEditing)}
+              {...getPressKitNodeAttrs("press-kit-main-card", "card", "Main Press Kit Card", getPressKitEditorAttrs(data.elementStyles, "press-kit-main-card"))}
+              style={getPressKitBoxStyle(data.elementStyles, "press-kit-main-card")}
             >
               <div
                 ref={folderIconRef}
                 className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-[#FF8C21]/18 sm:mb-5 sm:h-16 sm:w-16 md:mb-6 md:h-20 md:w-20"
-                {...getPressKitNodeAttrs(isEditorSurface, "press-kit-folder-icon", "card", "Folder Icon", getPressKitEditorAttrs(data.elementStyles, "press-kit-folder-icon"))}
-                style={getPressKitBoxStyle(data.elementStyles, "press-kit-folder-icon", isEditing)}
+                {...getPressKitNodeAttrs("press-kit-folder-icon", "card", "Folder Icon", getPressKitEditorAttrs(data.elementStyles, "press-kit-folder-icon"))}
+                style={getPressKitBoxStyle(data.elementStyles, "press-kit-folder-icon")}
               >
                 <FolderIcon className="h-8 w-8 text-[#FF8C21] sm:h-9 sm:w-9 md:h-10 md:w-10" />
               </div>
               <h3 
                 ref={titleRef}
                 className="mb-2 font-serif text-[clamp(1.5rem,6.5vw,2.1rem)] leading-tight text-foreground md:mb-3 md:text-[length:var(--text-h3)]"
-                {...getPressKitNodeAttrs(isEditorSurface, "press-kit-title", "text", "Press Kit Title", getPressKitEditorAttrs(data.elementStyles, "press-kit-title"))}
-                style={getPressKitNodeStyle(data.elementStyles, "press-kit-title", isEditing)}>
+                {...getPressKitNodeAttrs("press-kit-title", "text", "Press Kit Title", getPressKitEditorAttrs(data.elementStyles, "press-kit-title"))}
+                style={getPressKitNodeStyle(data.elementStyles, "press-kit-title")}>
                 {pressKitTitle}
               </h3>
               <p 
                 ref={descriptionRef}
                 className="mx-auto mb-5 max-w-lg text-sm leading-relaxed text-muted-foreground md:mb-7 md:text-[length:var(--text-body)]"
-                {...getPressKitNodeAttrs(isEditorSurface, "press-kit-description", "text", "Press Kit Description", getPressKitEditorAttrs(data.elementStyles, "press-kit-description"))}
-                style={getPressKitNodeStyle(data.elementStyles, "press-kit-description", isEditing)}>
+                {...getPressKitNodeAttrs("press-kit-description", "text", "Press Kit Description", getPressKitEditorAttrs(data.elementStyles, "press-kit-description"))}
+                style={getPressKitNodeStyle(data.elementStyles, "press-kit-description")}>
                 {pressKitDescription}
               </p>
               <a
@@ -482,19 +470,19 @@ export function PressKitSection({ data }: PressKitSectionProps) {
                   if (isEditing) event.preventDefault()
                 }}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF8C21] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-[#FF8C21]/22 transition-all hover:bg-[#FF7C00] sm:w-auto sm:px-7 sm:py-3.5 sm:text-base"
-                {...getPressKitNodeAttrs(isEditorSurface, "press-kit-download-button", "button", "Download Press Kit Button", {
+                {...getPressKitNodeAttrs("press-kit-download-button", "button", "Download Press Kit Button", {
                   "data-editor-download-name": pressKitButtonFileName,
                   "data-editor-download-url": pressKitButtonHref,
                   ...getPressKitEditorAttrs(data.elementStyles, "press-kit-download-button"),
                 })}
-                style={getPressKitBoxStyle(data.elementStyles, "press-kit-download-button", isEditing)}>
+                style={getPressKitBoxStyle(data.elementStyles, "press-kit-download-button")}>
                 <DownloadIcon className="h-6 w-6" />
                 {pressKitButtonLabel}
               </a>
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3 xl:gap-6">
             {visibleResources.map((resource, index) => {
               const Icon = ImageIcon
               return (
@@ -512,20 +500,20 @@ export function PressKitSection({ data }: PressKitSectionProps) {
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!isEditing) setActiveGalleryIndex(index) } }}
-                  {...getPressKitNodeAttrs(isEditorSurface, `press-kit-resource-${index}`, "card", `Resource: ${resource.title}`, {
+                  {...getPressKitNodeAttrs(`press-kit-resource-${index}`, "card", `Resource: ${resource.title}`, {
                     "data-editor-grouped": "true",
                     "data-editor-resource-title": resource.title,
                     "data-editor-resource-description": resource.description,
                     "data-editor-resource-assets": JSON.stringify(resource.assets),
                     ...getPressKitEditorAttrs(data.elementStyles, `press-kit-resource-${index}`),
                   })}
-                  style={getPressKitBoxStyle(data.elementStyles, `press-kit-resource-${index}`, isEditing)}
+                  style={getPressKitBoxStyle(data.elementStyles, `press-kit-resource-${index}`)}
                 >
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-secondary text-muted-foreground transition-colors group-hover:text-foreground">
                     <Icon />
                   </div>
-                  <h3 className="mb-1 font-medium text-foreground" {...(isEditorSurface ? { "data-editor-resource-title-node": "true" } : {})}>{resource.title}</h3>
-                  <p className="text-sm text-muted-foreground" {...(isEditorSurface ? { "data-editor-resource-description-node": "true" } : {})}>{resource.description}</p>
+                  <h3 className="mb-1 font-medium text-foreground" data-editor-resource-title-node="true">{resource.title}</h3>
+                  <p className="text-sm text-muted-foreground" data-editor-resource-description-node="true">{resource.description}</p>
                 </motion.div>
               )
             })}
@@ -538,8 +526,8 @@ export function PressKitSection({ data }: PressKitSectionProps) {
               managerRole={data.managerRole}
               managerEmail={data.managerEmail}
               managerPhotoUrl={data.managerPhotoUrl}
-              managerStyle={getPressKitBoxStyle(data.elementStyles, "press-kit-manager", isEditing)}
-              managerAttrs={getPressKitNodeAttrs(isEditorSurface, "press-kit-manager", "card", "Manager Contact", {
+              managerStyle={getPressKitBoxStyle(data.elementStyles, "press-kit-manager")}
+              managerAttrs={getPressKitNodeAttrs("press-kit-manager", "card", "Manager Contact", {
                 "data-editor-grouped": "true",
                 "data-editor-manager-role": data.managerRole,
                 "data-editor-manager-email": data.managerEmail,
@@ -571,9 +559,14 @@ function ResourceGalleryModal({
   onClose: () => void
 }) {
   const [downloadingAssetUrl, setDownloadingAssetUrl] = useState<string | null>(null)
+  if (typeof document === "undefined") return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-3 sm:p-5" onClick={onClose}>
+  return createPortal(
+    <div
+      data-press-gallery-modal="true"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/65 p-3 sm:p-5"
+      onClick={onClose}
+    >
       <div
         className="flex max-h-[90dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
@@ -628,7 +621,8 @@ function ResourceGalleryModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -693,6 +687,7 @@ function ManagerCard({
   managerAttrs: Record<string, string>
 }) {
   const [showModal, setShowModal] = useState(false)
+  const canPortal = typeof document !== "undefined"
   
   return (
     <>
@@ -721,13 +716,14 @@ function ManagerCard({
         <p className="text-sm text-muted-foreground" {...(managerAttrs["data-editor-manager-name"] ? { "data-editor-manager-name-node": "true" } : {})}>{managerName}</p>
       </motion.button>
 
-      {showModal && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      {showModal && canPortal && createPortal(
+        <div
+          data-press-manager-modal="true"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4"
           onClick={() => setShowModal(false)}
         >
-          <div 
-          className="relative max-h-[90vh] max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-6 shadow-xl"
+          <div
+            className="relative max-h-[90vh] max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
             onWheel={(e) => e.stopPropagation()}
           >
@@ -761,7 +757,8 @@ function ManagerCard({
               Contact Manager
             </a>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

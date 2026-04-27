@@ -1,7 +1,8 @@
 "use client"
 
 import { useRef, useState, useEffect, type CSSProperties } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { createPortal } from "react-dom"
+import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
@@ -41,7 +42,7 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
   const { isEditing } = useVisualEditor()
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 1024)
+    const checkMobile = () => setIsMobile(window.innerWidth < 1280)
     checkMobile()
     window.addEventListener("resize", checkMobile)
     return () => window.removeEventListener("resize", checkMobile)
@@ -116,9 +117,15 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
   const colabMembers = membersWithIndex.filter((member) => member.group === "colab")
   const activeMember = activeIndex === null ? null : (membersWithIndex[activeIndex] ?? null)
   const visibleMemberIndex = isMobile || modalOpen ? activeIndex : (isEditing ? activeIndex : hoveredIndex)
+  const canPortal = typeof document !== "undefined"
 
   const isMemberHighlighted = (memberIndex: number) =>
     visibleMemberIndex !== null && visibleMemberIndex === memberIndex
+  const bandSectionStyle = getBandMembersSectionStyle(data.elementStyles || {})
+  const bandOffsetX = typeof bandSectionStyle.marginLeft === "string" ? bandSectionStyle.marginLeft : "0px"
+  const bandOffsetY = typeof bandSectionStyle.marginTop === "string" ? bandSectionStyle.marginTop : "0px"
+  delete bandSectionStyle.marginLeft
+  delete bandSectionStyle.marginTop
 
   const renderMemberPhoto = (
     blockMembers: typeof membersWithIndex,
@@ -132,8 +139,8 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
     const showPreviewBlock = Boolean(activeBlockMember) || isMobile || modalOpen
     return (
       <div
-        className={`pointer-events-none absolute top-0 hidden h-full w-[min(34vw,520px)] overflow-hidden rounded-[2rem] transition-[opacity,transform,background-color,box-shadow] duration-300 ease-out lg:block ${
-          align === "left" ? "-left-28 xl:-left-40" : "-right-28 xl:-right-40"
+        className={`pointer-events-none absolute top-0 hidden h-full w-[min(34vw,520px)] overflow-hidden rounded-[2rem] transition-[opacity,transform,background-color,box-shadow] duration-300 ease-out xl:block ${
+          align === "left" ? "-left-28 2xl:-left-40" : "-right-28 2xl:-right-40"
         } ${
           showPreviewBlock
             ? "translate-x-0 bg-zinc-950/90 opacity-100 shadow-2xl"
@@ -213,7 +220,7 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
           role="button"
           tabIndex={0}
           aria-label={`${member.fullName} card`}
-          className={`group flex min-h-[84px] w-full touch-manipulation items-center justify-center rounded-2xl border px-5 py-4 text-center transition-all duration-300 md:min-h-[108px] md:rounded-[1.75rem] md:px-8 md:py-6
+          className={`group flex min-h-[72px] w-full touch-manipulation items-center justify-center rounded-2xl border px-5 py-4 text-center transition-all duration-300 md:min-h-[92px] md:rounded-[1.75rem] md:px-8 md:py-5
             ${
               isMemberHighlighted(member.editorIndex)
                 ? "border-orange-500/80 bg-zinc-900/85 shadow-[0_18px_48px_rgba(0,0,0,0.28)]"
@@ -258,8 +265,12 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
       data-editor-node-id="band-members-section"
       data-editor-node-type="section"
       data-editor-node-label="Sección Miembros de la Banda"
-      className="relative isolate min-h-screen w-full overflow-hidden bg-black"
-      style={getBandMembersSectionStyle(data.elementStyles || {})}
+      className="relative isolate w-full overflow-hidden bg-black xl:ml-[var(--band-offset-x)] xl:mt-[var(--band-offset-y)] xl:min-h-screen"
+      style={{
+        ...bandSectionStyle,
+        ["--band-offset-x" as string]: bandOffsetX,
+        ["--band-offset-y" as string]: bandOffsetY,
+      }}
     >
       {/* Fondo full width */}
       <div 
@@ -286,10 +297,10 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
 
       <div className="section-photo-scrim z-10" />
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 xl:px-8">
           <motion.div
             style={isEditing ? undefined : { opacity, y }}
-            className="mb-8 md:mb-12 lg:mb-16 text-center"
+            className="mb-8 text-center md:mb-12 xl:mb-16"
           >
           <SectionHeader
             eyebrow={data.headerEyebrow}
@@ -300,10 +311,10 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
           />
         </motion.div>
 
-        <div className="space-y-14 pb-16 lg:space-y-20">
-          <div className="relative min-h-[420px] lg:min-h-[640px]">
+        <div className="space-y-8 pb-8 md:space-y-10 md:pb-10 xl:space-y-20 xl:pb-16">
+          <div className="relative xl:min-h-[640px]">
             {renderMemberPhoto(bandMembers, 0, "left")}
-            <div className="relative z-10 ml-auto max-w-[41rem] lg:pr-8 lg:py-10 xl:pr-12">
+            <div className="relative z-10 ml-auto max-w-[41rem] xl:py-10 xl:pr-8 2xl:pr-12">
               {renderMemberCards(bandMembers)}
             </div>
           </div>
@@ -319,9 +330,9 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
               >
                 Musician Colabs
               </h3>
-              <div className="relative min-h-[420px] lg:min-h-[640px]">
+              <div className="relative xl:min-h-[640px]">
                 {renderMemberPhoto(colabMembers, bandMembers.length, "right")}
-                <div className="relative z-10 mr-auto max-w-[41rem] lg:pl-8 lg:py-10 xl:pl-12">
+                <div className="relative z-10 mr-auto max-w-[41rem] xl:py-10 xl:pl-8 2xl:pl-12">
                   {renderMemberCards(colabMembers)}
                 </div>
               </div>
@@ -331,14 +342,14 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
       </div>
 
       {/* Mobile modal */}
-      <AnimatePresence>
-        {modalOpen && activeMember && (
+      {modalOpen && activeMember && canPortal
+        ? createPortal(
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-3.5 lg:hidden"
+            data-member-mobile-modal="true"
+            className="fixed inset-0 z-[70] flex items-center justify-center p-3.5 xl:hidden"
             onClick={() => setModalOpen(false)}
           >
             <div className="absolute inset-0 bg-black/80" />
@@ -378,9 +389,9 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
                 </svg>
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </motion.div>,
+          document.body
+        ) : null}
     </section>
   )
 }

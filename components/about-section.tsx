@@ -311,7 +311,7 @@ export function AboutSection({ className = "", data, sectionId }: AboutSectionPr
       data-editor-node-type="section"
       data-editor-node-label="About Section"
       {...getAboutEditorAttrs(data.elementStyles, "about-section")}
-      className={`relative isolate min-h-screen w-full overflow-hidden bg-black ${className}`}
+      className={`relative isolate w-full overflow-hidden bg-black xl:min-h-screen ${className}`}
       style={getAboutSectionStyle(data.elementStyles)}
     >
       <div
@@ -329,8 +329,8 @@ export function AboutSection({ className = "", data, sectionId }: AboutSectionPr
           src={data.backgroundImageUrl}
           alt="Band members background"
           fill
-          className="object-cover"
-          style={{ objectPosition: "center top" }}
+          className="object-cover scale-[0.94] sm:scale-[0.96] xl:scale-100"
+          style={{ objectPosition: "center 6%" }}
         />
       </div>
 
@@ -338,9 +338,9 @@ export function AboutSection({ className = "", data, sectionId }: AboutSectionPr
       <div className="section-photo-fade-top z-10" />
       <div className="section-photo-fade-bottom z-10" />
 
-      <div className="relative z-20 flex min-h-screen min-h-[100dvh] items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div className="relative z-20 flex items-start justify-center px-4 py-12 sm:px-6 sm:py-14 xl:min-h-screen xl:min-h-[100dvh] xl:items-center xl:px-8 xl:py-24">
         <div className="mx-auto w-full max-w-4xl">
-          <div className="relative z-20 mb-10 max-w-4xl md:mb-12">
+          <div className="relative z-20 mb-8 max-w-4xl md:mb-10 xl:mb-12">
             <p
               ref={eyebrowRef}
               data-editor-node-id="about-header-eyebrow"
@@ -358,7 +358,7 @@ export function AboutSection({ className = "", data, sectionId }: AboutSectionPr
               data-editor-node-type="text"
               data-editor-node-label="About Header"
               {...getAboutEditorAttrs(data.elementStyles, "about-header-title")}
-              className="text-4xl font-black leading-[0.95] text-white md:text-6xl lg:text-7xl"
+              className="text-[2.25rem] font-black leading-[0.95] text-white sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl"
               style={getAboutNodeStyle(data.elementStyles, "about-header-title")}
             >
               {data.title}
@@ -371,7 +371,7 @@ export function AboutSection({ className = "", data, sectionId }: AboutSectionPr
             data-editor-node-type="card"
             data-editor-node-label="About Text Card"
             {...getAboutEditorAttrs(data.elementStyles, "about-text-card")}
-            className="relative z-10 w-full rounded-3xl border border-white/10 bg-black/50 px-6 py-8 shadow-2xl backdrop-blur-md md:px-10 md:py-12 lg:px-12 lg:py-14"
+            className="relative z-10 w-full rounded-3xl border border-white/10 bg-black/50 px-6 py-7 shadow-2xl backdrop-blur-md md:px-10 md:py-10 lg:px-12 lg:py-14"
             style={getAboutBoxStyle(data.elementStyles, "about-text-card")}
           >
             <div className="space-y-6 text-white md:space-y-8">
