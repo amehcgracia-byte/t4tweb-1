@@ -11,8 +11,12 @@ import type { NavigationData } from "@/lib/sanity/navigation-loader"
  * editor stores box opacity as backgroundColor alpha, never CSS opacity,
  * so text/logo/icon children stay fully opaque in public render.
  */
-function getNavbarBoxPatternStyle(elementStyles: NavigationData["elementStyles"], targetId: string): CSSProperties {
-  const style = { ...getElementLayoutStyle(elementStyles, targetId, { includeGeometry: true }) }
+function getNavbarBoxPatternStyle(
+  elementStyles: NavigationData["elementStyles"],
+  targetId: string,
+  includeGeometry: boolean
+): CSSProperties {
+  const style = { ...getElementLayoutStyle(elementStyles, targetId, { includeGeometry }) }
   delete style.opacity
 
   const persistedStyle = elementStyles[targetId]
@@ -24,8 +28,12 @@ function getNavbarBoxPatternStyle(elementStyles: NavigationData["elementStyles"]
   return style
 }
 
-function getNavbarElementStyle(elementStyles: NavigationData["elementStyles"], targetId: string): CSSProperties {
-  return getElementLayoutStyle(elementStyles, targetId, { includeGeometry: true })
+function getNavbarElementStyle(
+  elementStyles: NavigationData["elementStyles"],
+  targetId: string,
+  includeGeometry: boolean
+): CSSProperties {
+  return getElementLayoutStyle(elementStyles, targetId, { includeGeometry })
 }
 
 export function Navigation({ data }: { data: NavigationData }) {
@@ -47,6 +55,7 @@ export function Navigation({ data }: { data: NavigationData }) {
   const navLinks = data.links
   // Component renders from Sanity data directly - no override hooks
   const resolvedNavLogoSrc = data.brandLogoUrl || "/images/logo-qr.png"
+  const allowGeometryOverrides = isEditing
 
   // Register editable elements when editing
   useEffect(() => {
@@ -212,7 +221,7 @@ export function Navigation({ data }: { data: NavigationData }) {
       data-editor-node-type="section"
       data-editor-node-label="Navigation"
       className={navClassName}
-      style={getNavbarBoxPatternStyle(data.elementStyles, "navigation")}
+      style={getNavbarBoxPatternStyle(data.elementStyles, "navigation", allowGeometryOverrides)}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center md:h-[5.5rem]">
@@ -222,7 +231,7 @@ export function Navigation({ data }: { data: NavigationData }) {
             data-editor-node-type="card"
             data-editor-node-label="Navigation Inner Container"
             className="flex h-16 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 md:h-[4.5rem] md:px-4"
-            style={getNavbarBoxPatternStyle(data.elementStyles, "navigation-inner")}
+            style={getNavbarBoxPatternStyle(data.elementStyles, "navigation-inner", allowGeometryOverrides)}
           >
             <a
               ref={logoLinkRef}
@@ -240,7 +249,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                     width: "clamp(2.75rem, 9vw, 3.5rem)",
                     height: "clamp(2.75rem, 9vw, 3.5rem)",
                   },
-                  ...getNavbarElementStyle(data.elementStyles, "nav-logo"),
+                  ...getNavbarElementStyle(data.elementStyles, "nav-logo", allowGeometryOverrides),
                 }}
               >
                 <Image
@@ -256,7 +265,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-id="nav-brand-name"
                 data-editor-node-type="text"
                 data-editor-node-label="Brand Name"
-                style={getNavbarElementStyle(data.elementStyles, "nav-brand-name")}
+                style={getNavbarElementStyle(data.elementStyles, "nav-brand-name", allowGeometryOverrides)}
               >
                 {data.brandName}
               </span>
@@ -272,7 +281,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id={`nav-link-${index}`}
                   data-editor-node-type="button"
                   data-editor-node-label={`Nav Link: ${link.label}`}
-                  style={getNavbarBoxPatternStyle(data.elementStyles, `nav-link-${index}`)}
+                  style={getNavbarBoxPatternStyle(data.elementStyles, `nav-link-${index}`, allowGeometryOverrides)}
                 >
                   {link.label}
                 </a>
@@ -284,7 +293,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-type="button"
                 data-editor-node-label="Book Button"
                 className={primaryCtaClass}
-                style={getNavbarBoxPatternStyle(data.elementStyles, "nav-book-button")}
+                style={getNavbarBoxPatternStyle(data.elementStyles, "nav-book-button", allowGeometryOverrides)}
               >
                 {data.ctaLabel || "Book"}
               </a>
@@ -328,7 +337,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id={`nav-mobile-link-${index}`}
                   data-editor-node-type="button"
                   data-editor-node-label={`Mobile Nav: ${link.label}`}
-                  style={getNavbarBoxPatternStyle(data.elementStyles, `nav-mobile-link-${index}`)}
+                  style={getNavbarBoxPatternStyle(data.elementStyles, `nav-mobile-link-${index}`, allowGeometryOverrides)}
                 >
                   {link.label}
                 </a>
@@ -342,7 +351,7 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id="nav-mobile-book-button"
                   data-editor-node-type="button"
                   data-editor-node-label="Mobile Book Button"
-                  style={getNavbarBoxPatternStyle(data.elementStyles, "nav-mobile-book-button")}
+                  style={getNavbarBoxPatternStyle(data.elementStyles, "nav-mobile-book-button", allowGeometryOverrides)}
                 >
                   {data.ctaLabel || "Book"}
                 </a>

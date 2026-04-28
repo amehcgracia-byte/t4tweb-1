@@ -118,9 +118,12 @@ function isLegacyWashedHeroBackgroundStyle(styles: Record<string, unknown>): boo
   )
 }
 
-function getHeroBackgroundImageStyle(elementStyles: HeroData["elementStyles"]): CSSProperties {
+function getHeroBackgroundImageStyle(
+  elementStyles: HeroData["elementStyles"],
+  includeGeometry: boolean
+): CSSProperties {
   const rawStyles = getRawElementStyle(elementStyles, "hero-bg-image")
-  const baseStyle = getElementLayoutStyle(elementStyles, "hero-bg-image", { includeGeometry: true })
+  const baseStyle = getElementLayoutStyle(elementStyles, "hero-bg-image", { includeGeometry })
 
   if (!isLegacyWashedHeroBackgroundStyle(rawStyles)) {
     return baseStyle
@@ -139,7 +142,7 @@ function getHeroBackgroundImageStyle(elementStyles: HeroData["elementStyles"]): 
       },
     },
     "hero-bg-image",
-    { includeGeometry: true }
+    { includeGeometry }
   )
 }
 
@@ -359,10 +362,15 @@ export function HeroSection({
   const backgroundY = useTransform(scrollYProgress, [0, 1], [staticY, 35])
 
   const content = data
+  const allowBackgroundGeometry = true
 
   const mainTitleText = content.title || ""
   const scrollLabelText = content.scrollLabel || "SCROLL"
   const heroFrameStyle = getHeroSectionFrameStyle(data.elementStyles)
+  const heroSectionStyle = {
+    ...getElementLayoutStyle(data.elementStyles, "hero-section", { includeGeometry: true }),
+    ...heroFrameStyle,
+  }
 
   return (
     <section
@@ -376,7 +384,7 @@ export function HeroSection({
       data-editor-node-label="Hero Section"
       {...getHeroEditorGeometryAttrs(data.elementStyles, "hero-section")}
       className="relative flex min-h-[100svh] w-full items-stretch overflow-hidden bg-black xl:min-h-screen xl:min-h-[100dvh]"
-      style={heroFrameStyle}
+      style={heroSectionStyle}
     >
       <div className="absolute inset-0 z-0">
         <motion.div
@@ -391,7 +399,7 @@ export function HeroSection({
             data-editor-node-label="Hero Background"
             {...getHeroEditorGeometryAttrs(data.elementStyles, "hero-bg-image")}
             className="absolute inset-0"
-            style={getHeroBackgroundImageStyle(data.elementStyles)}
+            style={getHeroBackgroundImageStyle(data.elementStyles, allowBackgroundGeometry)}
           >
             <>
               <Image
@@ -402,7 +410,7 @@ export function HeroSection({
                 unoptimized
                 sizes="100vw"
                 className="hidden min-[1025px]:block object-cover"
-                style={{ objectPosition: "center 15%" }}
+                style={{ objectPosition: "50% calc(18% - 1vw)" }}
               />
               <Image
                 src={HERO_MOBILE_BG_URL}
@@ -412,7 +420,7 @@ export function HeroSection({
                 unoptimized
                 sizes="100vw"
                 className="object-cover opacity-30 blur-[3px] min-[1025px]:hidden"
-                style={{ objectPosition: "center -15%", transform: "scale(1.08)" }}
+                style={{ objectPosition: "50% calc(8% - 4vw)", transform: "scale(1.08)" }}
               />
               <Image
                 src={HERO_MOBILE_BG_URL}
@@ -422,7 +430,7 @@ export function HeroSection({
                 unoptimized
                 sizes="100vw"
                 className="object-contain min-[1025px]:hidden"
-                style={{ objectPosition: "center -15%" }}
+                style={{ objectPosition: "50% calc(8% - 4vw)" }}
               />
             </>
           </div>
@@ -432,7 +440,7 @@ export function HeroSection({
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-24 bg-gradient-to-b from-black/28 to-transparent sm:h-28 xl:h-36 xl:from-black/20" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[44%] bg-gradient-to-t from-black/60 via-black/18 to-transparent sm:h-[46%] xl:h-1/2 xl:from-black/42" />
 
-      <div className="relative z-10 flex min-h-[100svh] w-full flex-col justify-center px-4 sm:px-6 xl:min-h-screen xl:min-h-[100dvh] xl:px-8" style={heroFrameStyle}>
+      <div className="hero-frame-shell relative z-10 flex min-h-[100svh] w-full flex-col justify-center px-4 sm:px-6 xl:min-h-screen xl:min-h-[100dvh] xl:px-8" style={heroFrameStyle}>
         <div className="flex flex-col items-center pb-20 pt-16 text-center sm:pb-24 sm:pt-20 xl:pb-6 xl:pt-8">
           <h1
             ref={heroTitleRef}

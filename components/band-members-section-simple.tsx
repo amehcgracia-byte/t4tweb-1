@@ -40,6 +40,7 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
   const [isMobile, setIsMobile] = useState(false)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
+  const allowBackgroundGeometry = isEditing
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1280)
@@ -279,7 +280,7 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo banda"
         className="absolute inset-0 z-0"
-        style={getElementLayoutStyle(data.elementStyles || {}, "band-members-bg", { includeGeometry: true })}
+        style={getElementLayoutStyle(data.elementStyles || {}, "band-members-bg", { includeGeometry: allowBackgroundGeometry })}
       >
         <Image
           src={data.backgroundImageUrl}

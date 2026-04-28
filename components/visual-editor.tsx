@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
+import { DEFAULT_SECTION_LAYOUT_PRESET, SAFE_FLOW_PROTECTED_SECTION_IDS } from "@/lib/editor-default-layout"
 import { TEXT_EMPHASIS_SHADOW, applyScrollIndicatorLayoutToElement, clearScrollIndicatorLayoutFromElement } from "@/lib/hero-layout-styles"
 
 type NodeType = "section" | "background" | "card" | "text" | "button" | "image" | "group" | "overlay"
@@ -120,6 +121,19 @@ interface EditorNode {
   explicitStyle: boolean
   explicitPosition: boolean
   explicitSize: boolean
+}
+
+interface SectionFlowMetric {
+  nodeId: string
+  top: number
+  bottom: number
+  height: number
+  width: number
+  marginTop: string
+  transform: string
+  position: string
+  minHeight: string
+  y: number | null
 }
 
 interface HydratedNodeOverride {
@@ -2725,10 +2739,9 @@ export function VisualEditorOverlay() {
   const resetEditorToDefault = () => {
     try {
       window.sessionStorage.removeItem("__VISUAL_EDITOR_SESSION_STATE__")
-    } catch (e) {
-      // Silently fail
+    } catch (error) {
+      console.error("[visual-editor] failed to clear session preset cache", error)
     }
-
     setSelectedId(null)
     setSelectedIds([])
     setOpenPanel(false)
@@ -2744,9 +2757,20 @@ export function VisualEditorOverlay() {
     videoInputValuesRef.current = {}
     setMarqueeRect(null)
     dirtyNodeIdsRef.current.clear()
-    baselineNodeSignaturesRef.current.clear()
-
-    window.location.reload()
+    for (const [nodeId, preset] of Object.entries(DEFAULT_SECTION_LAYOUT_PRESET)) {
+      dispatch({
+        type: "SET_NODE_GEOMETRY",
+        nodeId,
+        x: preset.x,
+        y: preset.y,
+        width: preset.width,
+        height: preset.height,
+        explicitSize: true,
+      })
+      if (typeof preset.scale === "number") {
+        dispatch({ type: "SET_NODE_SCALE", nodeId, scale: preset.scale })
+      }
+    }
   }
 
   const onDeploy = async () => {
@@ -2777,12 +2801,32 @@ export function VisualEditorOverlay() {
         explicitPosition: node.explicitPosition,
         explicitSize: node.explicitSize,
       }))
+      const sectionFlowMetrics: SectionFlowMetric[] = Array.from(SAFE_FLOW_PROTECTED_SECTION_IDS).flatMap((nodeId) => {
+        const element = document.querySelector<HTMLElement>(`[data-editor-node-id="${nodeId}"]`)
+        const node = nodesRef.current.get(nodeId)
+        if (!element || !node) return []
+        const rect = element.getBoundingClientRect()
+        const style = window.getComputedStyle(element)
+        return [{
+          nodeId,
+          top: rect.top,
+          bottom: rect.bottom,
+          height: rect.height,
+          width: rect.width,
+          marginTop: style.marginTop,
+          transform: style.transform,
+          position: style.position,
+          minHeight: style.minHeight,
+          y: typeof node.geometry.y === "number" ? node.geometry.y : null,
+        }]
+      })
       const payload = {
         level: "green" as const,
         findings: [],
         nodes: serializedNodes,
         allNodes: serializedNodes,
         changedNodeIds,
+        sectionFlowMetrics,
       }
       const response = await fetch("/api/editor-deploy", {
         method: "POST",

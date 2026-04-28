@@ -5,8 +5,12 @@ import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
 import type { IntroBannerData } from "@/lib/sanity/intro-banner-loader"
 
-function getIntroBoxPatternStyle(elementStyles: IntroBannerData["elementStyles"], targetId: string): CSSProperties {
-  const style = { ...getElementLayoutStyle(elementStyles, targetId, { includeGeometry: true }) }
+function getIntroBoxPatternStyle(
+  elementStyles: IntroBannerData["elementStyles"],
+  targetId: string,
+  includeGeometry: boolean
+): CSSProperties {
+  const style = { ...getElementLayoutStyle(elementStyles, targetId, { includeGeometry }) }
   delete style.opacity
 
   const persistedStyle = elementStyles[targetId]
@@ -18,10 +22,13 @@ function getIntroBoxPatternStyle(elementStyles: IntroBannerData["elementStyles"]
   return style
 }
 
-function getIntroGifStyle(elementStyles: IntroBannerData["elementStyles"]): CSSProperties {
+function getIntroGifStyle(
+  elementStyles: IntroBannerData["elementStyles"],
+  includeGeometry: boolean
+): CSSProperties {
   return {
     opacity: 0.3,
-    ...getElementLayoutStyle(elementStyles, "intro-banner-gif", { includeGeometry: true }),
+    ...getElementLayoutStyle(elementStyles, "intro-banner-gif", { includeGeometry }),
   }
 }
 
@@ -63,6 +70,7 @@ function getIntroEditorAttrs(elementStyles: IntroBannerData["elementStyles"], ta
 
 export function IntroBannerSection({ data }: { data: IntroBannerData }) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
+  const allowLayoutGeometry = true
 
   const sectionRef = useRef<HTMLDivElement>(null)
   const bannerGifRef = useRef<HTMLDivElement>(null)
@@ -157,8 +165,8 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
       data-editor-node-type="section"
       data-editor-node-label="Intro Section"
       {...getIntroEditorAttrs(data.elementStyles, "intro-section")}
-      className="relative -mt-20 z-20 flex min-h-[52vh] min-h-[52dvh] flex-col items-center justify-center gap-4 px-3 pb-12 pt-8 sm:min-h-[58vh] sm:min-h-[58dvh] sm:px-4 sm:pb-16 sm:pt-28 md:-mt-24 lg:-mt-28"
-      style={getIntroBoxPatternStyle(data.elementStyles, "intro-section")}
+      className="relative -mt-20 z-20 flex min-h-[clamp(18rem,42vw,33rem)] flex-col items-center justify-center gap-4 px-3 pb-[clamp(2.75rem,7vw,4.5rem)] pt-[clamp(2rem,5vw,7rem)] sm:px-4 md:-mt-24 lg:-mt-28"
+      style={getIntroBoxPatternStyle(data.elementStyles, "intro-section", allowLayoutGeometry)}
     >
       <div
         ref={bannerGifRef}
@@ -167,12 +175,13 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
         data-editor-node-label="Banner GIF"
         {...getIntroEditorAttrs(data.elementStyles, "intro-banner-gif")}
         className="absolute left-0 top-0 z-0 h-full w-full overflow-hidden"
-        style={getIntroGifStyle(data.elementStyles)}
+        style={getIntroGifStyle(data.elementStyles, allowLayoutGeometry)}
       >
         <img
           src={resolvedIntroGifSrc}
           alt="Animated banner"
           className="h-full w-full object-cover"
+          style={{ objectPosition: "center calc(42% - 4vw)" }}
         />
       </div>
       <div className="relative z-20 flex w-full max-w-4xl flex-col items-center justify-center gap-3.5">
@@ -182,7 +191,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
           data-editor-node-type="text"
           data-editor-node-label="Banner Text"
           {...getIntroEditorAttrs(data.elementStyles, "intro-banner-text")}
-          className="max-w-2xl px-3 text-center text-[0.95rem] leading-relaxed text-white/90 sm:px-4 sm:text-lg md:text-xl"
+          className="max-w-2xl px-3 text-center text-[clamp(0.95rem,0.6rem+1vw,1.25rem)] leading-relaxed text-white/90 sm:px-4"
           style={getIntroTextPatternStyle(data.elementStyles, "intro-banner-text")}
         >
           {data.bannerText}
@@ -196,7 +205,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
             data-editor-node-label="Book Band Button"
             {...getIntroEditorAttrs(data.elementStyles, "intro-book-button")}
             className="btn-primary w-full sm:w-auto"
-            style={getIntroBoxPatternStyle(data.elementStyles, "intro-book-button")}
+            style={getIntroBoxPatternStyle(data.elementStyles, "intro-book-button", allowLayoutGeometry)}
           >
             {data.bookLabel}
           </a>
@@ -209,7 +218,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
             data-editor-node-label="Press Kit Button"
             {...getIntroEditorAttrs(data.elementStyles, "intro-press-button")}
             className="btn-secondary w-full sm:w-auto"
-            style={getIntroBoxPatternStyle(data.elementStyles, "intro-press-button")}
+            style={getIntroBoxPatternStyle(data.elementStyles, "intro-press-button", allowLayoutGeometry)}
           >
             {data.pressLabel}
           </a>

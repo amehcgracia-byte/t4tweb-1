@@ -1017,6 +1017,77 @@ section {
     min-height: auto !important;
   }
 
+  .public-home [data-editor-node-id="navigation-inner"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .public-home [data-editor-node-id="nav-logo"] {
+    transform: none !important;
+    width: clamp(2.75rem, 9vw, 3.5rem) !important;
+    height: clamp(2.75rem, 9vw, 3.5rem) !important;
+    max-width: none !important;
+  }
+
+  .public-home [data-editor-node-id="nav-brand-name"],
+  .public-home [data-editor-node-id^="nav-link-"],
+  .public-home [data-editor-node-id="nav-book-button"] {
+    transform: none !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+  }
+
+  .public-home [data-editor-node-id="latest-release-bg"],
+  .public-home [data-editor-node-id="about-bg-image"],
+  .public-home [data-editor-node-id="press-kit-bg"],
+  .public-home [data-editor-node-id="band-members-bg"],
+  .public-home [data-editor-node-id="live-section-bg-image"],
+  .public-home [data-editor-node-id="contact-bg-image"] {
+    transform: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+  }
+
+  .public-home [data-editor-node-id="latest-release-card"],
+  .public-home [data-editor-node-id="about-text-card"],
+  .public-home [data-editor-node-id="press-kit-main-card"],
+  .public-home [data-editor-node-id="contact-email"],
+  .public-home [data-editor-node-id="contact-telegram"],
+  .public-home [data-editor-node-id="footer-divider"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .public-home [data-editor-node-id^="member-item-"],
+  .public-home [data-editor-node-id^="live-upcoming-event-"],
+  .public-home [data-editor-node-id^="live-history-event-"],
+  .public-home [data-editor-node-id^="live-streaming-"],
+  .public-home [data-editor-node-id^="live-social-"],
+  .public-home [data-editor-node-id^="contact-email-"],
+  .public-home [data-editor-node-id^="contact-telegram-"],
+  .public-home [data-editor-node-id^="footer-social-"] {
+    transform: none !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .public-home [data-editor-node-id^="live-upcoming-event-"],
+  .public-home [data-editor-node-id^="live-history-event-"] {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 1279px) {
+  .public-home [data-editor-node-id="hero-section"] {
+    min-height: 100svh !important;
+  }
+
+  .public-home .hero-frame-shell {
+    min-height: 100svh !important;
+  }
+
   .public-home [data-editor-node-id="hero-bg-image"],
   .public-home [data-editor-node-id="intro-banner-gif"],
   .public-home [data-editor-node-id="latest-release-bg"],
@@ -1084,49 +1155,41 @@ section {
   .public-home [data-editor-node-id="hero-scroll-indicator"] {
     transform: translateX(-50%) !important;
     left: 50% !important;
-    bottom: 16rem !important;
+    bottom: clamp(10rem, 24vh, 16rem) !important;
     width: auto !important;
     height: auto !important;
   }
 
-  .public-home [data-editor-node-id="latest-release-card"],
-  .public-home [data-editor-node-id="about-text-card"],
-  .public-home [data-editor-node-id="press-kit-main-card"],
-  .public-home [data-editor-node-id="contact-email"],
-  .public-home [data-editor-node-id="contact-telegram"],
-  .public-home [data-editor-node-id="footer-divider"] {
-    width: 100% !important;
-    max-width: 100% !important;
+  .public-home [data-editor-node-id="hero-title"] {
+    font-size: clamp(1.9rem, 4.2vw, 2.5625rem) !important;
   }
 
-  .public-home [data-editor-node-id^="member-item-"],
-  .public-home [data-editor-node-id^="live-upcoming-event-"],
-  .public-home [data-editor-node-id^="live-history-event-"],
-  .public-home [data-editor-node-id^="live-streaming-"],
-  .public-home [data-editor-node-id^="live-social-"],
-  .public-home [data-editor-node-id^="contact-email-"],
-  .public-home [data-editor-node-id^="contact-telegram-"],
-  .public-home [data-editor-node-id^="footer-social-"] {
+  .public-home [data-editor-node-id="intro-section"] {
     transform: none !important;
+    width: 100% !important;
     max-width: 100% !important;
+    min-height: clamp(18rem, 42vw, 33rem) !important;
     height: auto !important;
   }
 
-  .public-home [data-editor-node-id^="live-upcoming-event-"],
-  .public-home [data-editor-node-id^="live-history-event-"] {
+  .public-home [data-editor-node-id="intro-banner-gif"] {
+    transform: none !important;
     width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
   }
-}
 
-@media (max-width: 767px) {
-  .public-home [data-editor-node-id^="extra-"] {
-    display: none !important;
+  .public-home [data-editor-node-id="intro-banner-text"],
+  .public-home [data-editor-node-id="intro-book-button"],
+  .public-home [data-editor-node-id="intro-press-button"] {
+    transform: none !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
   }
-}
 
-@media (max-width: 1279px) {
-  [data-editor-node-id="hero-title"] {
-    font-size: 41px !important;
+  .public-home [data-editor-node-id="intro-banner-text"] {
+    font-size: clamp(1rem, 0.7rem + 0.9vw, 1.25rem) !important;
   }
 }
 

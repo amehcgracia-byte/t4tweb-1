@@ -6,6 +6,14 @@ interface HomeEditorStateRaw {
   nodesJson?: string
 }
 
+function isDisabledExtraNode(rawNode: Record<string, unknown>, nodeId: string): boolean {
+  if (nodeId.startsWith("extra-")) return true
+  const content = (rawNode.content && typeof rawNode.content === "object" ? rawNode.content : {}) as Record<string, unknown>
+  const nodeType = typeof rawNode.nodeType === "string" ? rawNode.nodeType : typeof rawNode.type === "string" ? rawNode.type : ""
+  const extraNodeType = typeof content.extraNodeType === "string" ? content.extraNodeType : ""
+  return Boolean(extraNodeType) || nodeType === "overlay" || nodeType === "shade"
+}
+
 function isObsoleteGhostExtraNode(rawNode: Record<string, unknown>, nodeId: string): boolean {
   const content = (rawNode.content && typeof rawNode.content === "object" ? rawNode.content : {}) as Record<string, unknown>
   const parentSection = typeof content.parentSection === "string" ? content.parentSection : ""
@@ -155,6 +163,7 @@ export async function loadHomeEditorState(perspective: "published" | "drafts" = 
         const nodeId = typeof n.nodeId === "string" ? n.nodeId : typeof n.id === "string" ? n.id : null
         if (!nodeId) return null
         if (
+          isDisabledExtraNode(n, nodeId) ||
           LEGACY_NODE_IDS.has(nodeId) ||
           isObsoleteGhostExtraNode(n, nodeId) ||
           nodeId.startsWith("scene-section-") ||

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "next-sanity"
 import { readFile } from "fs/promises"
 import path from "path"
+import { SAFE_FLOW_PROTECTED_SECTION_IDS, SAFE_SECTION_MIN_GAP } from "@/lib/editor-default-layout"
 import { roundLayoutPx } from "@/lib/hero-layout-styles"
 import { ABOUT_FALLBACK } from "@/lib/sanity/about-loader"
 import { DEFAULT_NAV_LINKS } from "@/lib/sanity/navigation-loader"
@@ -113,6 +114,18 @@ interface DeployRequestPayload {
   allNodes?: DeployNodePayload[]
   changedNodeIds?: string[]
   heroElementStyles?: Record<string, Record<string, unknown>> // { [targetId]: { text?, color?, fontSize?, x?, y?, ... } }
+  sectionFlowMetrics?: Array<{
+    nodeId: string
+    top: number
+    bottom: number
+    height: number
+    width: number
+    marginTop: string
+    transform: string
+    position: string
+    minHeight: string
+    y: number | null
+  }>
 }
 
 interface DeployStepResult {
@@ -134,6 +147,16 @@ interface NodeVerificationResult {
   readBack: Record<string, unknown> | null
   matched: boolean
   mismatchReason: string | null
+}
+
+interface SectionFlowCorrection {
+  nodeId: string
+  oldY: number
+  newY: number
+  reason: string
+  minGap: number
+  previousNodeId: string
+  measuredGap: number
 }
 
 interface DeployEnvDiagnostics {
@@ -211,6 +234,65 @@ function isObsoleteGhostExtraNode(node: DeployNodePayload): boolean {
   }
 
   return false
+}
+
+function isDisabledExtraNode(node: DeployNodePayload): boolean {
+  if (node.id.startsWith("extra-")) return true
+  const extraNodeType = typeof node.content?.extraNodeType === "string" ? node.content.extraNodeType : ""
+  return Boolean(extraNodeType) || node.type === "overlay" || node.type === "shade"
+}
+
+function normalizeSafeSectionFlow(payload: DeployRequestPayload, minGap: number): SectionFlowCorrection[] {
+  const metrics = Array.isArray(payload.sectionFlowMetrics) ? payload.sectionFlowMetrics : []
+  if (metrics.length === 0) return []
+
+  const metricMap = new Map(
+    metrics
+      .filter((metric) =>
+        SAFE_FLOW_PROTECTED_SECTION_IDS.includes(metric.nodeId as (typeof SAFE_FLOW_PROTECTED_SECTION_IDS)[number])
+      )
+      .map((metric) => [metric.nodeId, { ...metric }])
+  )
+  const nodeMap = new Map(payload.nodes.map((node) => [node.id, node]))
+  const corrections: SectionFlowCorrection[] = []
+  const protectedIds = Array.from(SAFE_FLOW_PROTECTED_SECTION_IDS)
+
+  for (let index = 1; index < protectedIds.length; index += 1) {
+    const previousNodeId = protectedIds[index - 1]
+    const nodeId = protectedIds[index]
+    const previousMetric = metricMap.get(previousNodeId)
+    const currentMetric = metricMap.get(nodeId)
+    const currentNode = nodeMap.get(nodeId)
+    if (!previousMetric || !currentMetric || !currentNode) continue
+
+    const gap = currentMetric.top - previousMetric.bottom
+    if (gap >= minGap) continue
+
+    const delta = roundLayoutPx(minGap - gap)
+    const oldY = roundLayoutPx(currentNode.geometry.y)
+    const newY = roundLayoutPx(oldY + delta)
+    currentNode.geometry = { ...currentNode.geometry, y: newY }
+    currentNode.explicitPosition = true
+
+    for (let downstreamIndex = index; downstreamIndex < protectedIds.length; downstreamIndex += 1) {
+      const downstreamMetric = metricMap.get(protectedIds[downstreamIndex])
+      if (!downstreamMetric) continue
+      downstreamMetric.top = roundLayoutPx(downstreamMetric.top + delta)
+      downstreamMetric.bottom = roundLayoutPx(downstreamMetric.bottom + delta)
+    }
+
+    corrections.push({
+      nodeId,
+      oldY,
+      newY,
+      reason: `prevent-overlap-with-${previousNodeId}`,
+      minGap,
+      previousNodeId,
+      measuredGap: roundLayoutPx(gap),
+    })
+  }
+
+  return corrections
 }
 const BAND_MEMBER_CARD_NODE_ID = /^member-item-\d+$/
 
@@ -665,6 +747,7 @@ function resolveSanityImagePatch(
 }
 
 function shouldVerifyInHomeEditorState(node: DeployNodePayload): boolean {
+  if (isDisabledExtraNode(node)) return false
   if (OBSOLETE_EDITOR_NODE_IDS.has(node.id)) return false
   if (isObsoleteGhostExtraNode(node)) return false
   if (node.id.startsWith("scene-section-")) return false
@@ -686,7 +769,13 @@ function shouldVerifyInHomeEditorState(node: DeployNodePayload): boolean {
 
 function toChangedNodeIds(payload: DeployRequestPayload): string[] {
   if (Array.isArray(payload.changedNodeIds) && payload.changedNodeIds.length > 0) {
-    return Array.from(new Set(payload.changedNodeIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0 && !OBSOLETE_EDITOR_NODE_IDS.has(id))))
+    return Array.from(
+      new Set(
+        payload.changedNodeIds.filter(
+          (id): id is string => typeof id === "string" && id.trim().length > 0 && !OBSOLETE_EDITOR_NODE_IDS.has(id) && !id.startsWith("extra-")
+        )
+      )
+    )
   }
   return []
 }
@@ -1640,6 +1729,7 @@ export async function POST(request: Request) {
 
   try {
     const payload = (await request.json()) as DeployRequestPayload
+    const sectionFlowCorrections = normalizeSafeSectionFlow(payload, SAFE_SECTION_MIN_GAP)
     log("payload received", { nodeCount: payload.nodes.length, level: payload.level })
     const sanityProjectId = process.env.SANITY_PROJECT_ID
     const nextPublicSanityProjectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
@@ -3234,9 +3324,9 @@ export async function POST(request: Request) {
 
     let homeEditorStateDocumentId: string | null = null
     const homeEditorStateNodes = Array.isArray(payload.nodes)
-      ? payload.nodes.filter((node) => node.id !== "nav-logo" && !node.id.startsWith("scene-section-") && !HERO_NODE_IDS.has(node.id) && !INTRO_NODE_IDS.has(node.id) && !RELEASE_NODE_IDS.has(node.id) && !OBSOLETE_EDITOR_NODE_IDS.has(node.id) && !isObsoleteGhostExtraNode(node) && !ABOUT_NODE_IDS.has(node.id) && !PRESS_KIT_NODE_IDS.has(node.id) && !isBandMembersNodeId(node.id) && !isLiveNodeId(node.id))
+      ? payload.nodes.filter((node) => node.id !== "nav-logo" && !node.id.startsWith("scene-section-") && !HERO_NODE_IDS.has(node.id) && !INTRO_NODE_IDS.has(node.id) && !RELEASE_NODE_IDS.has(node.id) && !OBSOLETE_EDITOR_NODE_IDS.has(node.id) && !isDisabledExtraNode(node) && !isObsoleteGhostExtraNode(node) && !ABOUT_NODE_IDS.has(node.id) && !PRESS_KIT_NODE_IDS.has(node.id) && !isBandMembersNodeId(node.id) && !isLiveNodeId(node.id))
       : []
-    if (homeEditorStateNodes.length > 0) {
+    if (Array.isArray(payload.nodes)) {
       const homeStateDocument = {
         _id: HOME_EDITOR_STATE_DOCUMENT_ID,
         _type: SANITY_DOC_HOME_EDITOR_STATE,
@@ -4985,6 +5075,7 @@ export async function POST(request: Request) {
       skippedFields,
       diagnostics,
       envDiagnostics,
+      sectionFlowCorrections,
     }
     log("returning success response", { status: successResponse.status, ok: successResponse.ok })
     return NextResponse.json(successResponse, { status: 200 })

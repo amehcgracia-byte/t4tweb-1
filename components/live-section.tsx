@@ -126,6 +126,7 @@ export function LiveSection({ data }: LiveSectionProps) {
   const [concerts, setConcerts] = useState<LiveConcert[]>(data.concerts)
   const [activeConcert, setActiveConcert] = useState<LiveConcert | null>(null)
   const { isEditing } = useVisualEditor()
+  const allowBackgroundGeometry = isEditing
 
   useEffect(() => {
     setConcerts(data.concerts)
@@ -172,7 +173,7 @@ export function LiveSection({ data }: LiveSectionProps) {
         data-editor-node-type="background"
         data-editor-media-kind="image"
         data-editor-node-label="Live Section Background Image"
-        style={getElementLayoutStyle(data.elementStyles, "live-section-bg-image", { includeGeometry: true })}
+        style={getElementLayoutStyle(data.elementStyles, "live-section-bg-image", { includeGeometry: allowBackgroundGeometry })}
       >
         <Image
           src={data.backgroundImageUrl}

@@ -31,8 +31,12 @@ function getLatestReleaseBoxStyle(elementStyles: LatestReleaseData["elementStyle
   return style
 }
 
-function getLatestReleaseMediaStyle(elementStyles: LatestReleaseData["elementStyles"], nodeId: string): CSSProperties {
-  return getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: true })
+function getLatestReleaseMediaStyle(
+  elementStyles: LatestReleaseData["elementStyles"],
+  nodeId: string,
+  includeGeometry: boolean
+): CSSProperties {
+  return getElementLayoutStyle(elementStyles, nodeId, { includeGeometry })
 }
 
 function getLatestReleaseTextStyle(elementStyles: LatestReleaseData["elementStyles"], nodeId: string): CSSProperties {
@@ -82,6 +86,7 @@ function getLatestReleaseEditorAttrs(
 
 export function LatestReleaseCorrect({ data }: { data: LatestReleaseData }) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
+  const allowMediaGeometry = isEditing
 
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
@@ -201,7 +206,7 @@ export function LatestReleaseCorrect({ data }: { data: LatestReleaseData }) {
         data-editor-node-label="Release Background"
         {...getLatestReleaseEditorAttrs(data.elementStyles, "latest-release-bg")}
         className="absolute left-0 top-0 z-0 h-full w-full"
-        style={getLatestReleaseMediaStyle(data.elementStyles, "latest-release-bg")}
+        style={getLatestReleaseMediaStyle(data.elementStyles, "latest-release-bg", allowMediaGeometry)}
       >
         {youtubePosterSrc ? (
           <Image

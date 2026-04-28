@@ -21,8 +21,12 @@ function getAboutBoxStyle(elementStyles: AboutData["elementStyles"], nodeId: str
   return style
 }
 
-function getAboutNodeStyle(elementStyles: AboutData["elementStyles"], nodeId: string): CSSProperties {
-  return getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: true })
+function getAboutNodeStyle(
+  elementStyles: AboutData["elementStyles"],
+  nodeId: string,
+  includeGeometry = true
+): CSSProperties {
+  return getElementLayoutStyle(elementStyles, nodeId, { includeGeometry })
 }
 
 function getAboutEditorAttrs(elementStyles: AboutData["elementStyles"], nodeId: string): Record<string, string> {
@@ -291,6 +295,7 @@ export function AboutSection({ className = "", data, sectionId }: AboutSectionPr
   const aboutText2 = data.bioParagraphs[1] || ""
   const aboutCopyLabel = copied ? "✓ Copied to clipboard" : data.copyButtonLabel
   const bioText = [data.eyebrow, data.title, aboutText1, aboutText2, data.bioTagline].filter(Boolean).join("\n\n")
+  const allowBackgroundGeometry = isEditing
 
   const copyBio = async () => {
     if (isEditing) return
@@ -323,14 +328,16 @@ export function AboutSection({ className = "", data, sectionId }: AboutSectionPr
         data-editor-src={data.backgroundImageUrl}
         {...getAboutEditorAttrs(data.elementStyles, "about-bg-image")}
         className="absolute inset-0 z-0"
-        style={getAboutNodeStyle(data.elementStyles, "about-bg-image")}
+        style={getAboutNodeStyle(data.elementStyles, "about-bg-image", allowBackgroundGeometry)}
       >
         <Image
           src={data.backgroundImageUrl}
           alt="Band members background"
           fill
-          className="object-cover scale-[0.94] sm:scale-[0.96] xl:scale-100"
-          style={{ objectPosition: "center 6%" }}
+          className="object-cover xl:scale-100"
+          style={{
+            objectPosition: "50% calc(10% - 1.2vw)",
+          }}
         />
       </div>
 

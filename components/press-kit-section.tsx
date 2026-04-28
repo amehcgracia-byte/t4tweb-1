@@ -84,8 +84,12 @@ function getPressKitBoxStyle(elementStyles: PressKitData["elementStyles"], nodeI
   return style
 }
 
-function getPressKitNodeStyle(elementStyles: PressKitData["elementStyles"], nodeId: string): CSSProperties {
-  return getElementLayoutStyle(elementStyles, nodeId, { includeGeometry: true })
+function getPressKitNodeStyle(
+  elementStyles: PressKitData["elementStyles"],
+  nodeId: string,
+  includeGeometry = true
+): CSSProperties {
+  return getElementLayoutStyle(elementStyles, nodeId, { includeGeometry })
 }
 
 function getPressKitHeaderNodeStyle(elementStyles: PressKitData["elementStyles"], nodeId: string): CSSProperties {
@@ -145,6 +149,7 @@ function getPressKitNodeAttrs(
 
 export function PressKitSection({ data }: PressKitSectionProps) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
+  const allowBackgroundGeometry = isEditing
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const eyebrowRef = useRef<HTMLSpanElement>(null)
@@ -382,7 +387,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
           "data-editor-src": pressKitBgSrc,
           ...getPressKitEditorAttrs(data.elementStyles, "press-kit-bg"),
         })}
-        style={getPressKitNodeStyle(data.elementStyles, "press-kit-bg")}
+        style={getPressKitNodeStyle(data.elementStyles, "press-kit-bg", allowBackgroundGeometry)}
       >
         <Image
           src={pressKitBgSrc}

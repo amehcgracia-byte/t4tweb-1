@@ -1,16 +1,12 @@
-import { draftMode } from 'next/headers'
 import HomePage from "../home-page"
 
-export default async function EditorPage() {
-  // Enable Draft Mode to fetch drafts from Sanity
-  const draft = await draftMode()
-  draft.enable()
+export const dynamic = "force-dynamic"
 
+export default async function EditorPage() {
   const timestamp = new Date().toISOString()
   console.log(`[RUNTIME] EditorPage mounted at ${timestamp}`)
 
-  // Render editor with drafts perspective
-  // VisualEditorProvider on client will detect /editor route and activate editing mode
-  // The client will load editor state separately after hydration
-  return <HomePage perspective="drafts" isEditorRoute={true} />
+  // Render editor from the same published source of truth as the public page.
+  // This keeps root-section layout parity stable after deploy/reload.
+  return <HomePage perspective="published" isEditorRoute={true} />
 }

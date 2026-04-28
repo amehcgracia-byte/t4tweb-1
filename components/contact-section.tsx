@@ -15,7 +15,7 @@ interface ContactSectionProps {
 }
 
 const CONTACT_CARD_CLASS_NAME =
-  "group w-full rounded-xl border border-border bg-card/90 p-4 text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg md:p-5 xl:flex-1 xl:max-w-xs xl:p-7"
+  "group w-full rounded-xl border border-border bg-card/90 p-[clamp(1rem,2vw,1.25rem)] text-center shadow-md backdrop-blur-sm transition-all duration-300 hover:border-primary/45 hover:shadow-lg xl:flex-1 xl:max-w-[20rem] xl:p-[clamp(1.25rem,2vw,1.75rem)]"
 
 function getSafeContactSectionStyle(
   elementStyles: ContactSectionData["elementStyles"]
@@ -44,6 +44,7 @@ export function ContactSection({ data }: ContactSectionProps) {
   const telegramHandleRef = useRef<HTMLSpanElement>(null)
   const middleTextRef = useRef<HTMLParagraphElement>(null)
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()  // SectionHeader creates data-editor-node-id="contact-header-title" (with -title suffix),
+  const allowBackgroundGeometry = isEditing
   // so the editor stores overrides under "contact-header-title", not "contact-header".
 
   useEffect(() => {
@@ -280,7 +281,7 @@ export function ContactSection({ data }: ContactSectionProps) {
         data-editor-node-type="background"
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo contacto"
-        style={getElementLayoutStyle(elementStyles, "contact-bg-image", { includeGeometry: true })}
+        style={getElementLayoutStyle(elementStyles, "contact-bg-image", { includeGeometry: allowBackgroundGeometry })}
         className="absolute inset-0 -z-10">
         <Image
           src={contactBgSrc}
@@ -295,7 +296,7 @@ export function ContactSection({ data }: ContactSectionProps) {
       <div className="section-photo-fade-top" />
       <div className="section-photo-fade-bottom" />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col justify-center px-4 py-16 sm:px-6 md:py-20 xl:min-h-screen xl:py-24">
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col justify-center px-4 py-[clamp(3rem,7vw,5rem)] sm:px-6 xl:min-h-screen xl:py-24">
         <div ref={headerRef} style={headerStyle} className="mb-10 md:mb-12">
           <div>
           <SectionHeader
@@ -311,7 +312,7 @@ export function ContactSection({ data }: ContactSectionProps) {
         </div>
 
         {/* Contact Options */}
-        <div className="flex flex-col items-stretch justify-center gap-4 xl:flex-row xl:items-center xl:gap-8">
+        <div className="flex flex-col items-stretch justify-center gap-[clamp(1rem,2vw,1.5rem)] xl:flex-row xl:items-center xl:gap-8">
           <motion.div
             ref={emailCardRef}
             data-editor-node-id="contact-email"
