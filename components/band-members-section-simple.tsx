@@ -9,7 +9,7 @@ import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 import type { BandMemberData, BandMembersLoadResult } from "@/lib/sanity/band-members-loader"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
-import { getSectionRootFlowStyle } from "@/lib/section-root-layout"
+import { getCanonicalRootSectionStyle } from "@/lib/section-root-layout"
 
 function getBandMemberCardStyle(
   elementStyles: Record<string, Record<string, unknown>>,
@@ -28,7 +28,22 @@ function getBandMemberCardStyle(
 function getBandMembersSectionStyle(
   elementStyles: Record<string, Record<string, unknown>>
 ): CSSProperties {
-  return getSectionRootFlowStyle(elementStyles, "band-members-section")
+  return getCanonicalRootSectionStyle(elementStyles, "band-members-section")
+}
+
+function getBandMembersRootEditorAttrs(
+  elementStyles: Record<string, Record<string, unknown>>
+): Record<string, string> {
+  const styles = elementStyles["band-members-section"]
+  if (!styles) return {}
+  const attrs: Record<string, string> = {
+    "data-editor-explicit-position": "true",
+  }
+  if (typeof styles.x === "number") attrs["data-editor-geometry-x"] = String(styles.x)
+  if (typeof styles.y === "number") attrs["data-editor-geometry-y"] = String(styles.y)
+  if (typeof styles.width === "number") attrs["data-editor-geometry-width"] = String(styles.width)
+  if (typeof styles.height === "number") attrs["data-editor-geometry-height"] = String(styles.height)
+  return attrs
 }
 
 export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult }) {
@@ -123,10 +138,6 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
   const isMemberHighlighted = (memberIndex: number) =>
     visibleMemberIndex !== null && visibleMemberIndex === memberIndex
   const bandSectionStyle = getBandMembersSectionStyle(data.elementStyles || {})
-  const bandOffsetX = typeof bandSectionStyle.marginLeft === "string" ? bandSectionStyle.marginLeft : "0px"
-  const bandOffsetY = typeof bandSectionStyle.marginTop === "string" ? bandSectionStyle.marginTop : "0px"
-  delete bandSectionStyle.marginLeft
-  delete bandSectionStyle.marginTop
 
   const renderMemberPhoto = (
     blockMembers: typeof membersWithIndex,
@@ -266,12 +277,9 @@ export function BandMembersSectionSimple({ data }: { data: BandMembersLoadResult
       data-editor-node-id="band-members-section"
       data-editor-node-type="section"
       data-editor-node-label="Sección Miembros de la Banda"
-      className="relative isolate w-full overflow-hidden bg-black xl:ml-[var(--band-offset-x)] xl:mt-[var(--band-offset-y)] xl:min-h-screen"
-      style={{
-        ...bandSectionStyle,
-        ["--band-offset-x" as string]: bandOffsetX,
-        ["--band-offset-y" as string]: bandOffsetY,
-      }}
+      {...getBandMembersRootEditorAttrs(data.elementStyles || {})}
+      className="relative isolate w-full overflow-hidden bg-black xl:min-h-screen"
+      style={bandSectionStyle}
     >
       {/* Fondo full width */}
       <div 

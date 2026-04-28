@@ -4,7 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
-import { DEFAULT_SECTION_LAYOUT_PRESET, SAFE_FLOW_PROTECTED_SECTION_IDS } from "@/lib/editor-default-layout"
+import { DEFAULT_SECTION_LAYOUT_PRESET, SAFE_FLOW_PROTECTED_SECTION_IDS, SAFE_SECTION_MIN_GAP } from "@/lib/editor-default-layout"
 import { TEXT_EMPHASIS_SHADOW, applyScrollIndicatorLayoutToElement, clearScrollIndicatorLayoutFromElement } from "@/lib/hero-layout-styles"
 
 type NodeType = "section" | "background" | "card" | "text" | "button" | "image" | "group" | "overlay"
@@ -134,6 +134,16 @@ interface SectionFlowMetric {
   position: string
   minHeight: string
   y: number | null
+}
+
+function isProtectedRootSectionNode(nodeId: string): boolean {
+  return SAFE_FLOW_PROTECTED_SECTION_IDS.includes(nodeId as (typeof SAFE_FLOW_PROTECTED_SECTION_IDS)[number])
+}
+
+function normalizeProtectedRootY(nodeId: string, y: number): number {
+  if (!Number.isFinite(y)) return 0
+  if (nodeId === "about-section") return Math.max(0, y)
+  return Math.max(SAFE_SECTION_MIN_GAP, y)
 }
 
 interface HydratedNodeOverride {
@@ -1227,7 +1237,17 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const nodeScale = Math.max(0.1, node.style.scale ?? 1)
 
     // Special handling for hero-scroll-indicator to match public page layout
-    if (node.id === "hero-scroll-indicator") {
+    if (isProtectedRootSectionNode(node.id)) {
+      el.style.removeProperty("transform")
+      el.style.removeProperty("transform-origin")
+      delete el.dataset.editorManagedTransform
+      el.style.removeProperty("width")
+      el.style.removeProperty("height")
+      delete el.dataset.editorManagedSize
+      const gapBefore = normalizeProtectedRootY(node.id, g.y)
+      el.style.marginTop = gapBefore === 0 ? "0px" : `${gapBefore}px`
+      el.style.marginLeft = g.x === 0 ? "0px" : `${g.x}px`
+    } else if (node.id === "hero-scroll-indicator") {
       if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
         applyScrollIndicatorLayoutToElement(el, g, nodeScale)
         el.dataset.editorManagedTransform = "true"
@@ -1254,8 +1274,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       }
     }
     if (
-      (isHeroTextPatternNode && hasUsableHeroTextGeometry && node.explicitSize) ||
-      (!isHeroTextPatternNode && node.explicitSize)
+      !isProtectedRootSectionNode(node.id) &&
+      (
+        (isHeroTextPatternNode && hasUsableHeroTextGeometry && node.explicitSize) ||
+        (!isHeroTextPatternNode && node.explicitSize)
+      )
     ) {
       el.style.width = `${Math.max(8, g.width)}px`
       el.style.height = `${Math.max(8, g.height)}px`
@@ -1449,7 +1472,18 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           return next
         }
         case "MOVE_NODE":
-          patchNode(command.nodeId, (n) => ({ ...n, explicitPosition: true, geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy } }))
+          patchNode(command.nodeId, (n) => {
+            const nextY = n.geometry.y + command.dy
+            return {
+              ...n,
+              explicitPosition: true,
+              geometry: {
+                ...n.geometry,
+                x: n.geometry.x + command.dx,
+                y: isProtectedRootSectionNode(command.nodeId) ? normalizeProtectedRootY(command.nodeId, nextY) : nextY,
+              },
+            }
+          })
           shouldSnapshot = false
           break
         case "RESIZE_NODE":
@@ -1461,7 +1495,13 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             ...n,
             explicitPosition: true,
             explicitSize: command.explicitSize !== false ? true : n.explicitSize,
-            geometry: { ...n.geometry, x: command.x, y: command.y, width: command.width, height: command.height },
+            geometry: {
+              ...n.geometry,
+              x: command.x,
+              y: isProtectedRootSectionNode(command.nodeId) ? normalizeProtectedRootY(command.nodeId, command.y) : command.y,
+              width: command.width,
+              height: command.height,
+            },
           }))
           shouldSnapshot = false
           break

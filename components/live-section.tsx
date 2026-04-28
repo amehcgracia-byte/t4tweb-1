@@ -6,7 +6,7 @@ import Image from "next/image"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
-import { getSectionRootFlowStyle } from "@/lib/section-root-layout"
+import { getCanonicalRootSectionStyle } from "@/lib/section-root-layout"
 import type { LiveConcert, LiveSectionData } from "@/lib/live-concerts-loader"
 
 interface LiveSectionProps {
@@ -157,6 +157,7 @@ export function LiveSection({ data }: LiveSectionProps) {
   const historyConcerts = [...derivedConcerts.filter((concert) => concert.status === "Completed")].reverse()
   const streamingPlatforms = data.streamingPlatforms || []
   const socialPlatforms = data.socialPlatforms || []
+  const liveRootStyles = data.elementStyles["live-section"]
 
   return (
     <section
@@ -164,8 +165,13 @@ export function LiveSection({ data }: LiveSectionProps) {
       data-editor-node-id="live-section"
       data-editor-node-type="section"
       data-editor-node-label="Live Section"
+      data-editor-explicit-position={liveRootStyles ? "true" : undefined}
+      data-editor-geometry-x={typeof liveRootStyles?.x === "number" ? String(liveRootStyles.x) : undefined}
+      data-editor-geometry-y={typeof liveRootStyles?.y === "number" ? String(liveRootStyles.y) : undefined}
+      data-editor-geometry-width={typeof liveRootStyles?.width === "number" ? String(liveRootStyles.width) : undefined}
+      data-editor-geometry-height={typeof liveRootStyles?.height === "number" ? String(liveRootStyles.height) : undefined}
       className="relative overflow-hidden bg-black xl:min-h-screen"
-      style={getSectionRootFlowStyle(data.elementStyles, "live-section")}
+      style={getCanonicalRootSectionStyle(data.elementStyles, "live-section")}
     >
       <div
         className="absolute inset-0 z-0"

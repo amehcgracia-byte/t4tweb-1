@@ -4,7 +4,7 @@ import { useRef, useEffect } from "react"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
-import { getSectionRootFlowStyle } from "@/lib/section-root-layout"
+import { getCanonicalRootSectionStyle } from "@/lib/section-root-layout"
 import type { FooterData } from "@/lib/sanity/footer-loader"
 
 interface FooterProps {
@@ -134,6 +134,7 @@ export function Footer({ data }: FooterProps) {
   const elementStyles = data.elementStyles
   const footerCopyright = data.copyright.startsWith("©") ? data.copyright : `© ${data.copyright}`
   const footerLogoHref = data.logoHref?.trim() || "#top"
+  const footerRootStyles = elementStyles["footer-section"]
 
   return (
     <footer 
@@ -141,7 +142,12 @@ export function Footer({ data }: FooterProps) {
       data-editor-node-id="footer-section"
       data-editor-node-type="section"
       data-editor-node-label="Footer Section"
-      style={getSectionRootFlowStyle(elementStyles, "footer-section")}
+      data-editor-explicit-position={footerRootStyles ? "true" : undefined}
+      data-editor-geometry-x={typeof footerRootStyles?.x === "number" ? String(footerRootStyles.x) : undefined}
+      data-editor-geometry-y={typeof footerRootStyles?.y === "number" ? String(footerRootStyles.y) : undefined}
+      data-editor-geometry-width={typeof footerRootStyles?.width === "number" ? String(footerRootStyles.width) : undefined}
+      data-editor-geometry-height={typeof footerRootStyles?.height === "number" ? String(footerRootStyles.height) : undefined}
+      style={getCanonicalRootSectionStyle(elementStyles, "footer-section")}
       className="bg-black">
       <div className="h-6 bg-gradient-to-b from-black/30 to-black sm:h-8 sm:from-black/20 md:h-10" />
       

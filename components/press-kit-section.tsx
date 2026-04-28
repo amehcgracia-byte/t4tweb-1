@@ -7,7 +7,7 @@ import { motion } from "framer-motion"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle, roundLayoutPx } from "@/lib/hero-layout-styles"
-import { getSectionRootFlowStyle } from "@/lib/section-root-layout"
+import { getCanonicalRootSectionStyle } from "@/lib/section-root-layout"
 import type { PressKitData } from "@/lib/sanity/press-kit-loader"
 
 interface PressKitSectionProps {
@@ -66,12 +66,12 @@ function hasUsablePressKitHeaderGeometry(rawStyle: Record<string, unknown> | und
 
 function getPressKitSectionStyle(elementStyles: PressKitData["elementStyles"]): CSSProperties {
   if (!hasUsablePressKitSectionGeometry(elementStyles["press-kit-section"])) {
-    const fallbackStyle = getSectionRootFlowStyle(elementStyles, "press-kit-section")
+    const fallbackStyle = getCanonicalRootSectionStyle(elementStyles, "press-kit-section")
     delete fallbackStyle.marginLeft
     delete fallbackStyle.marginTop
     return fallbackStyle
   }
-  return getSectionRootFlowStyle(elementStyles, "press-kit-section")
+  return getCanonicalRootSectionStyle(elementStyles, "press-kit-section")
 }
 
 function getPressKitBoxStyle(elementStyles: PressKitData["elementStyles"], nodeId: string): CSSProperties {
@@ -108,19 +108,18 @@ function getPressKitHeaderNodeStyle(elementStyles: PressKitData["elementStyles"]
 function getPressKitEditorAttrs(elementStyles: PressKitData["elementStyles"], nodeId: string): Record<string, string> {
   const styles = elementStyles[nodeId]
   if (!styles) return {}
-  const isPressKitSectionRoot = nodeId === "press-kit-section"
   const hasPosition = typeof styles.x === "number" || typeof styles.y === "number"
   const hasSize = typeof styles.width === "number" || typeof styles.height === "number"
   const hasStyle = Object.keys(styles).some((key) => !["x", "y", "width", "height"].includes(key))
   const attrs: Record<string, string> = {}
-  if (!isPressKitSectionRoot && hasPosition) attrs["data-editor-explicit-position"] = "true"
-  if (!isPressKitSectionRoot && hasSize) attrs["data-editor-explicit-size"] = "true"
+  if (hasPosition) attrs["data-editor-explicit-position"] = "true"
+  if (hasSize) attrs["data-editor-explicit-size"] = "true"
   if (hasStyle) attrs["data-editor-explicit-style"] = "true"
-  if (!isPressKitSectionRoot && typeof styles.x === "number") attrs["data-editor-geometry-x"] = String(styles.x)
-  if (!isPressKitSectionRoot && typeof styles.y === "number") attrs["data-editor-geometry-y"] = String(styles.y)
-  if (!isPressKitSectionRoot && typeof styles.width === "number") attrs["data-editor-geometry-width"] = String(styles.width)
-  if (!isPressKitSectionRoot && typeof styles.height === "number") attrs["data-editor-geometry-height"] = String(styles.height)
-  if (!isPressKitSectionRoot && typeof styles.scale === "number") attrs["data-editor-style-scale"] = String(styles.scale)
+  if (typeof styles.x === "number") attrs["data-editor-geometry-x"] = String(styles.x)
+  if (typeof styles.y === "number") attrs["data-editor-geometry-y"] = String(styles.y)
+  if (typeof styles.width === "number") attrs["data-editor-geometry-width"] = String(styles.width)
+  if (typeof styles.height === "number") attrs["data-editor-geometry-height"] = String(styles.height)
+  if (typeof styles.scale === "number") attrs["data-editor-style-scale"] = String(styles.scale)
   if (typeof styles.color === "string") attrs["data-editor-style-color"] = styles.color
   if (typeof styles.backgroundColor === "string") attrs["data-editor-style-background-color"] = styles.backgroundColor
   if (typeof styles.textShadowEnabled === "boolean") attrs["data-editor-style-text-shadow-enabled"] = String(styles.textShadowEnabled)
@@ -130,6 +129,19 @@ function getPressKitEditorAttrs(elementStyles: PressKitData["elementStyles"], no
   if (typeof styles.gradientEnabled === "boolean") attrs["data-editor-style-gradient-enabled"] = String(styles.gradientEnabled)
   if (typeof styles.gradientStart === "string") attrs["data-editor-style-gradient-start"] = styles.gradientStart
   if (typeof styles.gradientEnd === "string") attrs["data-editor-style-gradient-end"] = styles.gradientEnd
+  return attrs
+}
+
+function getPressKitRootEditorAttrs(elementStyles: PressKitData["elementStyles"]): Record<string, string> {
+  const styles = elementStyles["press-kit-section"]
+  if (!styles) return {}
+  const attrs: Record<string, string> = {
+    "data-editor-explicit-position": "true",
+  }
+  if (typeof styles.x === "number") attrs["data-editor-geometry-x"] = String(styles.x)
+  if (typeof styles.y === "number") attrs["data-editor-geometry-y"] = String(styles.y)
+  if (typeof styles.width === "number") attrs["data-editor-geometry-width"] = String(styles.width)
+  if (typeof styles.height === "number") attrs["data-editor-geometry-height"] = String(styles.height)
   return attrs
 }
 
@@ -173,10 +185,6 @@ export function PressKitSection({ data }: PressKitSectionProps) {
   const pressKitManagerTitle = data.managerTitle
   const pressKitBgSrc = data.backgroundImageUrl
   const pressKitSectionStyle = getPressKitSectionStyle(data.elementStyles)
-  const pressKitOffsetX = typeof pressKitSectionStyle.marginLeft === "string" ? pressKitSectionStyle.marginLeft : "0px"
-  const pressKitOffsetY = typeof pressKitSectionStyle.marginTop === "string" ? pressKitSectionStyle.marginTop : "0px"
-  delete pressKitSectionStyle.marginLeft
-  delete pressKitSectionStyle.marginTop
   useEffect(() => {
     if (!isEditing) return
 
@@ -372,13 +380,9 @@ export function PressKitSection({ data }: PressKitSectionProps) {
     <section 
       id="press-kit"
       ref={sectionRef} 
-      className="relative w-full overflow-hidden xl:min-h-screen xl:min-h-[100dvh] xl:ml-[var(--press-kit-offset-x)] xl:mt-[var(--press-kit-offset-y)]"
-      {...getPressKitNodeAttrs("press-kit-section", "section", "Press Kit Section")}
-      style={{
-        ...pressKitSectionStyle,
-        ["--press-kit-offset-x" as string]: pressKitOffsetX,
-        ["--press-kit-offset-y" as string]: pressKitOffsetY,
-      }}>
+      className="relative w-full overflow-hidden xl:min-h-screen xl:min-h-[100dvh]"
+      {...getPressKitNodeAttrs("press-kit-section", "section", "Press Kit Section", getPressKitRootEditorAttrs(data.elementStyles))}
+      style={pressKitSectionStyle}>
       <div
         ref={bgRef}
         className="absolute inset-0 -z-10"

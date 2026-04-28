@@ -243,55 +243,26 @@ function isDisabledExtraNode(node: DeployNodePayload): boolean {
 }
 
 function normalizeSafeSectionFlow(payload: DeployRequestPayload, minGap: number): SectionFlowCorrection[] {
-  const metrics = Array.isArray(payload.sectionFlowMetrics) ? payload.sectionFlowMetrics : []
-  if (metrics.length === 0) return []
-
-  const metricMap = new Map(
-    metrics
-      .filter((metric) =>
-        SAFE_FLOW_PROTECTED_SECTION_IDS.includes(metric.nodeId as (typeof SAFE_FLOW_PROTECTED_SECTION_IDS)[number])
-      )
-      .map((metric) => [metric.nodeId, { ...metric }])
-  )
-  const nodeMap = new Map(payload.nodes.map((node) => [node.id, node]))
   const corrections: SectionFlowCorrection[] = []
-  const protectedIds = Array.from(SAFE_FLOW_PROTECTED_SECTION_IDS)
-
-  for (let index = 1; index < protectedIds.length; index += 1) {
-    const previousNodeId = protectedIds[index - 1]
-    const nodeId = protectedIds[index]
-    const previousMetric = metricMap.get(previousNodeId)
-    const currentMetric = metricMap.get(nodeId)
-    const currentNode = nodeMap.get(nodeId)
-    if (!previousMetric || !currentMetric || !currentNode) continue
-
-    const gap = currentMetric.top - previousMetric.bottom
-    if (gap >= minGap) continue
-
-    const delta = roundLayoutPx(minGap - gap)
-    const oldY = roundLayoutPx(currentNode.geometry.y)
-    const newY = roundLayoutPx(oldY + delta)
-    currentNode.geometry = { ...currentNode.geometry, y: newY }
-    currentNode.explicitPosition = true
-
-    for (let downstreamIndex = index; downstreamIndex < protectedIds.length; downstreamIndex += 1) {
-      const downstreamMetric = metricMap.get(protectedIds[downstreamIndex])
-      if (!downstreamMetric) continue
-      downstreamMetric.top = roundLayoutPx(downstreamMetric.top + delta)
-      downstreamMetric.bottom = roundLayoutPx(downstreamMetric.bottom + delta)
-    }
-
+  const protectedIds = new Set(SAFE_FLOW_PROTECTED_SECTION_IDS)
+  for (const node of payload.nodes) {
+    if (!protectedIds.has(node.id as (typeof SAFE_FLOW_PROTECTED_SECTION_IDS)[number])) continue
+    const oldY = roundLayoutPx(node.geometry.y)
+    const minimum = node.id === "about-section" ? 0 : minGap
+    const newY = Math.max(minimum, oldY)
+    if (newY === oldY) continue
+    node.geometry = { ...node.geometry, y: newY }
+    node.explicitPosition = true
     corrections.push({
-      nodeId,
+      nodeId: node.id,
       oldY,
       newY,
-      reason: `prevent-overlap-with-${previousNodeId}`,
-      minGap,
-      previousNodeId,
-      measuredGap: roundLayoutPx(gap),
+      reason: node.id === "about-section" ? "prevent-negative-gap-before-first-protected-section" : "prevent-gap-below-minimum",
+      minGap: minimum,
+      previousNodeId: node.id === "about-section" ? "latest-release-section" : "previous-protected-section",
+      measuredGap: oldY,
     })
   }
-
   return corrections
 }
 const BAND_MEMBER_CARD_NODE_ID = /^member-item-\d+$/

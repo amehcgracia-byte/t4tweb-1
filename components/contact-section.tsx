@@ -7,7 +7,7 @@ import { CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
-import { getSectionRootFlowStyle } from "@/lib/section-root-layout"
+import { getCanonicalRootSectionStyle } from "@/lib/section-root-layout"
 import type { ContactSectionData } from "@/lib/sanity/contact-loader"
 
 interface ContactSectionProps {
@@ -20,7 +20,7 @@ const CONTACT_CARD_CLASS_NAME =
 function getSafeContactSectionStyle(
   elementStyles: ContactSectionData["elementStyles"]
 ): CSSProperties {
-  const style = getSectionRootFlowStyle(elementStyles, "contact-section")
+  const style = getCanonicalRootSectionStyle(elementStyles, "contact-section")
   const rawHeight = typeof style.height === "number" ? style.height : typeof style.height === "string" ? Number.parseFloat(style.height) : null
   if (typeof rawHeight === "number" && Number.isFinite(rawHeight) && rawHeight <= 16) {
     delete style.height
@@ -265,6 +265,7 @@ export function ContactSection({ data }: ContactSectionProps) {
   const telegramDescription = telegramMethod.description
   const telegramHandle = telegramMethod.label
   const headerStyle = getElementLayoutStyle(elementStyles, "contact-header")
+  const contactRootStyles = elementStyles["contact-section"]
 
   return (
     <section
@@ -273,6 +274,11 @@ export function ContactSection({ data }: ContactSectionProps) {
       data-editor-node-id="contact-section"
       data-editor-node-type="section"
       data-editor-node-label="Sección de Contacto"
+      data-editor-explicit-position={contactRootStyles ? "true" : undefined}
+      data-editor-geometry-x={typeof contactRootStyles?.x === "number" ? String(contactRootStyles.x) : undefined}
+      data-editor-geometry-y={typeof contactRootStyles?.y === "number" ? String(contactRootStyles.y) : undefined}
+      data-editor-geometry-width={typeof contactRootStyles?.width === "number" ? String(contactRootStyles.width) : undefined}
+      data-editor-geometry-height={typeof contactRootStyles?.height === "number" ? String(contactRootStyles.height) : undefined}
       style={getSafeContactSectionStyle(elementStyles)}
       className="relative w-full max-w-full overflow-hidden xl:min-h-screen xl:min-h-[100dvh]">
       <div 
