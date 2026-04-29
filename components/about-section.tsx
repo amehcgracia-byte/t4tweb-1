@@ -274,7 +274,7 @@ export function AboutSection({ className = "", data, sectionId }: AboutSectionPr
   const aboutText2 = data.bioParagraphs[1] || ""
   const aboutCopyLabel = copied ? "✓ Copied to clipboard" : data.copyButtonLabel
   const bioText = [data.eyebrow, data.title, aboutText1, aboutText2, data.bioTagline].filter(Boolean).join("\n\n")
-  const allowBackgroundGeometry = isEditing
+  const allowBackgroundGeometry = true
 
   const copyBio = async () => {
     if (isEditing) return

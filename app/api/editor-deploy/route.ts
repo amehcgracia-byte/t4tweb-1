@@ -4590,7 +4590,7 @@ export async function POST(request: Request) {
         readBack.copyButtonLabel = aboutReadback?.copyButtonLabel
         addAboutLayoutReadback()
       } else if (nodeId === "about-bg-image" && node.explicitContent && writeContentKeys.has("src")) {
-        storageTarget = "aboutSection.fields"
+        storageTarget = "aboutSection.backgroundImage"
         const src = typeof node.content.src === "string" ? node.content.src.trim() : ""
         expected.backgroundImageRef = parseSanityImageRefFromUrl(src, projectId, dataset)
         readBack.backgroundImageRef = aboutReadback?.backgroundImage?.asset?._ref ?? aboutReadback?.backgroundImage?.asset?._id

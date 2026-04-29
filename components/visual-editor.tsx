@@ -4263,6 +4263,7 @@ export function VisualEditorOverlay() {
                     const requiresSanityAsset =
                       selectedNode.id === "hero-logo" ||
                       selectedNode.id === "hero-bg-image" ||
+                      selectedNode.id === "about-bg-image" ||
                       selectedNode.id === "band-members-bg" ||
                       selectedNode.id === "live-section-bg-image" ||
                       selectedNode.id === "contact-bg-image" ||
