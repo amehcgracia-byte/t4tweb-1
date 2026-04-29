@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { SectionHeader } from "@/components/section-header"
@@ -125,12 +126,17 @@ export function LiveSection({ data }: LiveSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const [concerts, setConcerts] = useState<LiveConcert[]>(data.concerts)
   const [activeConcert, setActiveConcert] = useState<LiveConcert | null>(null)
+  const [hasMounted, setHasMounted] = useState(false)
   const { isEditing } = useVisualEditor()
   const allowBackgroundGeometry = isEditing
 
   useEffect(() => {
     setConcerts(data.concerts)
   }, [data.concerts])
+
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
 
   useEffect(() => {
     if (!isEditing) return
@@ -158,6 +164,87 @@ export function LiveSection({ data }: LiveSectionProps) {
   const streamingPlatforms = data.streamingPlatforms || []
   const socialPlatforms = data.socialPlatforms || []
   const liveRootStyles = data.elementStyles["live-section"]
+  const concertModal =
+    activeConcert && !isEditing && hasMounted
+      ? createPortal(
+          <div
+            data-live-concert-modal="true"
+            className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-md"
+            onClick={() => setActiveConcert(null)}
+          >
+            <div className="flex min-h-[100dvh] items-center justify-center p-4">
+              <div
+                className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-black/90 p-6 text-white shadow-2xl"
+                onClick={(event) => event.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={`${activeConcert.eventName || "Concert"} details`}
+              >
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#FFB15A]">Live Date</p>
+                    <h3 className="mt-2 font-serif text-3xl">{activeConcert.eventName || activeConcert.locationName || "Concert details"}</h3>
+                    <p className="mt-2 text-sm text-white/70">{activeConcert.locationName || activeConcert.venue || "Venue TBA"}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/10 px-3 py-1 text-sm text-white/60 hover:text-white"
+                    onClick={() => setActiveConcert(null)}
+                    aria-label="Close concert details"
+                  >
+                    Close
+                  </button>
+                </div>
+                <dl className="space-y-3 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-white/55">Date</dt>
+                    <dd className="text-right font-medium">{formatDate(activeConcert.date)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-white/55">Time</dt>
+                    <dd className="text-right font-medium">{activeConcert.time || "Time TBA"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-white/55">Location</dt>
+                    <dd className="text-right font-medium">{[activeConcert.city, activeConcert.country].filter(Boolean).join(", ") || "Location TBA"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-white/55">Style</dt>
+                    <dd className="text-right font-medium">{activeConcert.style || activeConcert.genre || "World Music"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-white/55">Price</dt>
+                    <dd className="text-right font-medium">{formatPrice(activeConcert.price)}</dd>
+                  </div>
+                </dl>
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  {activeConcert.locationLink ? (
+                    <a
+                      href={activeConcert.locationLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center rounded-lg border border-white/15 px-4 py-3 text-sm font-semibold text-white hover:border-[#FF8C21]/50"
+                    >
+                      Open in Google Maps
+                    </a>
+                  ) : null}
+                  {activeConcert.ticketUrl ? (
+                    <a
+                      href={activeConcert.ticketUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center rounded-lg bg-[#FF8C21] px-4 py-3 text-sm font-semibold text-white hover:bg-[#ff7c05]"
+                    >
+                      Open Ticket Link
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null
 
   return (
     <section
@@ -633,77 +720,7 @@ export function LiveSection({ data }: LiveSectionProps) {
         </div>
       </div>
 
-      {activeConcert && !isEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => setActiveConcert(null)}>
-          <div
-            className="w-full max-w-xl rounded-2xl border border-white/10 bg-black/90 p-6 text-white shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${activeConcert.eventName || "Concert"} details`}
-          >
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#FFB15A]">Live Date</p>
-                <h3 className="mt-2 font-serif text-3xl">{activeConcert.eventName || activeConcert.locationName || "Concert details"}</h3>
-                <p className="mt-2 text-sm text-white/70">{activeConcert.locationName || activeConcert.venue || "Venue TBA"}</p>
-              </div>
-              <button
-                type="button"
-                className="rounded-full border border-white/10 px-3 py-1 text-sm text-white/60 hover:text-white"
-                onClick={() => setActiveConcert(null)}
-                aria-label="Close concert details"
-              >
-                Close
-              </button>
-            </div>
-            <dl className="space-y-3 text-sm">
-              <div className="flex justify-between gap-4">
-                <dt className="text-white/55">Date</dt>
-                <dd className="text-right font-medium">{formatDate(activeConcert.date)}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-white/55">Time</dt>
-                <dd className="text-right font-medium">{activeConcert.time || "Time TBA"}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-white/55">Location</dt>
-                <dd className="text-right font-medium">{[activeConcert.city, activeConcert.country].filter(Boolean).join(", ") || "Location TBA"}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-white/55">Style</dt>
-                <dd className="text-right font-medium">{activeConcert.style || activeConcert.genre || "World Music"}</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-white/55">Price</dt>
-                <dd className="text-right font-medium">{formatPrice(activeConcert.price)}</dd>
-              </div>
-            </dl>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {activeConcert.locationLink ? (
-                <a
-                  href={activeConcert.locationLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center rounded-lg border border-white/15 px-4 py-3 text-sm font-semibold text-white hover:border-[#FF8C21]/50"
-                >
-                  Open in Google Maps
-                </a>
-              ) : null}
-              {activeConcert.ticketUrl ? (
-                <a
-                  href={activeConcert.ticketUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center rounded-lg bg-[#FF8C21] px-4 py-3 text-sm font-semibold text-white hover:bg-[#ff7c05]"
-                >
-                  Open Ticket Link
-                </a>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      )}
+      {concertModal}
     </section>
   )
 }

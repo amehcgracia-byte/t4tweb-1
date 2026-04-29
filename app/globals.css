@@ -1160,6 +1160,20 @@ section {
     height: auto !important;
   }
 
+  @media (max-width: 639px) {
+    .public-home [data-editor-node-id="hero-logo"] {
+      margin-bottom: 1.25rem !important;
+    }
+
+    .public-home [data-editor-node-id="hero-scroll-indicator"] {
+      bottom: clamp(2.5rem, 8vh, 4.5rem) !important;
+    }
+
+    .public-home [data-editor-node-id="about-section"] {
+      margin-top: clamp(4.5rem, 18vw, 6rem) !important;
+    }
+  }
+
   .public-home [data-editor-node-id="hero-title"] {
     font-size: clamp(1.9rem, 4.2vw, 2.5625rem) !important;
   }

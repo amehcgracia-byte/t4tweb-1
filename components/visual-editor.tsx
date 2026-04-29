@@ -1,7 +1,7 @@
 "use client"
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
 import { DEFAULT_SECTION_LAYOUT_PRESET, SAFE_FLOW_PROTECTED_SECTION_IDS, SAFE_SECTION_MIN_GAP } from "@/lib/editor-default-layout"
@@ -339,13 +339,42 @@ function isPointOnSectionEdge(entry: RuntimeEntry, x: number, y: number): boolea
 function isEditingInput(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   const tag = target.tagName
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable
+  return (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    target.isContentEditable ||
+    Boolean(target.closest("[contenteditable='true']")) ||
+    Boolean(target.closest("[data-editor-text-input='true']")) ||
+    Boolean(target.closest("[data-live-concert-editor='true']"))
+  )
+}
+
+function isEditorTextEntryContext(target: EventTarget | null): boolean {
+  const candidates: HTMLElement[] = []
+  if (target instanceof HTMLElement) candidates.push(target)
+  if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+    candidates.push(document.activeElement)
+  }
+
+  return candidates.some((element) =>
+    isEditingInput(element) ||
+    Boolean(element.closest("[data-editor-text-input='true']")) ||
+    Boolean(element.closest("[data-live-concert-editor='true']"))
+  )
 }
 
 function isEditingInputActive(target: EventTarget | null): boolean {
-  if (isEditingInput(target)) return true
+  if (isEditorTextEntryContext(target)) return true
   if (typeof document === "undefined") return false
-  return isEditingInput(document.activeElement)
+  if (
+    document.querySelector(
+      "[data-live-concert-editor='true'] input:focus, [data-live-concert-editor='true'] textarea:focus, [data-live-concert-editor='true'] select:focus, [data-editor-text-input='true']:focus, [contenteditable='true']:focus"
+    )
+  ) {
+    return true
+  }
+  return isEditorTextEntryContext(document.activeElement)
 }
 
 function normalizeType(raw: string): NodeType {
@@ -2598,10 +2627,10 @@ export function VisualEditorOverlay() {
   }, [])
 
   const normalizeEditorConcert = useCallback((input: Partial<EditorConcert>, fallbackEditorId: number): EditorConcert => {
-    const locationName = (input.locationName || input.venue || "").trim()
-    const locationLink = (input.locationLink || input.locationUrl || "").trim()
-    const ticketUrl = (input.ticketUrl || "").trim()
-    const style = (input.style || input.genre || "World Music").trim() || "World Music"
+    const locationName = input.locationName ?? input.venue ?? ""
+    const locationLink = input.locationLink ?? input.locationUrl ?? ""
+    const ticketUrl = input.ticketUrl ?? ""
+    const style = input.style ?? input.genre ?? "World Music"
     const deriveStatus = () => {
       const rawStatus = (input.status || "").trim()
       if (/cancelled/i.test(rawStatus)) return "Cancelled"
@@ -2613,23 +2642,23 @@ export function VisualEditorOverlay() {
     }
     return {
       _editorId: typeof input._editorId === "number" ? input._editorId : fallbackEditorId,
-      eventName: (input.eventName || locationName || `Concert ${fallbackEditorId + 1}`).trim(),
+      eventName: (input.eventName ?? locationName) || `Concert ${fallbackEditorId + 1}`,
       locationName,
       locationLink,
       ticketUrl,
       venue: locationName,
-      city: (input.city || "").trim(),
-      country: (input.country || "").trim(),
-      address: (input.address || "").trim(),
+      city: input.city ?? "",
+      country: input.country ?? "",
+      address: input.address ?? "",
       date: (input.date || "").trim(),
       time: (input.time || "").trim(),
       status: deriveStatus(),
       style,
       genre: style,
-      capacity: (input.capacity || "").trim(),
-      price: (input.price || "").trim(),
+      capacity: input.capacity ?? "",
+      price: input.price ?? "",
       locationUrl: locationLink,
-      imageUrl: (input.imageUrl || "").trim(),
+      imageUrl: input.imageUrl ?? "",
     }
   }, [])
 
@@ -2649,6 +2678,27 @@ export function VisualEditorOverlay() {
     )
     updateLiveConcertsCollection(nextConcerts)
   }, [liveConcerts, normalizeEditorConcert, updateLiveConcertsCollection])
+
+  const handleConcertEditorTextKeyDown = useCallback((
+    event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+    currentValue: string,
+    apply: (nextValue: string) => void
+  ) => {
+    if (event.key !== " ") return
+    event.preventDefault()
+    event.stopPropagation()
+    const nativeEvent = event.nativeEvent as KeyboardEvent & { stopImmediatePropagation?: () => void }
+    nativeEvent.stopImmediatePropagation?.()
+    const input = event.currentTarget
+    const selectionStart = input.selectionStart ?? currentValue.length
+    const selectionEnd = input.selectionEnd ?? currentValue.length
+    const nextValue = `${currentValue.slice(0, selectionStart)} ${currentValue.slice(selectionEnd)}`
+    apply(nextValue)
+    requestAnimationFrame(() => {
+      input.focus()
+      input.setSelectionRange(selectionStart + 1, selectionStart + 1)
+    })
+  }, [])
 
   const addLiveConcert = useCallback(() => {
     const nextEditorId = liveConcerts.reduce((max, concert) => Math.max(max, concert._editorId), -1) + 1
@@ -2684,6 +2734,31 @@ export function VisualEditorOverlay() {
       setOpenPanel(true)
     }
   }, [liveConcerts, selectedId, setOpenPanel, setSelectedId, updateLiveConcertsCollection])
+
+  useEffect(() => {
+    if (!selectedLiveConcert || typeof document === "undefined") return
+    const wrapper = document.querySelector<HTMLElement>("[data-live-concert-editor='true']")
+    if (!wrapper) return
+
+    const handleNativeSpace = (event: KeyboardEvent) => {
+      if (event.key !== " ") return
+      const target = event.target
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return
+      if (target.type === "date" || target.type === "time") return
+      event.preventDefault()
+      event.stopPropagation()
+      event.stopImmediatePropagation?.()
+      const selectionStart = target.selectionStart ?? target.value.length
+      const selectionEnd = target.selectionEnd ?? target.value.length
+      target.setRangeText(" ", selectionStart, selectionEnd, "end")
+      target.dispatchEvent(new Event("input", { bubbles: true }))
+    }
+
+    wrapper.addEventListener("keydown", handleNativeSpace, true)
+    return () => {
+      wrapper.removeEventListener("keydown", handleNativeSpace, true)
+    }
+  }, [selectedLiveConcert])
 
   const importLiveConcertFile = useCallback(async (file: File) => {
     const XLSX = await import("xlsx")
@@ -3306,7 +3381,7 @@ export function VisualEditorOverlay() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (isEditingInputActive(e.target)) return
-      const isActivation = e.key === "Enter" || e.key === " "
+      const isActivation = e.key === "Enter"
       if (isActivation && shouldBlockPublicAction(e.target)) {
         e.preventDefault()
         e.stopPropagation()
@@ -3707,7 +3782,15 @@ export function VisualEditorOverlay() {
             )}
 
             {selectedLiveConcert && (
-              <div className="space-y-2 rounded border border-slate-200 p-2">
+              <div
+                className="space-y-2 rounded border border-slate-200 p-2"
+                data-live-concert-editor="true"
+                onKeyDownCapture={(event) => {
+                  if (isEditingInput(event.target)) {
+                    event.stopPropagation()
+                  }
+                }}
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold">Concert Editor</span>
                   <button
@@ -3719,45 +3802,45 @@ export function VisualEditorOverlay() {
                   </button>
                 </div>
                 <label className="text-[11px] font-semibold">Event Name</label>
-                <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.eventName || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { eventName: e.target.value })} />
+                <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.eventName || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { eventName: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.eventName || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { eventName: nextValue }))} />
                 <label className="text-[11px] font-semibold">Venue</label>
-                <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.locationName || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationName: e.target.value, venue: e.target.value })} />
+                <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.locationName || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationName: e.target.value, venue: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.locationName || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationName: nextValue, venue: nextValue }))} />
                 <label className="text-[11px] font-semibold">Address</label>
-                <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.address || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { address: e.target.value })} />
+                <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.address || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { address: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.address || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { address: nextValue }))} />
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[11px] font-semibold">City</label>
-                    <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.city || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { city: e.target.value })} />
+                    <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.city || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { city: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.city || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { city: nextValue }))} />
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold">Country</label>
-                    <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.country || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { country: e.target.value })} />
+                    <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.country || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { country: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.country || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { country: nextValue }))} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[11px] font-semibold">Date</label>
-                    <input type="date" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.date || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { date: e.target.value })} />
+                    <input data-editor-text-input="true" type="date" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.date || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { date: e.target.value })} />
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold">Time</label>
-                    <input type="time" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.time || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { time: e.target.value })} />
+                    <input data-editor-text-input="true" type="time" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.time || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { time: e.target.value })} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[11px] font-semibold">Style</label>
-                    <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.style || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { style: e.target.value, genre: e.target.value })} />
+                    <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.style || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { style: e.target.value, genre: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.style || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { style: nextValue, genre: nextValue }))} />
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold">Price</label>
-                    <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.price || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { price: e.target.value })} />
+                    <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.price || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { price: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.price || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { price: nextValue }))} />
                   </div>
                 </div>
                 <label className="text-[11px] font-semibold">Google Maps URL</label>
-                <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.locationLink || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationLink: e.target.value, locationUrl: e.target.value })} />
+                <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.locationLink || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationLink: e.target.value, locationUrl: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.locationLink || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationLink: nextValue, locationUrl: nextValue }))} />
                 <label className="text-[11px] font-semibold">Ticket Link</label>
-                <input className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.ticketUrl || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { ticketUrl: e.target.value })} />
+                <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.ticketUrl || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { ticketUrl: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.ticketUrl || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { ticketUrl: nextValue }))} />
                 <label className="text-[11px] font-semibold">Current Bucket</label>
                 <div className="rounded border border-slate-200 px-2 py-1 text-[10px]">
                   {selectedLiveConcert.status || "Upcoming"} (automatic from date/time unless cancelled)
