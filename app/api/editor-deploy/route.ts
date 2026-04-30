@@ -2846,11 +2846,19 @@ export async function POST(request: Request) {
     const livePlatformPatches = collectLivePlatformPatches(payload.nodes)
     if (livePlatformPatches.streamingPlatforms.length > 0) liveSectionPatch.streamingPlatforms = livePlatformPatches.streamingPlatforms
     if (livePlatformPatches.socialPlatforms.length > 0) liveSectionPatch.socialPlatforms = livePlatformPatches.socialPlatforms
-    const liveConcertsContainerNode = payload.nodes.find((node) => node.id === "live-section-concerts-container" && node.explicitContent && Array.isArray(node.content.concerts))
+    const liveConcertCollectionChanged =
+      changedNodeSet.has("live-section-concerts-container") ||
+      changedNodeIds.some((nodeId) => Boolean(parseLiveConcertNodeId(nodeId)))
+    const liveConcertsContainerNode =
+      liveConcertCollectionChanged
+        ? payload.nodes.find((node) => node.id === "live-section-concerts-container" && node.explicitContent && Array.isArray(node.content.concerts))
+        : undefined
     if (liveConcertsContainerNode) {
       liveSectionPatch.concertsManagedByEditor = true
     }
-    const liveBgNode = payload.nodes.find((node) => node.id === "live-section-bg-image")
+    const liveBgNode = changedNodeSet.has("live-section-bg-image")
+      ? payload.nodes.find((node) => node.id === "live-section-bg-image")
+      : undefined
     if (liveBgNode?.explicitContent) {
       const src = typeof liveBgNode.content?.src === "string" ? liveBgNode.content.src.trim() : ""
       const { imageField, skippedReason } = resolveSanityImagePatch("live-section-bg-image", src, projectId, dataset)
@@ -2899,7 +2907,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const liveConcertPatches = collectLiveConcertPatches(payload.nodes)
+    const liveConcertPatches = liveConcertCollectionChanged ? collectLiveConcertPatches(payload.nodes) : new Map()
     const liveConcertDocumentIds: string[] = []
     if (liveConcertsContainerNode) {
       const currentIds = new Set(Array.from(liveConcertPatches.keys()).map((editorId) => `concert-${editorId}`))
@@ -3176,7 +3184,9 @@ export async function POST(request: Request) {
       contactElementStyles[node.id] = style
     }
 
-    const contactBgNode = payload.nodes.find((node) => node.id === "contact-bg-image")
+    const contactBgNode = changedNodeSet.has("contact-bg-image")
+      ? payload.nodes.find((node) => node.id === "contact-bg-image")
+      : undefined
     if (contactBgNode?.explicitContent) {
       const src = typeof contactBgNode.content?.src === "string" ? contactBgNode.content.src.trim() : ""
       const { imageField, skippedReason } = resolveSanityImagePatch("contact-bg-image", src, projectId, dataset)
@@ -3244,7 +3254,9 @@ export async function POST(request: Request) {
       footerElementStyles[node.id] = style
     }
 
-    const footerLogoNode = payload.nodes.find((node) => node.id === "footer-logo")
+    const footerLogoNode = changedNodeSet.has("footer-logo")
+      ? payload.nodes.find((node) => node.id === "footer-logo")
+      : undefined
     if (footerLogoNode?.explicitContent) {
       const src = typeof footerLogoNode.content?.src === "string" ? footerLogoNode.content.src.trim() : ""
       const alt = typeof footerLogoNode.content?.alt === "string" ? footerLogoNode.content.alt.trim() : ""

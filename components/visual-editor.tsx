@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
 import { usePathname } from "next/navigation"
-import { DEFAULT_SECTION_LAYOUT_PRESET, SAFE_FLOW_PROTECTED_SECTION_IDS, SAFE_SECTION_MIN_GAP } from "@/lib/editor-default-layout"
+import { DEFAULT_EDITOR_NODE_PRESET, DEFAULT_SECTION_LAYOUT_PRESET, SAFE_FLOW_PROTECTED_SECTION_IDS, SAFE_SECTION_MIN_GAP } from "@/lib/editor-default-layout"
 import { TEXT_EMPHASIS_SHADOW, applyScrollIndicatorLayoutToElement, clearScrollIndicatorLayoutFromElement } from "@/lib/hero-layout-styles"
 
 type NodeType = "section" | "background" | "card" | "text" | "button" | "image" | "group" | "overlay"
@@ -275,6 +275,17 @@ type Command =
   | { type: "UPDATE_BACKGROUND"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_SECTION"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
   | { type: "UPDATE_GROUP"; nodeId: string; patch: Partial<EditorNode["content"] & EditorNode["style"]> }
+  | {
+      type: "APPLY_NODE_PRESET"
+      nodeId: string
+      geometry?: NodeGeometry
+      style?: Partial<EditorNode["style"]>
+      content?: Partial<EditorNode["content"]>
+      explicitContent?: boolean
+      explicitStyle?: boolean
+      explicitPosition?: boolean
+      explicitSize?: boolean
+    }
   | { type: "ADD_EXTRA_NODE"; node: EditorNode }
   | { type: "DELETE_NODE"; nodeId: string }
   | { type: "COPY_NODE"; nodeId: string }
@@ -1582,6 +1593,20 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             const updated = { ...n, content, style, explicitContent: isContentEdit, explicitStyle: isStyleEdit }
             return updated
           })
+          break
+        }
+        case "APPLY_NODE_PRESET": {
+          patchNode(command.nodeId, (n) => ({
+            ...n,
+            geometry: command.geometry ? { ...command.geometry } : n.geometry,
+            style: command.style ? { ...command.style } : n.style,
+            content: command.content ? { ...command.content } : n.content,
+            explicitContent: command.content ? Boolean(command.explicitContent) : n.explicitContent,
+            explicitStyle: command.style ? Boolean(command.explicitStyle) : n.explicitStyle,
+            explicitPosition: command.geometry ? Boolean(command.explicitPosition) : n.explicitPosition,
+            explicitSize: command.geometry ? Boolean(command.explicitSize) : n.explicitSize,
+          }))
+          shouldSnapshot = false
           break
         }
         case "ADD_EXTRA_NODE": {
@@ -2917,20 +2942,26 @@ export function VisualEditorOverlay() {
     videoInputValuesRef.current = {}
     setMarqueeRect(null)
     dirtyNodeIdsRef.current.clear()
-    for (const [nodeId, preset] of Object.entries(DEFAULT_SECTION_LAYOUT_PRESET)) {
+    dispatch({ type: "BEGIN_TRANSACTION" })
+    for (const preset of DEFAULT_EDITOR_NODE_PRESET) {
       dispatch({
-        type: "SET_NODE_GEOMETRY",
-        nodeId,
-        x: preset.x,
-        y: preset.y,
-        width: preset.width,
-        height: preset.height,
-        explicitSize: true,
+        type: "APPLY_NODE_PRESET",
+        nodeId: preset.nodeId,
+        geometry: preset.geometry,
+        style: preset.style as Partial<EditorNode["style"]> | undefined,
+        content: preset.content as Partial<EditorNode["content"]> | undefined,
+        explicitContent: preset.explicitContent,
+        explicitStyle: preset.explicitStyle,
+        explicitPosition: preset.explicitPosition,
+        explicitSize: preset.explicitSize,
       })
+    }
+    for (const [nodeId, preset] of Object.entries(DEFAULT_SECTION_LAYOUT_PRESET)) {
       if (typeof preset.scale === "number") {
         dispatch({ type: "SET_NODE_SCALE", nodeId, scale: preset.scale })
       }
     }
+    dispatch({ type: "END_TRANSACTION" })
   }
 
   const onDeploy = async () => {

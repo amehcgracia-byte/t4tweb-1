@@ -174,26 +174,26 @@ export function LiveSection({ data }: LiveSectionProps) {
           >
             <div className="flex min-h-[100dvh] items-center justify-center p-4">
               <div
-                className="max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-black/90 p-6 text-white shadow-2xl"
+                className="relative max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-black/90 p-6 text-white shadow-2xl"
                 onClick={(event) => event.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-label={`${activeConcert.eventName || "Concert"} details`}
               >
+                <button
+                  type="button"
+                  className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full text-2xl leading-none text-white/75 transition hover:text-white"
+                  onClick={() => setActiveConcert(null)}
+                  aria-label="Close concert details"
+                >
+                  ×
+                </button>
                 <div className="mb-5 flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#FFB15A]">Live Date</p>
                     <h3 className="mt-2 font-serif text-3xl">{activeConcert.eventName || activeConcert.locationName || "Concert details"}</h3>
                     <p className="mt-2 text-sm text-white/70">{activeConcert.locationName || activeConcert.venue || "Venue TBA"}</p>
                   </div>
-                  <button
-                    type="button"
-                    className="rounded-full border border-white/10 px-3 py-1 text-sm text-white/60 hover:text-white"
-                    onClick={() => setActiveConcert(null)}
-                    aria-label="Close concert details"
-                  >
-                    Close
-                  </button>
                 </div>
                 <dl className="space-y-3 text-sm">
                   <div className="flex justify-between gap-4">
