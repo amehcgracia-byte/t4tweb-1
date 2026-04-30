@@ -28,8 +28,11 @@ export interface HomeEditorNodeStyle {
   textAlign?: "left" | "center" | "right"
   scale?: number
   minHeight?: string
+  padding?: string
   paddingTop?: string
   paddingBottom?: string
+  borderRadius?: string
+  borderColor?: string
 }
 
 export interface HomeEditorNodeContent {
@@ -89,6 +92,7 @@ export interface HomeEditorNodeContent {
   extraNodeType?: HomeEditorExtraNodeType
   parentSection?: string
   label?: string
+  baseWidth?: number
 }
 
 export interface HomeEditorNodeOverride {

@@ -159,6 +159,9 @@ interface SectionFlowCorrection {
   measuredGap: number
 }
 
+const ALLOWED_EXTRA_NODE_TYPES = new Set(["text", "button", "card", "overlay", "shade", "section-divider"])
+const BLOCKED_EXTRA_NODE_TYPES = new Set(["section", "background-image"])
+
 interface DeployEnvDiagnostics {
   SANITY_PROJECT_ID: "yes" | "no"
   NEXT_PUBLIC_SANITY_PROJECT_ID: "yes" | "no"
@@ -237,9 +240,13 @@ function isObsoleteGhostExtraNode(node: DeployNodePayload): boolean {
 }
 
 function isDisabledExtraNode(node: DeployNodePayload): boolean {
-  if (node.id.startsWith("extra-")) return true
   const extraNodeType = typeof node.content?.extraNodeType === "string" ? node.content.extraNodeType : ""
-  return Boolean(extraNodeType) || node.type === "overlay" || node.type === "shade"
+  if (!extraNodeType && !node.id.startsWith("extra-")) return false
+  const normalizedType =
+    extraNodeType ||
+    (node.type === "overlay" ? "overlay" : node.type === "background" ? "section-divider" : node.type)
+  if (ALLOWED_EXTRA_NODE_TYPES.has(normalizedType)) return false
+  return BLOCKED_EXTRA_NODE_TYPES.has(normalizedType) || node.id.startsWith("extra-")
 }
 
 function normalizeSafeSectionFlow(payload: DeployRequestPayload, minGap: number): SectionFlowCorrection[] {
@@ -743,7 +750,7 @@ function toChangedNodeIds(payload: DeployRequestPayload): string[] {
     return Array.from(
       new Set(
         payload.changedNodeIds.filter(
-          (id): id is string => typeof id === "string" && id.trim().length > 0 && !OBSOLETE_EDITOR_NODE_IDS.has(id) && !id.startsWith("extra-")
+          (id): id is string => typeof id === "string" && id.trim().length > 0 && !OBSOLETE_EDITOR_NODE_IDS.has(id)
         )
       )
     )

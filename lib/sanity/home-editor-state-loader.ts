@@ -6,12 +6,31 @@ interface HomeEditorStateRaw {
   nodesJson?: string
 }
 
-function isDisabledExtraNode(rawNode: Record<string, unknown>, nodeId: string): boolean {
-  if (nodeId.startsWith("extra-")) return true
+const ALLOWED_EXTRA_NODE_TYPES = new Set(["text", "button", "card", "overlay", "shade", "section-divider"])
+const BLOCKED_EXTRA_NODE_TYPES = new Set(["section", "background-image"])
+
+function getExtraNodeType(rawNode: Record<string, unknown>, nodeId: string): string {
   const content = (rawNode.content && typeof rawNode.content === "object" ? rawNode.content : {}) as Record<string, unknown>
-  const nodeType = typeof rawNode.nodeType === "string" ? rawNode.nodeType : typeof rawNode.type === "string" ? rawNode.type : ""
-  const extraNodeType = typeof content.extraNodeType === "string" ? content.extraNodeType : ""
-  return Boolean(extraNodeType) || nodeType === "overlay" || nodeType === "shade"
+  const explicitExtraNodeType = typeof content.extraNodeType === "string" ? content.extraNodeType : ""
+  if (explicitExtraNodeType) return explicitExtraNodeType
+  if (nodeId.startsWith("extra-")) {
+    const nodeType = typeof rawNode.nodeType === "string" ? rawNode.nodeType : typeof rawNode.type === "string" ? rawNode.type : ""
+    if (nodeType === "overlay") return "overlay"
+    if (nodeType === "shade") return "shade"
+    if (nodeType === "card") return "card"
+    if (nodeType === "button") return "button"
+    if (nodeType === "text") return "text"
+    if (nodeType === "background") return "section-divider"
+    if (nodeType === "section") return "section"
+  }
+  return ""
+}
+
+function isDisabledExtraNode(rawNode: Record<string, unknown>, nodeId: string): boolean {
+  const extraNodeType = getExtraNodeType(rawNode, nodeId)
+  if (!extraNodeType) return false
+  if (ALLOWED_EXTRA_NODE_TYPES.has(extraNodeType)) return false
+  return BLOCKED_EXTRA_NODE_TYPES.has(extraNodeType) || nodeId.startsWith("extra-")
 }
 
 function isObsoleteGhostExtraNode(rawNode: Record<string, unknown>, nodeId: string): boolean {

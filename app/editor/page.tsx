@@ -1,4 +1,5 @@
 import HomePage from "../home-page"
+import { VisualEditorBootTrigger, VisualEditorOverlay } from "@/components/visual-editor"
 
 export const dynamic = "force-dynamic"
 
@@ -8,5 +9,11 @@ export default async function EditorPage() {
 
   // Render editor from the same published source of truth as the public page.
   // This keeps root-section layout parity stable after deploy/reload.
-  return <HomePage perspective="published" isEditorRoute={true} />
+  return (
+    <>
+      <HomePage perspective="published" isEditorRoute={true} />
+      <VisualEditorBootTrigger />
+      <VisualEditorOverlay />
+    </>
+  )
 }

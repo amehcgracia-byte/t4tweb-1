@@ -161,7 +161,7 @@ function getPressKitNodeAttrs(
 
 export function PressKitSection({ data }: PressKitSectionProps) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
-  const allowBackgroundGeometry = isEditing
+  const allowBackgroundGeometry = false
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const eyebrowRef = useRef<HTMLSpanElement>(null)
@@ -385,7 +385,7 @@ export function PressKitSection({ data }: PressKitSectionProps) {
       style={pressKitSectionStyle}>
       <div
         ref={bgRef}
-        className="absolute inset-0 -z-10"
+        className={isEditing ? "absolute inset-0 z-10" : "absolute inset-0 -z-10"}
         {...getPressKitNodeAttrs("press-kit-bg", "background", "Background Image", {
           "data-editor-media-kind": "image",
           "data-editor-src": pressKitBgSrc,

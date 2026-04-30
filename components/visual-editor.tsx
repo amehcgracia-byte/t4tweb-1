@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
+import { usePathname } from "next/navigation"
 import { DEFAULT_SECTION_LAYOUT_PRESET, SAFE_FLOW_PROTECTED_SECTION_IDS, SAFE_SECTION_MIN_GAP } from "@/lib/editor-default-layout"
 import { TEXT_EMPHASIS_SHADOW, applyScrollIndicatorLayoutToElement, clearScrollIndicatorLayoutFromElement } from "@/lib/hero-layout-styles"
 
@@ -84,8 +85,11 @@ interface EditorNode {
     gradientEnd?: string
     scale?: number
     minHeight?: string
+    padding?: string
     paddingTop?: string
     paddingBottom?: string
+    borderRadius?: string
+    borderColor?: string
   }
   content: {
     text?: string
@@ -116,6 +120,7 @@ interface EditorNode {
     extraNodeType?: ExtraNodeKind
     parentSection?: string
     label?: string
+    baseWidth?: number
   }
   explicitContent: boolean
   explicitStyle: boolean
@@ -498,6 +503,8 @@ const NAVBAR_TEXT_PATTERN_NODE_IDS = new Set<string>([
 const EXTRA_NODE_PREFIX = "extra-"
 type ExtraNodeKind = "text" | "button" | "card" | "overlay" | "section-divider" | "section" | "shade" | "background-image"
 const EXTRA_NODE_KINDS = new Set<ExtraNodeKind>(["text", "button", "card", "overlay", "section-divider", "section", "shade", "background-image"])
+const EXTRA_NODE_ALLOWED_MENU_KINDS: ExtraNodeKind[] = ["text", "button", "card", "overlay", "shade", "section-divider"]
+const EXTRA_NODE_MENU_KINDS: ExtraNodeKind[] = EXTRA_NODE_ALLOWED_MENU_KINDS
 
 const EXTRA_NODE_LIMITS: Record<ExtraNodeKind, number> = {
   text: 6,
@@ -1051,6 +1058,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
 }
 
 export function VisualEditorProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
   const [isEditing, setIsEditing] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
   const [isMobileEditBlocked, setIsMobileEditBlocked] = useState(false)
@@ -1099,18 +1107,15 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     providerNodesRef.current = nodes
   }, [nodes])
 
-  // Single synchronous hydration and editor activation effect
-  // This runs once after the first client-side render to establish isHydrated and isEditing state
-  // without setTimeout delays that cause cascading visual changes during boot
+  // Single editor activation effect based on actual route + viewport.
+  // This keeps /editor boot deterministic in fresh browser contexts.
   useEffect(() => {
     const t = new Date().toISOString()
-    console.log(`[BOOT-PHASE1] ${t} - First useEffect running (no deps)`)
+    console.log(`[BOOT-PHASE1] ${t} - Editor activation check`, { pathname })
 
-    // Mark as hydrated after first client-side render to prevent hydration mismatches
     setIsHydrated(true)
 
-    // ONLY activate editor on /editor route - ignore ?editMode=true query param completely
-    const isEditorRoute = window.location.pathname === "/editor"
+    const isEditorRoute = pathname === "/editor"
     const wantsEditMode = isEditorRoute
     console.log(`[BOOT-PHASE1] ${t} - isEditorRoute=${isEditorRoute}`)
 
@@ -1131,7 +1136,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       setIsEditing(false)
       setIsMobileEditBlocked(true)
     }
-  }, [])
+  }, [pathname])
 
   // Track if nodes have been built to prevent double-building on isEditing transitions
   const nodesBuiltRef = useRef(false)
@@ -1261,6 +1266,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     el.style.animation = "none"
     const hasManagedTransform = el.dataset.editorManagedTransform === "true"
     const hasManagedSize = el.dataset.editorManagedSize === "true"
+    const isPressKitBackgroundNode = node.id === "press-kit-bg"
     const isHeroTextPatternNode = HERO_TEXT_PATTERN_NODE_IDS.has(node.id)
     const hasUsableHeroTextGeometry = isHeroTextPatternNode && isUsableHeroTextGeometry(node.geometry)
     const nodeScale = Math.max(0.1, node.style.scale ?? 1)
@@ -1287,8 +1293,9 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         }
       }
     } else if (
+      !isPressKitBackgroundNode &&
       (isHeroTextPatternNode && hasUsableHeroTextGeometry && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1))) ||
-      (!isHeroTextPatternNode && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)))
+      (!isPressKitBackgroundNode && !isHeroTextPatternNode && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)))
     ) {
       el.style.transform = nodeScale !== 1
         ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})`
@@ -1304,6 +1311,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     }
     if (
       !isProtectedRootSectionNode(node.id) &&
+      !isPressKitBackgroundNode &&
       (
         (isHeroTextPatternNode && hasUsableHeroTextGeometry && node.explicitSize) ||
         (!isHeroTextPatternNode && node.explicitSize)
@@ -1725,9 +1733,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const sectionCandidates = candidates.filter((c) => c.type === "section")
     const edgedSections = sectionCandidates.filter((c) => isPointOnSectionEdge(c, x, y))
     const directCenterCandidates = candidates.filter((c) => c.type !== "section" && c.type !== "background")
-    const backgroundCandidates = candidates.filter((c) => c.type === "background" && !isDividerEntry(c))
+    const backgroundCandidates = candidates.filter((c) => c.type === "background")
     const directExtraCandidates = directCenterCandidates.filter((c) => c.isExtraNode && c.type !== "overlay")
     const backgroundExtraCandidates = backgroundCandidates.filter((c) => c.isExtraNode)
+    const dividerEntry = candidates.find(isDividerEntry)
 
     const navigationEntry = candidates.find((c) => c.id === "navigation")
     if (navigationEntry) {
@@ -1749,6 +1758,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (insideHeroTitle) {
         return heroTitleEntry
       }
+    }
+
+    if (dividerEntry?.isExtraNode) {
+      return dividerEntry
     }
 
     const priorityCards = directCenterCandidates.filter(isPriorityRuntimeCard)
@@ -1819,7 +1832,6 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     }
     const contentSections = candidates.filter(isContentSectionEntry)
     const sceneSections = candidates.filter(isSceneSectionEntry)
-    const dividerEntry = candidates.find(isDividerEntry)
     const meaningfulChild = candidates.find((c) => c.type !== "section" && c.type !== "background" && c.type !== "image")
 
     if (contentSections.length > 0 && sceneSections.length > 0) {
@@ -2092,7 +2104,7 @@ function ExtraNodesLayer({ nodes, registry }: { nodes: Map<string, EditorNode>; 
           height: `${height}px`,
           transform: scale !== 1 ? `translate(${x}px, ${y}px) scale(${scale})` : `translate(${x}px, ${y}px)`,
           transformOrigin: "top left",
-          zIndex: kind === "overlay" || kind === "shade" || kind === "background-image" || kind === "section-divider" ? 8 : 20,
+          zIndex: kind === "section-divider" ? 28 : kind === "overlay" || kind === "shade" || kind === "background-image" ? 8 : 20,
           color: node.style.color,
           backgroundColor: node.style.backgroundColor,
           fontSize: node.style.fontSize,
@@ -2104,27 +2116,27 @@ function ExtraNodesLayer({ nodes, registry }: { nodes: Map<string, EditorNode>; 
           display: kind === "button" ? "inline-flex" : kind === "text" || kind === "background-image" ? "block" : "flex",
           alignItems: kind === "text" ? undefined : "center",
           justifyContent: kind === "text" ? undefined : node.style.textAlign === "left" ? "flex-start" : node.style.textAlign === "right" ? "flex-end" : "center",
-          padding: kind === "text" || kind === "background-image" || kind === "section-divider" || kind === "shade" ? undefined : kind === "button" ? "0 18px" : "16px",
-          borderRadius: kind === "text" || kind === "section-divider" ? undefined : kind === "button" ? "8px" : "8px",
-          border: kind === "card" ? "1px solid rgba(255,255,255,0.18)" : undefined,
+          padding: kind === "text" || kind === "background-image" || kind === "section-divider" ? undefined : kind === "button" ? "0 18px" : node.style.padding || "16px",
+          borderRadius: kind === "text" || kind === "section-divider" ? undefined : node.style.borderRadius || "8px",
+          border: kind === "card" ? `1px solid ${node.style.borderColor || "rgba(255,255,255,0.18)"}` : undefined,
           backdropFilter: kind === "overlay" || kind === "shade" ? "blur(2px)" : undefined,
           pointerEvents: "auto",
-          whiteSpace: kind === "text" ? "pre-wrap" : undefined,
+          whiteSpace: kind === "text" || kind === "card" || kind === "overlay" || kind === "shade" ? "pre-wrap" : undefined,
           overflow: "hidden",
         }
         if (kind === "section") {
           baseStyle.minHeight = `${Math.max(120, node.geometry.height)}px`
         }
-        if (kind === "shade" || kind === "section-divider") {
+        if ((kind === "shade" || kind === "overlay" || kind === "section-divider") && (node.style.gradientEnabled || kind !== "overlay")) {
           baseStyle.backgroundImage = `linear-gradient(180deg, ${node.style.gradientStart || node.style.backgroundColor || "rgba(0,0,0,0.55)"}, ${node.style.gradientEnd || "rgba(0,0,0,0)"})`
         }
         if (kind === "background-image" && typeof node.style.opacity === "number") {
           baseStyle.opacity = node.style.opacity
         }
-        if ((kind === "text" || kind === "button") && node.style.textShadowEnabled) {
+        if ((kind === "text" || kind === "button" || kind === "card" || kind === "overlay" || kind === "shade") && node.style.textShadowEnabled) {
           baseStyle.textShadow = TEXT_EMPHASIS_SHADOW
         }
-        if ((kind === "text" || kind === "button") && node.style.gradientEnabled) {
+        if ((kind === "text" || kind === "button" || kind === "card") && node.style.gradientEnabled) {
           baseStyle.backgroundImage = `linear-gradient(90deg, ${node.style.gradientStart || "#FFB15A"}, ${node.style.gradientEnd || "#FF6C00"})`
           baseStyle.backgroundClip = "text"
           baseStyle.WebkitBackgroundClip = "text"
@@ -2192,8 +2204,15 @@ function ExtraNodesLayer({ nodes, registry }: { nodes: Map<string, EditorNode>; 
           )
         }
 
+        const renderedText =
+          kind === "section-divider"
+            ? ""
+            : node.content.title && kind === "card"
+              ? `${node.content.title}${node.content.text ? `\n${node.content.text}` : ""}`
+              : node.content.text
+
         return createPortal(
-          <div {...commonProps}>{kind === "overlay" || kind === "shade" || kind === "section-divider" ? "" : node.content.text}</div>,
+          <div {...commonProps}>{renderedText}</div>,
           parent
         )
       })}
@@ -2355,6 +2374,16 @@ export function VisualEditorOverlay() {
   const isBandMemberCard = Boolean(selectedNode && /^member-item-\d+$/.test(selectedNode.id))
   const isLiveConcertCard = Boolean(liveConcertSelection)
   const isSelectedSectionDivider = Boolean(selectedNode && isSectionDividerNodeId(selectedNode.id))
+  const selectedExtraNodeKind = selectedNode ? getExtraNodeKind(selectedNode) : null
+  const isEditableExtraTextBox = Boolean(
+    selectedNode &&
+      isExtraNodeId(selectedNode.id) &&
+      (
+        selectedExtraNodeKind === "card" ||
+        selectedExtraNodeKind === "overlay" ||
+        selectedExtraNodeKind === "shade"
+      )
+  )
   const hasNestedEditableChildren = Boolean(
     selectedNode?.type === "card" &&
       selectedEntry?.element &&
@@ -2401,7 +2430,19 @@ export function VisualEditorOverlay() {
       .filter((item): item is { id: string; name: string; href: string } => Boolean(item))
   })()
 
+  const extraTextUpdateCommandType: "UPDATE_CARD" | "UPDATE_GROUP" | null =
+    selectedNode?.type === "card"
+      ? "UPDATE_CARD"
+      : selectedNode?.type === "overlay"
+        ? "UPDATE_GROUP"
+        : null
+
   const addExtraNode = (kind: ExtraNodeKind): void => {
+    if (!EXTRA_NODE_MENU_KINDS.includes(kind)) {
+      setAddMessage("This block type is not available in the editor.")
+      return
+    }
+
     const selectedSectionElement =
       selectedEntry?.element?.closest<HTMLElement>("[data-editor-node-type='section'][data-editor-node-id], [data-editor-node-type='section'][data-extra-node-id]") ||
       (selectedEntry?.type === "section" ? selectedEntry.element : null)
@@ -2449,14 +2490,16 @@ export function VisualEditorOverlay() {
         label: "Extra Card",
         width: 300,
         height: 168,
-        style: { backgroundColor: "rgba(0, 0, 0, 0.45)" },
+        text: "New card text",
+        style: { backgroundColor: "rgba(0, 0, 0, 0.45)", color: "#ffffff", fontSize: "18px", fontWeight: "500" },
       },
       overlay: {
         type: "overlay",
         label: "Extra Overlay",
         width: 340,
         height: 190,
-        style: { backgroundColor: "rgba(0, 0, 0, 0.32)" },
+        text: "New overlay text",
+        style: { backgroundColor: "rgba(0, 0, 0, 0.32)", color: "#ffffff", fontSize: "18px", fontWeight: "500" },
       },
       "section-divider": {
         type: "background",
@@ -2477,7 +2520,8 @@ export function VisualEditorOverlay() {
         label: "Extra Shade Layer",
         width: Math.max(340, Math.round(rect.width * 0.75)),
         height: 160,
-        style: { backgroundColor: "rgba(0, 0, 0, 0.42)", gradientStart: "rgba(0,0,0,0.62)", gradientEnd: "rgba(0,0,0,0)" },
+        text: "New shade text",
+        style: { backgroundColor: "rgba(0, 0, 0, 0.42)", color: "#ffffff", fontSize: "18px", fontWeight: "500", gradientStart: "rgba(0,0,0,0.62)", gradientEnd: "rgba(0,0,0,0)" },
       },
       "background-image": {
         type: "background",
@@ -2518,6 +2562,7 @@ export function VisualEditorOverlay() {
         extraNodeType: kind,
         parentSection: sectionId,
         label: preset.label,
+        baseWidth: Math.round(rect.width),
       },
       explicitContent: true,
       explicitStyle: true,
@@ -3149,6 +3194,7 @@ export function VisualEditorOverlay() {
   useEffect(() => {
     if (!isEditing) return
     document.body.setAttribute("data-editor-mode", "true")
+    document.body.setAttribute("data-visual-editor-mounted", "true")
 
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement
@@ -3437,6 +3483,7 @@ export function VisualEditorOverlay() {
       document.removeEventListener("submit", blockPublicAction, true)
       window.removeEventListener("keydown", onKeyDown)
       document.body.removeAttribute("data-editor-mode")
+      document.body.removeAttribute("data-visual-editor-mounted")
     }
   }, [isEditing, dispatch, selectedId, selectedIds, undo, redo, getEditableAtPosition, marqueeRect, registry])
 
@@ -3483,7 +3530,7 @@ export function VisualEditorOverlay() {
 
   return (
     <>
-      <div data-editor-toolbar className="fixed top-3 left-3 z-[9999] flex items-center gap-2 rounded-full bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white">
+      <div data-editor-toolbar data-visual-editor-toolbar="true" className="fixed top-3 left-3 z-[9999] flex items-center gap-2 rounded-full bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white">
         <button aria-label="Undo" title="Undo" onClick={undo} disabled={!canUndo} className="rounded p-1.5 hover:bg-white/10 disabled:opacity-40">
           ↶
         </button>
@@ -3518,6 +3565,7 @@ export function VisualEditorOverlay() {
             type="button"
             aria-label="Add block"
             title="Add block"
+            data-visual-editor-add-button="true"
             onClick={() => {
               setAddMenuOpen((value) => !value)
               setAddMessage(null)
@@ -3528,16 +3576,22 @@ export function VisualEditorOverlay() {
           </button>
           {addMenuOpen && (
             <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-lg border border-white/15 bg-[#111827] py-1 text-sm shadow-2xl">
-              {(["text", "button", "card", "overlay", "section-divider", "section", "shade", "background-image"] as const).map((kind) => (
-                <button
-                  key={kind}
-                  type="button"
-                  className="block w-full px-3 py-2 text-left text-white hover:bg-white/10"
-                  onClick={() => addExtraNode(kind)}
-                >
-                  {kind === "text" ? "Add Text" : kind === "button" ? "Add Button" : kind === "card" ? "Add Card" : kind === "overlay" ? "Add Overlay" : kind === "section-divider" ? "Add Section Divider" : kind === "section" ? "Add Section" : kind === "shade" ? "Add Shade Layer" : "Add Background Image"}
-                </button>
-              ))}
+              {EXTRA_NODE_MENU_KINDS.length > 0 ? (
+                EXTRA_NODE_MENU_KINDS.map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-white hover:bg-white/10"
+                    onClick={() => addExtraNode(kind)}
+                  >
+                    {kind === "text" ? "Add Text" : kind === "button" ? "Add Button" : kind === "card" ? "Add Card" : kind === "overlay" ? "Add Overlay" : kind === "section-divider" ? "Add Section Divider" : kind === "shade" ? "Add Shade Layer" : kind}
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-xs text-white/70">
+                  Extra blocks are temporarily disabled until persistence is restored.
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -4016,6 +4070,180 @@ export function VisualEditorOverlay() {
                   value={selectedNode.content.href || ""}
                   onChange={(e) => dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { href: e.target.value } })}
                 />
+              </>
+            )}
+
+            {isEditableExtraTextBox && extraTextUpdateCommandType && selectedNode && (
+              <>
+                <label className="text-xs font-semibold">Content</label>
+                <textarea
+                  data-editor-text-input="true"
+                  className="w-full rounded border p-1 text-xs"
+                  value={selectedNode.content.text || ""}
+                  onChange={(e) => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { text: e.target.value } })}
+                />
+                {selectedExtraNodeKind === "card" && (
+                  <>
+                    <label className="text-[10px]">Title</label>
+                    <input
+                      data-editor-text-input="true"
+                      className="w-full rounded border p-1 text-xs"
+                      value={selectedNode.content.title || ""}
+                      onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { title: e.target.value } })}
+                    />
+                    <label className="text-[10px]">Link</label>
+                    <input
+                      data-editor-text-input="true"
+                      className="w-full rounded border p-1 text-xs"
+                      value={selectedNode.content.href || ""}
+                      onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { href: e.target.value } })}
+                    />
+                  </>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px]">Text Color</label>
+                    <input
+                      type="color"
+                      className="h-8 w-full rounded border p-1"
+                      value={readColorHex(selectedNode.style.color, "#ffffff")}
+                      onChange={(e) => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { color: e.target.value } })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px]">Font Size</label>
+                    <input
+                      data-editor-text-input="true"
+                      className="w-full rounded border p-1 text-xs"
+                      value={selectedNode.style.fontSize || ""}
+                      onChange={(e) => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { fontSize: e.target.value } })}
+                      placeholder="e.g. 18px"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px]">Font Family</label>
+                  <select
+                    className="w-full rounded border p-1 text-xs"
+                    value={selectedNode.style.fontFamily || "inherit"}
+                    onChange={(e) => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { fontFamily: e.target.value } })}
+                  >
+                    {TEXT_FONT_OPTIONS.map((font) => (
+                      <option key={font.value} value={font.value}>{font.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs ${selectedNode.style.fontWeight === "700" ? "bg-slate-900 text-white" : ""}`}
+                    onClick={() => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { fontWeight: selectedNode.style.fontWeight === "700" ? "400" : "700" } })}
+                  >
+                    B
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs italic ${selectedNode.style.fontStyle === "italic" ? "bg-slate-900 text-white" : ""}`}
+                    onClick={() => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { fontStyle: selectedNode.style.fontStyle === "italic" ? "normal" : "italic" } })}
+                  >
+                    I
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded border px-2 py-1 text-xs underline ${selectedNode.style.textDecoration === "underline" ? "bg-slate-900 text-white" : ""}`}
+                    onClick={() => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { textDecoration: selectedNode.style.textDecoration === "underline" ? "none" : "underline" } })}
+                  >
+                    U
+                  </button>
+                </div>
+                <label className="text-[10px]">Opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  className="w-full"
+                  value={selectedNode.style.opacity ?? 1}
+                  onChange={(e) => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
+                />
+                <label className="text-[10px]">Background Color</label>
+                <input
+                  type="color"
+                  className="h-8 w-full rounded border p-1"
+                  value={readColorHex(selectedNode.style.backgroundColor, "#000000")}
+                  onChange={(e) => dispatch({
+                    type: extraTextUpdateCommandType,
+                    nodeId: selectedNode.id,
+                    patch: { backgroundColor: withColorOpacity(e.target.value, readColorOpacity(selectedNode.style.backgroundColor)) },
+                  })}
+                />
+                {selectedExtraNodeKind === "card" && (
+                  <>
+                    <label className="text-[10px]">Border Color</label>
+                    <input
+                      type="color"
+                      className="h-8 w-full rounded border p-1"
+                      value={readColorHex(selectedNode.style.borderColor, "#ffffff")}
+                      onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { borderColor: e.target.value } })}
+                    />
+                  </>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px]">Border Radius</label>
+                    <input
+                      data-editor-text-input="true"
+                      className="w-full rounded border p-1 text-xs"
+                      value={selectedNode.style.borderRadius || ""}
+                      onChange={(e) => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { borderRadius: e.target.value } })}
+                      placeholder="e.g. 8px"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px]">Padding</label>
+                    <input
+                      data-editor-text-input="true"
+                      className="w-full rounded border p-1 text-xs"
+                      value={selectedNode.style.padding || ""}
+                      onChange={(e) => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { padding: e.target.value } })}
+                      placeholder="e.g. 16px"
+                    />
+                  </div>
+                </div>
+                {(selectedExtraNodeKind === "overlay" || selectedExtraNodeKind === "shade") && (
+                  <div className="rounded border border-slate-200 p-2">
+                    <label className="text-[10px] font-semibold">Gradient</label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedNode.style.gradientEnabled || false}
+                        onChange={(e) => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { gradientEnabled: e.target.checked } })}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-[10px]">Enable gradient</span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px]">Start</label>
+                        <input
+                          type="color"
+                          className="h-8 w-full rounded border p-1"
+                          value={selectedNode.style.gradientStart || "#000000"}
+                          onChange={(e) => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { gradientStart: e.target.value } })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px]">End</label>
+                        <input
+                          type="color"
+                          className="h-8 w-full rounded border p-1"
+                          value={selectedNode.style.gradientEnd || "#000000"}
+                          onChange={(e) => dispatch({ type: extraTextUpdateCommandType, nodeId: selectedNode.id, patch: { gradientEnd: e.target.value } })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
@@ -4547,4 +4775,21 @@ export function VisualEditorOverlay() {
       )}
     </>
   )
+}
+
+export function VisualEditorBootTrigger() {
+  const { setIsEditing } = useVisualEditor()
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)")
+    document.body.setAttribute("data-editor-mode", "true")
+    document.body.setAttribute("data-visual-editor-mounted", "true")
+    setIsEditing(mediaQuery.matches)
+    return () => {
+      document.body.removeAttribute("data-editor-mode")
+      document.body.removeAttribute("data-visual-editor-mounted")
+    }
+  }, [setIsEditing])
+
+  return null
 }
