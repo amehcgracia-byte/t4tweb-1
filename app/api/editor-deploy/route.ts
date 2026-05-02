@@ -171,6 +171,13 @@ interface DeployEnvDiagnostics {
   SANITY_API_TOKEN: "yes" | "no"
 }
 
+type SanityWriteTokenSource = "SANITY_API_WRITE_TOKEN" | "SANITY_API_TOKEN"
+
+interface SanityWriteClientCandidate {
+  source: SanityWriteTokenSource
+  client: ReturnType<typeof createClient>
+}
+
 const ROUTE_VERSION = "sanity-debug-v3-brutal"
 const TARGET_SECTION = "hero"
 const SANITY_DOC_TYPE = "heroSection"
@@ -1568,6 +1575,86 @@ function getEnvDiagnostics(): DeployEnvDiagnostics {
   }
 }
 
+function buildSanityWriteClientCandidates(projectId: string, dataset: string): SanityWriteClientCandidate[] {
+  const candidates: SanityWriteClientCandidate[] = []
+  const seenTokens = new Set<string>()
+  const tokenEntries: Array<[SanityWriteTokenSource, string | undefined]> = [
+    ["SANITY_API_WRITE_TOKEN", process.env.SANITY_API_WRITE_TOKEN],
+    ["SANITY_API_TOKEN", process.env.SANITY_API_TOKEN],
+  ]
+
+  for (const [source, rawToken] of tokenEntries) {
+    const token = rawToken?.trim()
+    if (!token || seenTokens.has(token)) continue
+    seenTokens.add(token)
+    candidates.push({
+      source,
+      client: createClient({
+        projectId,
+        dataset,
+        apiVersion: "2024-01-01",
+        useCdn: false,
+        token,
+        perspective: "published",
+      }),
+    })
+  }
+
+  return candidates
+}
+
+function isSanityPermissionError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  return /Insufficient permissions|permission "update" required|permission "create" required|permission "delete" required/i.test(error.message)
+}
+
+function formatSanityWriteFailureMessage(params: {
+  operation: string
+  documentId: string
+  documentType: string
+  attemptedSources: SanityWriteTokenSource[]
+  lastError: unknown
+}): string {
+  const baseMessage = params.lastError instanceof Error ? params.lastError.message : "Unknown Sanity write error"
+  return [
+    `Sanity ${params.operation} failed for document "${params.documentId}" (${params.documentType}).`,
+    `Attempted token source(s): ${params.attemptedSources.join(", ")}.`,
+    `Sanity said: ${baseMessage}`,
+  ].join(" ")
+}
+
+async function runSanityWriteWithFallback<T>(
+  candidates: SanityWriteClientCandidate[],
+  context: { operation: string; documentId: string; documentType: string },
+  writer: (client: ReturnType<typeof createClient>, source: SanityWriteTokenSource) => Promise<T>
+): Promise<{ result: T; source: SanityWriteTokenSource }> {
+  const attemptedSources: SanityWriteTokenSource[] = []
+  let lastError: unknown = null
+
+  for (const candidate of candidates) {
+    attemptedSources.push(candidate.source)
+    try {
+      const result = await writer(candidate.client, candidate.source)
+      return { result, source: candidate.source }
+    } catch (error) {
+      lastError = error
+      if (!isSanityPermissionError(error) || attemptedSources.length >= candidates.length) {
+        break
+      }
+    }
+  }
+
+  throw new Error(
+    formatSanityWriteFailureMessage({
+      operation: context.operation,
+      documentId: context.documentId,
+      documentType: context.documentType,
+      attemptedSources,
+      lastError,
+    })
+  )
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
@@ -1808,6 +1895,8 @@ export async function POST(request: Request) {
       /** Must match loaders (`perspective: "published"`) so patches hit what the public site reads. */
       perspective: "published",
     })
+    const concertWriteCandidates = buildSanityWriteClientCandidates(projectId, dataset)
+    const concertWriteSourcesUsed = new Set<SanityWriteTokenSource>()
 
     const [existingHero, existingNavigation, existingIntro, existingLatestRelease, existingAbout, existingPressKit, existingLiveSection, existingContact, existingFooter] = await Promise.all([
       writeClient.fetch<{
@@ -2880,10 +2969,17 @@ export async function POST(request: Request) {
         ...liveSectionPatch,
       }
       if (existingLiveSection?._id) {
-        const livePatchResponse = await writeClient
-          .patch(toPublishedDocumentId(existingLiveSection._id))
-          .set(liveSetPayload)
-          .commit()
+        const livePatchResult = await runSanityWriteWithFallback(
+          concertWriteCandidates,
+          {
+            operation: "update",
+            documentId: toPublishedDocumentId(existingLiveSection._id),
+            documentType: SANITY_DOC_LIVE_SECTION,
+          },
+          (client) => client.patch(toPublishedDocumentId(existingLiveSection._id)).set(liveSetPayload).commit()
+        )
+        const livePatchResponse = livePatchResult.result
+        concertWriteSourcesUsed.add(livePatchResult.source)
         liveSectionDocumentId = livePatchResponse._id
       } else {
         const liveCreatePayload: Record<string, unknown> & { _id: string; _type: string } = {
@@ -2891,7 +2987,17 @@ export async function POST(request: Request) {
           _id: LIVE_SECTION_DOCUMENT_ID,
           _type: SANITY_DOC_LIVE_SECTION,
         }
-        const liveCreateResponse = await writeClient.createOrReplace(liveCreatePayload)
+        const liveCreateResult = await runSanityWriteWithFallback(
+          concertWriteCandidates,
+          {
+            operation: "createOrReplace",
+            documentId: LIVE_SECTION_DOCUMENT_ID,
+            documentType: SANITY_DOC_LIVE_SECTION,
+          },
+          (client) => client.createOrReplace(liveCreatePayload)
+        )
+        const liveCreateResponse = liveCreateResult.result
+        concertWriteSourcesUsed.add(liveCreateResult.source)
         liveSectionDocumentId = liveCreateResponse._id
       }
       steps.push({
@@ -2915,8 +3021,27 @@ export async function POST(request: Request) {
       for (const staleConcert of staleConcerts) {
         const publishedConcertId = toPublishedDocumentId(staleConcert._id)
         if (!currentIds.has(publishedConcertId)) {
-          await writeClient.delete(publishedConcertId)
-          await writeClient.delete(toDraftDocumentId(publishedConcertId)).catch(() => null)
+          const deletePublishedResult = await runSanityWriteWithFallback(
+            concertWriteCandidates,
+            {
+              operation: "delete",
+              documentId: publishedConcertId,
+              documentType: SANITY_DOC_CONCERT,
+            },
+            (client) => client.delete(publishedConcertId)
+          )
+          concertWriteSourcesUsed.add(deletePublishedResult.source)
+          await runSanityWriteWithFallback(
+            concertWriteCandidates,
+            {
+              operation: "delete",
+              documentId: toDraftDocumentId(publishedConcertId),
+              documentType: SANITY_DOC_CONCERT,
+            },
+            (client) => client.delete(toDraftDocumentId(publishedConcertId))
+          ).then(({ source }) => {
+            concertWriteSourcesUsed.add(source)
+          }).catch(() => null)
         }
       }
       if (!persistedNodes.includes("live-section-concerts-container")) persistedNodes.push("live-section-concerts-container")
@@ -2929,7 +3054,17 @@ export async function POST(request: Request) {
         _type: SANITY_DOC_CONCERT,
         ...concertPatch,
       }
-      const concertResponse = await writeClient.createOrReplace(concertPayload)
+      const concertWriteResult = await runSanityWriteWithFallback(
+        concertWriteCandidates,
+        {
+          operation: "createOrReplace",
+          documentId: concertDocumentId,
+          documentType: SANITY_DOC_CONCERT,
+        },
+        (client) => client.createOrReplace(concertPayload)
+      )
+      const concertResponse = concertWriteResult.result
+      concertWriteSourcesUsed.add(concertWriteResult.source)
       liveConcertDocumentIds.push(concertResponse._id)
       if (!persistedFields.includes("concert.fields")) persistedFields.push("concert.fields")
       for (const node of payload.nodes) {
@@ -2943,7 +3078,7 @@ export async function POST(request: Request) {
       steps.push({
         step: "saving",
         ok: true,
-        message: `Live concert fields saved: ${liveConcertDocumentIds.length} document(s).`,
+        message: `Live concert fields saved: ${liveConcertDocumentIds.length} document(s). Token source: ${Array.from(concertWriteSourcesUsed).join(", ") || "unknown"}.`,
       })
     }
 
@@ -3616,13 +3751,16 @@ export async function POST(request: Request) {
       ),
       writeClient.fetch<Array<{
         editorId?: number
+        eventName?: string
         locationName?: string
         locationLink?: string
+        locationUrl?: string
         style?: string
         priceText?: string
         venue?: string
         city?: string
         country?: string
+        address?: string
         date?: string
         time?: string
         status?: string
@@ -3631,7 +3769,7 @@ export async function POST(request: Request) {
         price?: number
         ticketUrl?: string
       }>>(
-        `*[_type == $type]{ editorId, locationName, locationLink, style, priceText, venue, city, country, date, time, status, genre, capacity, price, ticketUrl }`,
+        `*[_type == $type]{ editorId, eventName, locationName, locationLink, locationUrl, style, priceText, venue, city, country, address, date, time, status, genre, capacity, price, ticketUrl }`,
         { type: SANITY_DOC_CONCERT }
       ),
       writeClient.fetch<{
