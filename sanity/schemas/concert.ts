@@ -8,7 +8,9 @@ export default defineType({
   icon: CalendarIcon,
   fields: [
     defineField({ name: 'editorId', title: 'Visual editor ID', type: 'number', readOnly: true }),
+    defineField({ name: 'eventName', title: 'Event name', type: 'string' }),
     defineField({ name: 'locationName', title: 'Location name', type: 'string' }),
+    defineField({ name: 'address', title: 'Address', type: 'string' }),
     defineField({ name: 'locationLink', title: 'Google Maps URL', type: 'url' }),
     defineField({
       name: 'style',
@@ -48,14 +50,15 @@ export default defineType({
   orderings: [{ title: 'Date', name: 'date', by: [{ field: 'date', direction: 'desc' }] }],
   preview: {
     select: {
-      title: 'locationName',
+      title: 'eventName',
+      fallbackTitle: 'locationName',
       subtitle: 'date',
       media: 'image',
     },
     prepare(selection) {
-      const {title, subtitle, media} = selection
+      const {title, fallbackTitle, subtitle, media} = selection
       return {
-        title: title || 'Untitled Concert',
+        title: title || fallbackTitle || 'Untitled Concert',
         subtitle: subtitle && `${subtitle}, `,
         media: media,
       }

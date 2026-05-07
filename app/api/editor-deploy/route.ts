@@ -1467,8 +1467,12 @@ function normalizeLiveConcertForSanity(concert: {
   const editorId = typeof concert._editorId === "number" ? concert._editorId : fallbackEditorId
   const venue = typeof concert.venue === "string" ? concert.venue.trim() : ""
   const locationName = typeof concert.locationName === "string" ? concert.locationName.trim() : venue
-  const locationLink = typeof concert.locationLink === "string" ? concert.locationLink.trim() : ""
-  const locationUrl = typeof concert.locationUrl === "string" && concert.locationUrl.trim() ? concert.locationUrl.trim() : locationLink
+  const locationLink =
+    typeof concert.locationLink === "string" && concert.locationLink.trim()
+      ? concert.locationLink.trim()
+      : typeof concert.locationUrl === "string"
+        ? concert.locationUrl.trim()
+        : ""
   const ticketUrl = typeof concert.ticketUrl === "string" ? concert.ticketUrl.trim() : ""
   const style = typeof concert.style === "string" && concert.style.trim()
     ? concert.style.trim()
@@ -1485,7 +1489,6 @@ function normalizeLiveConcertForSanity(concert: {
     venue: venue || locationName,
     locationName,
     locationLink,
-    locationUrl,
     ticketUrl,
     address: typeof concert.address === "string" ? concert.address.trim() : "",
     city: typeof concert.city === "string" ? concert.city.trim() : "",
@@ -1527,7 +1530,6 @@ function collectLiveConcertPatches(nodes: DeployNodePayload[]): Map<number, Reco
         patch.ticketUrl = href || text
       } else if (parsed.field === "locationUrl" || parsed.field === "locationLink") {
         patch.locationLink = href || text
-        patch.locationUrl = href || text
       } else if (parsed.field === "venue" || parsed.field === "locationName") {
         patch.locationName = text
         patch.venue = text

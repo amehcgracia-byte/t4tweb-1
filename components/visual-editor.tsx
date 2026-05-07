@@ -2736,7 +2736,6 @@ export function VisualEditorOverlay() {
     const normalized = nextConcertsInput
       .map((concert, index) => normalizeEditorConcert(concert, index))
       .sort((a, b) => (a.date || "9999-12-31").localeCompare(b.date || "9999-12-31") || a._editorId - b._editorId)
-      .map((concert, index) => ({ ...concert, _editorId: index }))
     dispatch({ type: "UPDATE_CARD", nodeId: "live-section-concerts-container", patch: { concerts: normalized } })
     emitLiveConcertsUpdated(normalized)
     return normalized
@@ -3923,7 +3922,7 @@ export function VisualEditorOverlay() {
                   </div>
                 </div>
                 <label className="text-[11px] font-semibold">Google Maps URL</label>
-                <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.locationLink || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationLink: e.target.value, locationUrl: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.locationLink || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationLink: nextValue, locationUrl: nextValue }))} />
+                <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.locationLink || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationLink: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.locationLink || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { locationLink: nextValue }))} />
                 <label className="text-[11px] font-semibold">Ticket Link</label>
                 <input data-editor-text-input="true" className="w-full rounded border p-1 text-xs" value={selectedLiveConcert.ticketUrl || ""} onChange={(e) => updateSingleLiveConcert(selectedLiveConcert._editorId, { ticketUrl: e.target.value })} onKeyDownCapture={(e) => handleConcertEditorTextKeyDown(e, selectedLiveConcert.ticketUrl || "", (nextValue) => updateSingleLiveConcert(selectedLiveConcert._editorId, { ticketUrl: nextValue }))} />
                 <label className="text-[11px] font-semibold">Current Bucket</label>
