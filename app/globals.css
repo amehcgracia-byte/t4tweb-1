@@ -1218,6 +1218,86 @@ section {
   }
 }
 
+@media (min-width: 1920px) {
+  .public-home [data-editor-node-id="hero-section"] {
+    width: 100vw !important;
+    max-width: none !important;
+    min-width: 100vw !important;
+    transform: translate(var(--hero-section-x, 0px), var(--hero-section-y, 0px)) scale(var(--hero-section-scale, 1)) !important;
+    transform-origin: top left !important;
+  }
+
+  .public-home [data-editor-node-id="hero-bg-image"] {
+    inset: 0 !important;
+    width: max(100%, var(--hero-bg-width, 100%)) !important;
+    min-width: 100% !important;
+    height: max(100%, var(--hero-bg-height, 100%)) !important;
+    min-height: 100% !important;
+    max-width: none !important;
+    transform: translate(var(--hero-bg-x, 0px), var(--hero-bg-y, 0px)) scale(var(--hero-bg-scale, 1)) !important;
+    transform-origin: top left !important;
+    overflow: hidden !important;
+  }
+
+  .public-home [data-editor-node-id="hero-bg-image"] img {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: none !important;
+    object-fit: cover !important;
+  }
+
+  .public-home [data-editor-node-id="intro-section"] {
+    width: 100vw !important;
+    min-width: 100vw !important;
+    max-width: none !important;
+    transform: translateY(18px) !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+  }
+
+  .public-home [data-editor-node-id="intro-banner-gif"] {
+    inset: 0 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    max-width: none !important;
+    right: auto !important;
+    transform: none !important;
+  }
+
+  .public-home [data-editor-node-id="intro-banner-gif"] img {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    max-width: none !important;
+    object-fit: cover !important;
+  }
+}
+
+@media (min-width: 2560px) {
+  .public-home [data-editor-node-id="hero-bg-image"] img {
+    object-position: 50% calc(18% - 1.1vw) !important;
+  }
+
+  .public-home [data-editor-node-id="intro-banner-gif"] img {
+    object-position: center calc(42% - 4.8vw) !important;
+  }
+}
+
+@media (min-width: 3440px) {
+  .public-home [data-editor-node-id="hero-bg-image"] img {
+    object-position: 50% calc(18% - 1.2vw) !important;
+  }
+
+  .public-home [data-editor-node-id="intro-banner-gif"] img {
+    object-position: center calc(42% - 5.4vw) !important;
+  }
+}
+
 /* ============================================================================
    VISUAL EDITOR
    ============================================================================ */

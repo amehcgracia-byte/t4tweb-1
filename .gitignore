@@ -9,6 +9,9 @@ node_modules/
 .qodo/
 .vercel
 .env.local
+.artifacts/
+screenshots/
+tmp/
 *.bak
 *.backup
 *.orig

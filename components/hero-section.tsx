@@ -5,7 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { ExtraNodesRenderer } from "@/components/extra-nodes-renderer"
 import { useVisualEditor } from "@/components/visual-editor"
-import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import { getElementLayoutStyle, roundLayoutPx } from "@/lib/hero-layout-styles"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
@@ -14,6 +14,23 @@ const HERO_MOBILE_BG_URL = "/images/sections/Hero bombe Phone version 2.png"
 function getRawElementStyle(elementStyles: HeroData["elementStyles"], targetId: string): Record<string, unknown> {
   const value = elementStyles?.[targetId]
   return value && typeof value === "object" ? value as Record<string, unknown> : {}
+}
+
+function getGeometryCssVars(
+  elementStyles: HeroData["elementStyles"],
+  targetId: string,
+  prefix: string
+): CSSProperties {
+  const styles = getRawElementStyle(elementStyles, targetId)
+  const vars: Record<string, string> = {}
+
+  if (typeof styles.x === "number") vars[`--${prefix}-x`] = `${roundLayoutPx(styles.x)}px`
+  if (typeof styles.y === "number") vars[`--${prefix}-y`] = `${roundLayoutPx(styles.y)}px`
+  if (typeof styles.width === "number") vars[`--${prefix}-width`] = `${roundLayoutPx(styles.width)}px`
+  if (typeof styles.height === "number") vars[`--${prefix}-height`] = `${roundLayoutPx(styles.height)}px`
+  if (typeof styles.scale === "number" && Number.isFinite(styles.scale)) vars[`--${prefix}-scale`] = String(styles.scale)
+
+  return vars as CSSProperties
 }
 
 function getHeroSectionHeight(elementStyles: HeroData["elementStyles"]): number {
@@ -369,6 +386,7 @@ export function HeroSection({
   const heroFrameStyle = getHeroSectionFrameStyle(data.elementStyles)
   const heroSectionStyle = {
     ...getElementLayoutStyle(data.elementStyles, "hero-section", { includeGeometry: true }),
+    ...getGeometryCssVars(data.elementStyles, "hero-section", "hero-section"),
     ...heroFrameStyle,
   }
 
@@ -399,7 +417,10 @@ export function HeroSection({
             data-editor-node-label="Hero Background"
             {...getHeroEditorGeometryAttrs(data.elementStyles, "hero-bg-image")}
             className="absolute inset-0"
-            style={getHeroBackgroundImageStyle(data.elementStyles, allowBackgroundGeometry)}
+            style={{
+              ...getHeroBackgroundImageStyle(data.elementStyles, allowBackgroundGeometry),
+              ...getGeometryCssVars(data.elementStyles, "hero-bg-image", "hero-bg"),
+            }}
           >
             <>
               <Image
