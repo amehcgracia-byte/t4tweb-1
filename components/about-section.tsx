@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import type { CSSProperties } from "react"
 import Image from "next/image"
-import { getElementLayoutStyle } from "@/lib/hero-layout-styles"
+import { getElementLayoutStyle, roundLayoutPx } from "@/lib/hero-layout-styles"
 import { getCanonicalRootSectionStyle } from "@/lib/section-root-layout"
 import type { AboutData } from "@/lib/sanity/about-loader"
 import { useVisualEditor } from "@/components/visual-editor"
@@ -28,6 +28,23 @@ function getAboutNodeStyle(
   includeGeometry = true
 ): CSSProperties {
   return getElementLayoutStyle(elementStyles, nodeId, { includeGeometry })
+}
+
+function getAboutGeometryCssVars(
+  elementStyles: AboutData["elementStyles"],
+  nodeId: string,
+  prefix: string
+): CSSProperties {
+  const styles = elementStyles[nodeId]
+  if (!styles) return {}
+
+  const vars: Record<string, string> = {}
+  if (typeof styles.x === "number") vars[`--${prefix}-x`] = `${roundLayoutPx(styles.x)}px`
+  if (typeof styles.y === "number") vars[`--${prefix}-y`] = `${roundLayoutPx(styles.y)}px`
+  if (typeof styles.width === "number") vars[`--${prefix}-width`] = `${roundLayoutPx(styles.width)}px`
+  if (typeof styles.height === "number") vars[`--${prefix}-height`] = `${roundLayoutPx(styles.height)}px`
+  if (typeof styles.scale === "number" && Number.isFinite(styles.scale)) vars[`--${prefix}-scale`] = String(styles.scale)
+  return vars as CSSProperties
 }
 
 function getAboutEditorAttrs(elementStyles: AboutData["elementStyles"], nodeId: string): Record<string, string> {
@@ -307,7 +324,10 @@ export function AboutSection({ className = "", data, sectionId }: AboutSectionPr
         data-editor-src={data.backgroundImageUrl}
         {...getAboutEditorAttrs(data.elementStyles, "about-bg-image")}
         className="absolute inset-0 z-0"
-        style={getAboutNodeStyle(data.elementStyles, "about-bg-image", allowBackgroundGeometry)}
+        style={{
+          ...getAboutNodeStyle(data.elementStyles, "about-bg-image", allowBackgroundGeometry),
+          ...getAboutGeometryCssVars(data.elementStyles, "about-bg-image", "about-bg"),
+        }}
       >
         <Image
           src={data.backgroundImageUrl}
