@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "next-sanity"
 import { readFile } from "fs/promises"
 import path from "path"
+import { isEditorRequestAuthorized } from "@/lib/editor-auth"
 import { SAFE_FLOW_PROTECTED_SECTION_IDS, SAFE_SECTION_MIN_GAP } from "@/lib/editor-default-layout"
 import { roundLayoutPx } from "@/lib/hero-layout-styles"
 import { ABOUT_FALLBACK } from "@/lib/sanity/about-loader"
@@ -1795,6 +1796,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (!isEditorRequestAuthorized(request)) {
+      return NextResponse.json({ status: "failed", ok: false, step: "checking", message: "Unauthorized editor request." }, { status: 401 })
+    }
+
     const payload = (await request.json()) as DeployRequestPayload
     const sectionFlowCorrections = normalizeSafeSectionFlow(payload, SAFE_SECTION_MIN_GAP)
     log("payload received", { nodeCount: payload.nodes.length, level: payload.level })
@@ -3460,12 +3465,21 @@ export async function POST(request: Request) {
         updatedAt: new Date().toISOString(),
         nodesJson: JSON.stringify(homeEditorStateNodes),
       }
-      const homeStateResponse = await writeClient.createOrReplace(homeStateDocument)
+      const homeStateResult = await runSanityWriteWithFallback(
+        concertWriteCandidates,
+        {
+          operation: "createOrReplace",
+          documentId: HOME_EDITOR_STATE_DOCUMENT_ID,
+          documentType: SANITY_DOC_HOME_EDITOR_STATE,
+        },
+        (client) => client.createOrReplace(homeStateDocument)
+      )
+      const homeStateResponse = homeStateResult.result
       homeEditorStateDocumentId = homeStateResponse._id
       steps.push({
         step: "saving",
         ok: true,
-        message: `Home editor central state saved: ${HOME_EDITOR_STATE_DOCUMENT_ID} (${homeEditorStateNodes.length} nodes).`,
+        message: `Home editor central state saved: ${HOME_EDITOR_STATE_DOCUMENT_ID} (${homeEditorStateNodes.length} nodes). Token source: ${homeStateResult.source}.`,
       })
       persistedFields.push("homeEditorState.nodesJson")
       for (const node of homeEditorStateNodes) {
