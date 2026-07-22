@@ -4515,81 +4515,27 @@ export function VisualEditorOverlay() {
                   accept="image/*"
                   className="w-full text-xs"
                   onChange={async (e) => {
-                    const file = e.target.files?.[0]
+                    const file = e.currentTarget.files?.[0]
                     if (!file) return
 
-                    const requiresSanityAsset =
-                      selectedNode.id === "hero-logo" ||
-                      selectedNode.id === "hero-bg-image" ||
-                      selectedNode.id === "about-bg-image" ||
-                      selectedNode.id === "band-members-bg" ||
-                      selectedNode.id === "live-section-bg-image" ||
-                      selectedNode.id === "contact-bg-image" ||
-                      selectedNode.id === "footer-logo" ||
-                      selectedNode.id === "nav-logo" ||
-                      selectedNode.id === "press-kit-bg" ||
-                      /^member-item-\d+-image$/.test(selectedNode.id) ||
-                      (isExtraNodeId(selectedNode.id) && selectedNode.type === "background")
-
-                    if (requiresSanityAsset) {
-                      try {
-                        const formData = new FormData()
-                        formData.append("file", file)
-                        formData.append("nodeId", selectedNode.id)
-                        const uploadRes = await fetch("/api/editor-upload-asset", {
-                          method: "POST",
-                          body: formData
-                        })
-                        if (uploadRes.ok) {
-                          const data = await uploadRes.json() as { url?: string; error?: string }
-                          if (data.url) {
-                            dispatch({
-                              type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
-                              nodeId: selectedNode.id,
-                              patch: {
-                                src: data.url,
-                                mediaKind: "image",
-                                ...(selectedNode.id === "hero-bg-image" || selectedNode.id === "hero-logo" ? HERO_IMAGE_FILTER_DEFAULTS : {}),
-                              },
-                            })
-                            return
-                          }
-                          console.error("[hero-asset-upload] Upload succeeded without an asset URL.", {
-                            nodeId: selectedNode.id,
-                            error: data.error || null,
-                          })
-                        } else {
-                          const text = await uploadRes.text()
-                          try {
-                            const error = JSON.parse(text) as { error?: string }
-                            console.error("[hero-asset-upload] Upload failed.", { nodeId: selectedNode.id, status: uploadRes.status, error: error.error })
-                          } catch {
-                            console.error("[hero-asset-upload] Upload failed.", { nodeId: selectedNode.id, status: uploadRes.status, text: text.substring(0, 200) })
-                          }
-                        }
-                      } catch (err) {
-                        console.error("[hero-asset-upload] Upload exception.", {
-                          nodeId: selectedNode.id,
-                          error: err instanceof Error ? err.message : String(err)
-                        })
-                      }
-                    }
-
-                    // Doc-backed image nodes must deploy as Sanity CDN URLs. Other image nodes can keep a local blob preview.
-                    if (!requiresSanityAsset) {
-                      const url = URL.createObjectURL(file)
+                    const input = e.currentTarget
+                    const url = await uploadEditorAsset(file, selectedNode.id)
+                    if (!url) {
                       setHasNonPersistableUpload(true)
-                      dispatch({
-                        type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
-                        nodeId: selectedNode.id,
-                        patch: { src: url, mediaKind: "image" },
-                      })
-                    } else {
-                      console.warn("[hero-asset-upload] Local blob preview was not applied.", {
-                        nodeId: selectedNode.id,
-                        reason: "This image node requires a Sanity CDN URL before deploy.",
-                      })
+                      return
                     }
+
+                    setHasNonPersistableUpload(false)
+                    dispatch({
+                      type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
+                      nodeId: selectedNode.id,
+                      patch: {
+                        src: url,
+                        mediaKind: "image",
+                        ...(selectedNode.id === "hero-bg-image" || selectedNode.id === "hero-logo" ? HERO_IMAGE_FILTER_DEFAULTS : {}),
+                      },
+                    })
+                    input.value = ""
                   }}
                 />
                 {hasNonPersistableUpload && (
