@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "check:conflicts": "bash scripts/check-conflict-markers.sh"
+    "check:conflicts": "bash scripts-backup/check-conflict-markers.sh"
   },
   "dependencies": {
     "@sanity/components": "^2.14.0",

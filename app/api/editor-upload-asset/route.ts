@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { isEditorRequestAuthorized } from "@/lib/editor-auth"
 
 /**
  * Upload an asset to Sanity Assets and return the Sanity CDN URL
@@ -9,6 +10,10 @@ import { NextRequest, NextResponse } from "next/server"
  */
 export async function POST(request: NextRequest) {
   try {
+    if (!isEditorRequestAuthorized(request)) {
+      return NextResponse.json({ error: "Unauthorized editor request." }, { status: 401 })
+    }
+
     const startTime = Date.now()
     console.log("[editor-upload-asset] POST request started")
     const formData = await request.formData()
