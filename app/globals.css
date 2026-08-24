@@ -845,6 +845,19 @@ section {
   }
 }
 
+/* Keep editor-saved desktop geometry from overflowing the press-kit header on mobile. */
+@media (max-width: 1023px) {
+  [data-editor-node-id="press-kit-section"] [data-editor-node-id="press-kit-header-eyebrow"],
+  [data-editor-node-id="press-kit-section"] [data-editor-node-id="press-kit-header-title"],
+  [data-editor-node-id="press-kit-section"] [data-editor-node-id="press-kit-header-description"] {
+    width: auto !important;
+    max-width: 100% !important;
+    height: auto !important;
+    transform: none !important;
+    transform-origin: initial !important;
+  }
+}
+
 /* ============================================================================
    ORANGE BUTTONS - Consistent naranja #FF8C21 theme
    ============================================================================ */
