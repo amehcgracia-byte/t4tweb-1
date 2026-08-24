@@ -60,7 +60,7 @@ export function LatestReleaseSection({ overrides = {} }: LatestReleaseSectionPro
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
   const [isIosMobile, setIsIosMobile] = useState(false)
   const [isAndroidMobile, setIsAndroidMobile] = useState(false)
-  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled()
+  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
 
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)

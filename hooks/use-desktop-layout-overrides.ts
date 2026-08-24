@@ -3,25 +3,30 @@
 import { useEffect, useState } from "react"
 
 /**
- * Geometry overrides from desktop editing (x/y/width/height/scale) should only
- * affect desktop rendering. On mobile/tablet we keep responsive CSS layout.
+ * Pixel geometry is an editor aid, not a public layout contract. Keep the
+ * responsive CSS layout on public pages and only enable saved geometry while
+ * the visual editor is active on a desktop-sized viewport.
  */
-export function useDesktopLayoutOverridesEnabled(forceEnable = false): boolean {
+export function useDesktopLayoutOverridesEnabled(isEditing = false): boolean {
   const [enabled, setEnabled] = useState<boolean>(() => {
-    if (forceEnable) return true
     if (typeof window === "undefined") return false
-    return window.matchMedia("(min-width: 1024px)").matches
+    return isEditing && window.matchMedia("(min-width: 1024px)").matches
   })
 
   useEffect(() => {
-    if (forceEnable) return
+    if (!isEditing) {
+      setEnabled(false)
+      return
+    }
+
     const mediaQuery = window.matchMedia("(min-width: 1024px)")
     const update = () => setEnabled(mediaQuery.matches)
+    update()
     mediaQuery.addEventListener("change", update)
     return () => {
       mediaQuery.removeEventListener("change", update)
     }
-  }, [forceEnable])
+  }, [isEditing])
 
-  return forceEnable || enabled
+  return enabled
 }

@@ -81,7 +81,8 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
     }
 
     const applyOverrides = () => {
-      const allowGeometryOverrides = window.matchMedia("(min-width: 1024px)").matches
+      const editorPreviewActive = document.documentElement.hasAttribute("data-editor-active")
+      const allowGeometryOverrides = editorPreviewActive && window.matchMedia("(min-width: 1024px)").matches
       nodes.forEach((node) => {
       const selector = `[data-editor-node-id="${escapeEditorId(node.nodeId)}"]`
       const el = document.querySelector<HTMLElement>(selector)
@@ -261,11 +262,14 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
 
     const handleViewportChange = () => applyOverrides()
     const desktopQuery = window.matchMedia("(min-width: 1024px)")
+    const editorModeObserver = new MutationObserver(() => applyOverrides())
+    editorModeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-editor-active"] })
     window.addEventListener("resize", handleViewportChange)
     desktopQuery.addEventListener?.("change", handleViewportChange)
 
     return () => {
       retryTimers.forEach((id) => window.clearTimeout(id))
+      editorModeObserver.disconnect()
       window.removeEventListener("resize", handleViewportChange)
       desktopQuery.removeEventListener?.("change", handleViewportChange)
     }

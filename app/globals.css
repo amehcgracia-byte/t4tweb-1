@@ -847,11 +847,11 @@ section {
 
 /*
  * Published layout safety net:
- * the visual editor stores pixel geometry for editing, but those values must
- * not become the layout contract for the public page. Keep the editor itself
- * untouched while letting normal-flow content respond to every viewport.
+ * saved editor geometry is useful while arranging a page, but it must not
+ * become the layout contract for normal-flow sections on the public page.
+ * Keep positioned compositions (Hero, navigation, intro, release) intact.
  */
-html:not([data-editor-active]) [data-editor-node-type="section"] {
+html:not([data-editor-active]) [data-editor-node-type="section"]:not([data-editor-node-id="hero-section"]):not([data-editor-node-id="navigation"]):not([data-editor-node-id="intro-section"]):not([data-editor-node-id="latest-release-section"]) {
   box-sizing: border-box !important;
   width: 100% !important;
   max-width: 100% !important;
@@ -864,25 +864,22 @@ html:not([data-editor-active]) [data-editor-node-type="section"] {
   transform-origin: initial !important;
 }
 
-html:not([data-editor-active]) [data-editor-node-type="text"],
-html:not([data-editor-active]) [data-editor-node-type="button"],
-html:not([data-editor-active]) [data-editor-node-type="card"] {
+/* Press Kit is a normal-flow stack; its saved desktop measurements must not
+ * clip the header or push the card over the description on narrow screens. */
+html:not([data-editor-active]) [data-editor-node-id="press-kit-header"],
+html:not([data-editor-active]) [data-editor-node-id="press-kit-header-eyebrow"],
+html:not([data-editor-active]) [data-editor-node-id="press-kit-header-title"],
+html:not([data-editor-active]) [data-editor-node-id="press-kit-header-description"],
+html:not([data-editor-active]) [data-editor-node-id="press-kit-main-card"],
+html:not([data-editor-active]) [data-editor-node-id^="press-kit-resource-"],
+html:not([data-editor-active]) [data-editor-node-id="press-kit-manager"] {
   box-sizing: border-box !important;
+  width: auto !important;
   max-width: 100% !important;
   min-width: 0 !important;
   height: auto !important;
   transform: none !important;
   transform-origin: initial !important;
-}
-
-/* The editor preview keeps the same width constraints without disabling its handles. */
-html[data-editor-active] [data-editor-node-type="section"],
-html[data-editor-active] [data-editor-node-type="text"],
-html[data-editor-active] [data-editor-node-type="button"],
-html[data-editor-active] [data-editor-node-type="card"] {
-  box-sizing: border-box;
-  max-width: 100%;
-  min-width: 0;
 }
 
 /* ============================================================================
