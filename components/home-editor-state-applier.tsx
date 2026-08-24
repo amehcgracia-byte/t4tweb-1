@@ -259,8 +259,15 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
       retryTimers.push(timer)
     })
 
+    const handleViewportChange = () => applyOverrides()
+    const desktopQuery = window.matchMedia("(min-width: 1024px)")
+    window.addEventListener("resize", handleViewportChange)
+    desktopQuery.addEventListener?.("change", handleViewportChange)
+
     return () => {
       retryTimers.forEach((id) => window.clearTimeout(id))
+      window.removeEventListener("resize", handleViewportChange)
+      desktopQuery.removeEventListener?.("change", handleViewportChange)
     }
   }, [nodes])
 

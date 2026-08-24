@@ -845,17 +845,44 @@ section {
   }
 }
 
-/* Keep editor-saved desktop geometry from overflowing the press-kit header on mobile. */
-@media (max-width: 1023px) {
-  [data-editor-node-id="press-kit-section"] [data-editor-node-id="press-kit-header-eyebrow"],
-  [data-editor-node-id="press-kit-section"] [data-editor-node-id="press-kit-header-title"],
-  [data-editor-node-id="press-kit-section"] [data-editor-node-id="press-kit-header-description"] {
-    width: auto !important;
-    max-width: 100% !important;
-    height: auto !important;
-    transform: none !important;
-    transform-origin: initial !important;
-  }
+/*
+ * Published layout safety net:
+ * the visual editor stores pixel geometry for editing, but those values must
+ * not become the layout contract for the public page. Keep the editor itself
+ * untouched while letting normal-flow content respond to every viewport.
+ */
+html:not([data-editor-active]) [data-editor-node-type="section"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin-top: 0 !important;
+  transform: none !important;
+  transform-origin: initial !important;
+}
+
+html:not([data-editor-active]) [data-editor-node-type="text"],
+html:not([data-editor-active]) [data-editor-node-type="button"],
+html:not([data-editor-active]) [data-editor-node-type="card"] {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  transform: none !important;
+  transform-origin: initial !important;
+}
+
+/* The editor preview keeps the same width constraints without disabling its handles. */
+html[data-editor-active] [data-editor-node-type="section"],
+html[data-editor-active] [data-editor-node-type="text"],
+html[data-editor-active] [data-editor-node-type="button"],
+html[data-editor-active] [data-editor-node-type="card"] {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* ============================================================================
