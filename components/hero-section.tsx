@@ -5,7 +5,6 @@ import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
-import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 import {
   buildHeroScrollIndicatorLayoutStyle,
@@ -33,6 +32,7 @@ function scrollIndicatorHasLayout(
   if (!s || typeof s !== "object") return false
 
   const o = s as Record<string, unknown>
+  if (o.responsiveLayout !== true) return false
 
   return (
     typeof o.x === "number" ||
@@ -49,6 +49,7 @@ function getScrollIndicatorStyle(
   if (!elementStyles?.["hero-scroll-indicator"]) return {}
 
   const styles = elementStyles["hero-scroll-indicator"] as Record<string, unknown>
+  if (styles.responsiveLayout !== true) return {}
   const tx = typeof styles.x === "number" ? roundLayoutPx(styles.x as number) : 0
   const ty = typeof styles.y === "number" ? roundLayoutPx(styles.y as number) : 0
   const scaleVal = typeof styles.scale === "number" ? styles.scale : 1
@@ -67,6 +68,14 @@ function getScrollIndicatorStyle(
         ? roundLayoutPx(styles.height as number)
         : undefined,
   })
+}
+
+function hasResponsiveHeroLayout(
+  elementStyles: Record<string, unknown> | undefined,
+  targetId: string
+): boolean {
+  const styles = elementStyles?.[targetId]
+  return Boolean(styles && typeof styles === "object" && (styles as Record<string, unknown>).responsiveLayout === true)
 }
 
 interface HeroDebug {
@@ -182,7 +191,6 @@ export function HeroSection({ data }: { data: HeroData }) {
 
   const { isEditing, registerEditable, unregisterEditable, getElementById } =
     useVisualEditor()
-  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -356,7 +364,7 @@ export function HeroSection({ data }: { data: HeroData }) {
   const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
   const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
   const scrollLayoutSaved =
-    allowGeometryOverrides && scrollIndicatorHasLayout(content.elementStyles)
+    scrollIndicatorHasLayout(content.elementStyles)
 
   const heroTitleMode: "legacy" | "segmented" =
     Array.isArray(content.titleSegments) && content.titleSegments.length > 0
@@ -432,8 +440,8 @@ export function HeroSection({ data }: { data: HeroData }) {
       data-editor-node-label="Hero Section"
       className="relative flex min-h-screen min-h-[100dvh] w-full items-stretch overflow-hidden bg-black"
       style={getElementStyle(content.elementStyles, "hero-section", {
-        includeGeometry: allowGeometryOverrides,
-        includeResponsiveTypography: allowGeometryOverrides,
+        includeGeometry: false,
+        includeResponsiveTypography: true,
       })}
     >
       <div className="absolute inset-0 z-0">
@@ -449,8 +457,8 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-node-label="Hero Background"
             className="absolute inset-0"
             style={getElementStyle(content.elementStyles, "hero-bg-image", {
-              includeGeometry: allowGeometryOverrides,
-              includeResponsiveTypography: allowGeometryOverrides,
+              includeGeometry: hasResponsiveHeroLayout(content.elementStyles, "hero-bg-image"),
+              includeResponsiveTypography: true,
             })}
           >
             <Image
@@ -461,7 +469,7 @@ export function HeroSection({ data }: { data: HeroData }) {
               unoptimized
               sizes="100vw"
               className="object-cover"
-              style={{ objectPosition: "center center" }}
+              style={{ objectPosition: "center top" }}
             />
           </div>
         </motion.div>
@@ -478,13 +486,13 @@ export function HeroSection({ data }: { data: HeroData }) {
       />
 
       <div className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col justify-end px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center pb-7 pt-16 text-center sm:pb-10 sm:pt-20">
+        <div className="flex flex-col items-center pb-20 pt-16 text-center sm:pb-24 sm:pt-20">
           <h1
             data-editor-node-id="hero-title"
             data-editor-node-type="text"
             data-editor-node-label="Hero Title"
             data-editor-grouped="true"
-            className="mb-6 max-w-[880px] text-balance break-words text-3xl font-semibold leading-tight tracking-tight text-white"
+            className="mb-5 w-full max-w-[min(94vw,1180px)] text-balance break-words text-[clamp(2.45rem,5.4vw,6.5rem)] font-semibold leading-[0.94] tracking-[-0.035em] text-white sm:mb-7"
           >
             {titleSegmentsForRender.map((segment, index) => {
               const isAccent = index === 1
@@ -493,7 +501,7 @@ export function HeroSection({ data }: { data: HeroData }) {
                 segment,
                 isAccent ? "#FF8C21" : "#ffffff",
                 isAccent,
-                allowGeometryOverrides
+                true
               )
               const segmentId = index === 0
                 ? "hero-title-main"
@@ -512,7 +520,7 @@ export function HeroSection({ data }: { data: HeroData }) {
                     : "mr-[0.25em]"}
                   style={{
                     ...segmentStyle,
-                    ...(allowGeometryOverrides
+                    ...(hasResponsiveHeroLayout(content.elementStyles, segmentId)
                       ? getElementStyle(content.elementStyles, segmentId, {
                           includeGeometry: true,
                           includeResponsiveTypography: true,
@@ -534,9 +542,9 @@ export function HeroSection({ data }: { data: HeroData }) {
               data-editor-node-label="Hero Logo"
               className="relative"
               style={{
-                width: "clamp(6rem, 22vw, 8.8125rem)",
-                height: "clamp(6rem, 22vw, 8.8125rem)",
-                ...(allowGeometryOverrides
+                width: "clamp(3.5rem, 6vw, 5.5rem)",
+                height: "clamp(3.5rem, 6vw, 5.5rem)",
+                ...(hasResponsiveHeroLayout(content.elementStyles, "hero-logo")
                   ? getElementStyle(content.elementStyles, "hero-logo", {
                       includeGeometry: true,
                       includeResponsiveTypography: true,
@@ -550,7 +558,7 @@ export function HeroSection({ data }: { data: HeroData }) {
                 fill
                 priority
                 className="object-contain drop-shadow-2xl"
-                sizes="(min-width: 768px) 213px, 141px"
+                sizes="(min-width: 768px) 88px, 64px"
               />
             </div>
 
@@ -559,8 +567,8 @@ export function HeroSection({ data }: { data: HeroData }) {
               data-editor-node-id="hero-subtitle"
               data-editor-node-type="text"
               data-editor-node-label="Subtítulo"
-              className="mt-2.5 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ffd3a3] sm:text-sm sm:tracking-[0.3em]"
-              style={allowGeometryOverrides
+              className="mt-1.5 px-2 text-[8px] font-semibold uppercase tracking-[0.14em] text-[#ffd3a3] sm:text-[10px] sm:tracking-[0.24em]"
+              style={hasResponsiveHeroLayout(content.elementStyles, "hero-subtitle")
                 ? getElementStyle(content.elementStyles, "hero-subtitle", {
                     includeGeometry: true,
                     includeResponsiveTypography: true,
@@ -582,7 +590,7 @@ export function HeroSection({ data }: { data: HeroData }) {
         className={
           scrollLayoutSaved
             ? "absolute z-30 hidden flex-col items-center gap-1 text-white/80 sm:flex"
-            : "absolute bottom-4 left-1/2 z-30 hidden -translate-x-1/2 flex-col items-center gap-1 text-white/80 sm:flex"
+            : "absolute bottom-2 left-1/2 z-30 hidden -translate-x-1/2 flex-col items-center gap-1 text-white/80 sm:flex"
         }
         style={
           scrollLayoutSaved

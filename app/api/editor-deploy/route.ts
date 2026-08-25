@@ -51,7 +51,7 @@ interface HeroTitleSegment {
   gradientEnd?: string
 }
 
-type PersistedElementStyle = Record<string, number | string>
+type PersistedElementStyle = Record<string, number | string | boolean>
 
 const ROUTE_VERSION = "sanity-editor-v4-responsive"
 const TARGET_SECTION = "hero"
@@ -128,6 +128,7 @@ function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementSt
   if (!node.explicitPosition && !node.explicitSize && !node.explicitStyle) return null
 
   const style: PersistedElementStyle = {}
+  style.responsiveLayout = true
   if (node.explicitPosition) {
     const x = asFiniteNumber(node.geometry?.x)
     const y = asFiniteNumber(node.geometry?.y)
@@ -453,8 +454,20 @@ export async function POST(request: Request) {
     payload.nodes.forEach((node) => {
       const style = buildPersistedElementStyle(node)
       if (!style) return
+      const previous = nextElementStyles[node.id]
+      const previousWasResponsive = previous?.responsiveLayout === true
+      const baseStyle = previousWasResponsive ? previous : (() => {
+        if (!previous) return {}
+        const legacyStyle = { ...previous }
+        delete legacyStyle.x
+        delete legacyStyle.y
+        delete legacyStyle.width
+        delete legacyStyle.height
+        delete legacyStyle.scale
+        return legacyStyle
+      })()
       nextElementStyles[node.id] = {
-        ...(nextElementStyles[node.id] || {}),
+        ...baseStyle,
         ...style,
       }
       persistedNodes.push(node.id)
