@@ -155,6 +155,15 @@ export function getElementLayoutStyle(
   if (includeResponsiveTypography && typeof styles.maxWidth === "number") {
     result.maxWidth = `${styles.maxWidth}px`
   }
+  if (typeof styles.opacity === "number") result.opacity = styles.opacity
+  if (typeof styles.backgroundColor === "string") result.backgroundColor = styles.backgroundColor
+  if (typeof styles.fontFamily === "string") result.fontFamily = styles.fontFamily
+  if (typeof styles.fontStyle === "string") result.fontStyle = styles.fontStyle as CSSProperties["fontStyle"]
+  if (typeof styles.textDecoration === "string") result.textDecoration = styles.textDecoration
+  if (typeof styles.textAlign === "string") result.textAlign = styles.textAlign as CSSProperties["textAlign"]
+  if (typeof styles.minHeight === "string") result.minHeight = styles.minHeight
+  if (typeof styles.paddingTop === "string") result.paddingTop = styles.paddingTop
+  if (typeof styles.paddingBottom === "string") result.paddingBottom = styles.paddingBottom
 
   return result
 }
