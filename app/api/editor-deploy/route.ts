@@ -129,6 +129,7 @@ function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementSt
 
   const style: PersistedElementStyle = {}
   style.responsiveLayout = true
+  if (node.explicitPosition || node.explicitSize) style.respectPosition = true
   if (node.explicitPosition) {
     const x = asFiniteNumber(node.geometry?.x)
     const y = asFiniteNumber(node.geometry?.y)
