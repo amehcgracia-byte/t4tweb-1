@@ -9,6 +9,8 @@ interface HomeEditorStateRaw {
 const DOC_DRIVEN_NODE_IDS = new Set<string>([
   "hero-bg-image",
   "hero-logo",
+  "hero-title-main",
+  "hero-title-accent",
   "nav-logo",
   "intro-banner-gif",
 ])

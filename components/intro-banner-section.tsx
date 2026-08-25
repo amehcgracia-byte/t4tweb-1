@@ -103,7 +103,10 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
       data-editor-node-id="intro-section"
       data-editor-node-type="section"
       data-editor-node-label="Intro Section"
-      style={getElementLayoutStyle(es, "intro-section", { includeGeometry: allowGeometryOverrides })}
+        style={getElementLayoutStyle(es, "intro-section", {
+          includeGeometry: allowGeometryOverrides,
+          includeResponsiveTypography: allowGeometryOverrides,
+        })}
       className="relative flex min-h-[52vh] min-h-[52dvh] flex-col items-center justify-center gap-3 px-3 pb-10 pt-8 sm:min-h-[58vh] sm:min-h-[58dvh] sm:px-4 sm:pb-14 sm:pt-12"
     >
       <div
@@ -111,7 +114,10 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
         data-editor-node-id="intro-banner-gif"
         data-editor-node-type="image"
         data-editor-node-label="Banner GIF"
-        style={getElementLayoutStyle(es, "intro-banner-gif", { includeGeometry: allowGeometryOverrides })}
+        style={getElementLayoutStyle(es, "intro-banner-gif", {
+          includeGeometry: allowGeometryOverrides,
+          includeResponsiveTypography: allowGeometryOverrides,
+        })}
         className="absolute left-0 top-0 z-0 h-full w-full overflow-hidden opacity-30"
       >
         <img
@@ -126,7 +132,10 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
           data-editor-node-id="intro-banner-text"
           data-editor-node-type="text"
           data-editor-node-label="Banner Text"
-          style={getElementLayoutStyle(es, "intro-banner-text", { includeGeometry: allowGeometryOverrides })}
+          style={getElementLayoutStyle(es, "intro-banner-text", {
+            includeGeometry: allowGeometryOverrides,
+            includeResponsiveTypography: allowGeometryOverrides,
+          })}
           className="max-w-2xl px-3 text-center text-[0.95rem] leading-relaxed text-white/90 sm:px-4 sm:text-lg md:text-xl"
         >
           {data.bannerText}
@@ -138,7 +147,10 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
             data-editor-node-id="intro-book-button"
             data-editor-node-type="button"
             data-editor-node-label="Book Band Button"
-            style={getElementLayoutStyle(es, "intro-book-button", { includeGeometry: allowGeometryOverrides })}
+            style={getElementLayoutStyle(es, "intro-book-button", {
+              includeGeometry: allowGeometryOverrides,
+              includeResponsiveTypography: allowGeometryOverrides,
+            })}
             className="w-full rounded-xl bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-5 py-3.5 text-center text-[0.95rem] font-bold text-white shadow-xl shadow-[#FF8C21]/50 transition-all min-h-[50px] sm:w-auto sm:rounded-2xl sm:px-8 sm:py-5 sm:text-lg sm:min-h-[68px]"
           >
             {data.bookLabel}
@@ -150,7 +162,10 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
             data-editor-node-id="intro-press-button"
             data-editor-node-type="button"
             data-editor-node-label="Press Kit Button"
-            style={getElementLayoutStyle(es, "intro-press-button", { includeGeometry: allowGeometryOverrides })}
+            style={getElementLayoutStyle(es, "intro-press-button", {
+              includeGeometry: allowGeometryOverrides,
+              includeResponsiveTypography: allowGeometryOverrides,
+            })}
             className="w-full rounded-xl border border-white/40 bg-white/5 px-5 py-3.5 text-center text-[0.95rem] font-semibold text-white backdrop-blur-sm transition-all min-h-[50px] hover:border-white/65 hover:bg-white/15 sm:w-auto sm:rounded-2xl sm:px-8 sm:py-5 sm:text-lg sm:min-h-[68px]"
           >
             {data.pressLabel}
