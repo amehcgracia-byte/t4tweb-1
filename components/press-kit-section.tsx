@@ -1,13 +1,56 @@
 "use client"
 
-import { useRef, useEffect, useMemo, useState } from "react"
+import { useRef, useEffect, useMemo, useState, type CSSProperties } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
+import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
+import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
-export function PressKitSection() {
+interface PressKitSectionProps {
+  overrides?: Record<string, HomeEditorNodeOverride>
+}
+
+function buildInlineStyleFromOverride(
+  override: HomeEditorNodeOverride | undefined,
+  includeGeometry: boolean
+): CSSProperties | undefined {
+  if (!override) return undefined
+  const style: CSSProperties = {}
+  const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
+  if (includeGeometry && (override.explicitPosition || (override.explicitStyle && scale !== 1))) {
+    style.transform = scale !== 1
+      ? `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px) scale(${scale})`
+      : `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px)`
+    style.transformOrigin = "top left"
+  }
+  if (includeGeometry && override.explicitSize) {
+    style.width = `${Math.max(8, Math.round(override.geometry.width))}px`
+    style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
+  }
+  if (!override.explicitStyle) return Object.keys(style).length > 0 ? style : undefined
+  if (override.style.opacity !== undefined) style.opacity = override.style.opacity
+  if (override.style.backgroundColor) style.backgroundColor = override.style.backgroundColor
+  if (override.style.color) style.color = override.style.color
+  if (includeGeometry && override.style.fontSize) style.fontSize = override.style.fontSize
+  if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
+  if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
+  if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
+  if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
+  return Object.keys(style).length > 0 ? style : undefined
+}
+
+function hasVisualOverride(override: HomeEditorNodeOverride | undefined): boolean {
+  return Boolean(
+    override?.explicitStyle ||
+    override?.explicitPosition ||
+    override?.explicitSize
+  )
+}
+
+export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
@@ -21,6 +64,7 @@ export function PressKitSection() {
   const managerRef = useRef<HTMLButtonElement>(null)
 
   const { opacity, y } = useScrollAnimation(sectionRef)
+  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing, true)
 
   const resources = useMemo(() => [
     {
@@ -315,9 +359,10 @@ export function PressKitSection() {
                   ref={(el) => { resourceRefs.current[index] = el }}
                   key={resource.title}
                   custom={index}
-                  initial={isEditing ? false : "hidden"}
-                  whileInView={isEditing ? undefined : "visible"}
+                  initial={isEditing || hasVisualOverride(overrides[`press-kit-resource-${index}`]) ? false : "hidden"}
+                  whileInView={isEditing || hasVisualOverride(overrides[`press-kit-resource-${index}`]) ? undefined : "visible"}
                   variants={resourceVariants}
+                  style={buildInlineStyleFromOverride(overrides[`press-kit-resource-${index}`], allowGeometryOverrides)}
                   whileHover={isEditing ? undefined : { y: -2 }}
                   transition={isEditing ? undefined : { type: "spring", stiffness: 320, damping: 22 }}
                   href={resource.href}
@@ -339,7 +384,7 @@ export function PressKitSection() {
               )
             })}
 
-            <ManagerCard managerRef={managerRef} isEditing={isEditing} />
+            <ManagerCard managerRef={managerRef} isEditing={isEditing} override={overrides["press-kit-manager"]} includeGeometry={allowGeometryOverrides} />
           </div>
         </div>
       </div>
@@ -401,15 +446,16 @@ function DownloadIcon({ className }: { className?: string }) {
   )
 }
 
-function ManagerCard({ managerRef, isEditing }: { managerRef: React.RefObject<HTMLButtonElement | null>; isEditing: boolean }) {
+function ManagerCard({ managerRef, isEditing, override, includeGeometry }: { managerRef: React.RefObject<HTMLButtonElement | null>; isEditing: boolean; override?: HomeEditorNodeOverride; includeGeometry: boolean }) {
   const [showModal, setShowModal] = useState(false)
   
   return (
     <>
       <motion.button
         ref={managerRef}
-        initial={isEditing ? false : { opacity: 0, y: 12 }}
-        whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
+        initial={isEditing || hasVisualOverride(override) ? false : { opacity: 0, y: 12 }}
+        whileInView={isEditing || hasVisualOverride(override) ? undefined : { opacity: 1, y: 0 }}
+        style={buildInlineStyleFromOverride(override, includeGeometry)}
         whileHover={isEditing ? undefined : { y: -2 }}
         transition={isEditing ? undefined : { duration: 0.45, delay: 0.06, type: "spring", stiffness: 320, damping: 22 }}
         onClick={() => {
