@@ -37,10 +37,127 @@ interface DeployEnvDiagnostics {
   SANITY_API_TOKEN: "yes" | "no"
 }
 
-const ROUTE_VERSION = "sanity-debug-v3-brutal"
+interface HeroTitleSegment {
+  text: string
+  color?: string
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  opacity?: number
+  fontSize?: string
+  fontFamily?: string
+  gradientEnabled?: boolean
+  gradientStart?: string
+  gradientEnd?: string
+}
+
+type PersistedElementStyle = Record<string, number | string>
+
+const ROUTE_VERSION = "sanity-editor-v4-responsive"
 const TARGET_SECTION = "hero"
 const SANITY_DOC_TYPE = "heroSection"
 const REVALIDATED_PATH = "/"
+
+const HERO_LAYOUT_NODE_IDS = new Set([
+  "hero-bg-image",
+  "hero-title",
+  "hero-title-main",
+  "hero-title-accent",
+  "hero-subtitle",
+  "hero-logo",
+  "hero-buttons",
+  "hero-scroll-indicator",
+])
+
+function asFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : undefined
+}
+
+function asCssColor(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const color = value.trim()
+  if (/^#[0-9a-f]{3,8}$/i.test(color)) return color
+  if (/^(?:rgb|hsl)a?\([^)]*\)$/i.test(color)) return color
+  return undefined
+}
+
+function asCssLength(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const length = value.trim()
+  return /^(?:-?\d+(?:\.\d+)?)(?:px|rem|em|%|vw|vh|clamp\([^)]*\))$/i.test(length)
+    ? length
+    : undefined
+}
+
+function sanitizeTitleSegment(value: unknown, fallbackColor: string): HeroTitleSegment | null {
+  if (!value || typeof value !== "object") return null
+  const raw = value as Record<string, unknown>
+  const text = typeof raw.text === "string" ? raw.text.trim() : ""
+  if (!text) return null
+  const segment: HeroTitleSegment = {
+    text,
+    color: asCssColor(raw.color) || fallbackColor,
+    bold: raw.bold === true,
+    italic: raw.italic === true,
+    underline: raw.underline === true,
+    opacity: typeof raw.opacity === "number" && Number.isFinite(raw.opacity)
+      ? Math.max(0, Math.min(1, raw.opacity))
+      : 1,
+  }
+  const fontSize = asCssLength(raw.fontSize)
+  const fontFamily = typeof raw.fontFamily === "string" && raw.fontFamily.trim() ? raw.fontFamily.trim() : undefined
+  const gradientStart = asCssColor(raw.gradientStart)
+  const gradientEnd = asCssColor(raw.gradientEnd)
+  if (fontSize) segment.fontSize = fontSize
+  if (fontFamily) segment.fontFamily = fontFamily
+  if (raw.gradientEnabled === true) segment.gradientEnabled = true
+  if (gradientStart) segment.gradientStart = gradientStart
+  if (gradientEnd) segment.gradientEnd = gradientEnd
+  return segment
+}
+
+function readNumberFromCss(value: unknown): number | undefined {
+  if (typeof value === "number") return asFiniteNumber(value)
+  if (typeof value !== "string") return undefined
+  const match = value.trim().match(/^-?\d+(?:\.\d+)?/)
+  return match ? asFiniteNumber(Number(match[0])) : undefined
+}
+
+function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementStyle | null {
+  if (!HERO_LAYOUT_NODE_IDS.has(node.id)) return null
+  if (!node.explicitPosition && !node.explicitSize && !node.explicitStyle) return null
+
+  const style: PersistedElementStyle = {}
+  if (node.explicitPosition) {
+    const x = asFiniteNumber(node.geometry?.x)
+    const y = asFiniteNumber(node.geometry?.y)
+    if (x !== undefined) style.x = x
+    if (y !== undefined) style.y = y
+  }
+  if (node.explicitSize) {
+    const width = asFiniteNumber(node.geometry?.width)
+    const height = asFiniteNumber(node.geometry?.height)
+    if (width !== undefined) style.width = Math.max(8, width)
+    if (height !== undefined) style.height = Math.max(8, height)
+  }
+  if (node.explicitStyle) {
+    const numericFields: Array<[string, unknown]> = [
+      ["scale", node.style.scale],
+      ["fontSize", node.style.fontSize],
+      ["fontWeight", node.style.fontWeight],
+      ["letterSpacing", node.style.letterSpacing],
+      ["lineHeight", node.style.lineHeight],
+      ["maxWidth", node.style.maxWidth],
+    ]
+    numericFields.forEach(([key, value]) => {
+      const parsed = readNumberFromCss(value)
+      if (parsed !== undefined) style[key] = key === "scale" ? Math.max(0.1, parsed) : parsed
+    })
+    const color = asCssColor(node.style.color)
+    if (color) style.color = color
+  }
+  return Object.keys(style).length > 0 ? style : null
+}
 
 function getEnvDiagnostics(): DeployEnvDiagnostics {
   const sanityProjectId = process.env.SANITY_PROJECT_ID
@@ -170,8 +287,14 @@ export async function POST(request: Request) {
       perspective: "drafts",
     })
 
-    const existingHero = await writeClient.fetch<{ _id: string; title?: string; titleHighlight?: string } | null>(
-      `*[_type == $type][0]{ _id, title, titleHighlight }`,
+    const existingHero = await writeClient.fetch<{
+      _id: string
+      title?: string
+      titleHighlight?: string
+      titleSegments?: HeroTitleSegment[]
+      elementStyles?: Record<string, PersistedElementStyle>
+    } | null>(
+      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments, elementStyles }`,
       { type: SANITY_DOC_TYPE }
     )
     const heroTitleMode: "split-fields" = "split-fields"
@@ -213,13 +336,70 @@ export async function POST(request: Request) {
     const failedNodes: string[] = []
     const heroPatch: Record<string, unknown> = {}
 
+    const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text")
     const heroTitleMainNode = payload.nodes.find((node) => node.id === "hero-title-main" && node.type === "text")
     const heroTitleAccentNode = payload.nodes.find((node) => node.id === "hero-title-accent" && node.type === "text")
     const heroSubtitleNode = payload.nodes.find((node) => node.id === "hero-subtitle" && node.type === "text")
-    const heroLogoNode = payload.nodes.find((node) => node.id === "hero-logo")
-    const heroScrollNode = payload.nodes.find((node) => node.id === "hero-scroll-indicator")
 
     const failedFields: string[] = []
+
+    const existingTitleSegments = Array.isArray(existingHero.titleSegments)
+      ? existingHero.titleSegments
+        .map((segment, index) => sanitizeTitleSegment(segment, index === 0 ? "#ffffff" : "#FF8C21"))
+        .filter((segment): segment is HeroTitleSegment => Boolean(segment))
+      : []
+
+    let nextTitleSegments: HeroTitleSegment[] = existingTitleSegments
+    const groupedTitleSegments = heroTitleNode?.content?.textSegments
+    if (heroTitleNode?.explicitContent && Array.isArray(groupedTitleSegments)) {
+      nextTitleSegments = groupedTitleSegments
+        .map((segment, index) => sanitizeTitleSegment(segment, index === 0 ? "#ffffff" : "#FF8C21"))
+        .filter((segment): segment is HeroTitleSegment => Boolean(segment))
+    } else if (heroTitleMainNode?.explicitContent || heroTitleAccentNode?.explicitContent || heroTitleMainNode?.explicitStyle || heroTitleAccentNode?.explicitStyle) {
+      const fallbackSegments = nextTitleSegments.length > 0
+        ? nextTitleSegments
+        : [
+            sanitizeTitleSegment({ text: existingHero.title || "A vibrant blend of", color: "#ffffff", bold: true }, "#ffffff"),
+            sanitizeTitleSegment({ text: existingHero.titleHighlight || "funk, soul and world music", color: "#FF8C21", bold: true, gradientEnabled: true }, "#FF8C21"),
+          ].filter((segment): segment is HeroTitleSegment => Boolean(segment))
+      nextTitleSegments = fallbackSegments.map((segment) => ({ ...segment }))
+      const mainText = typeof heroTitleMainNode?.content?.text === "string" ? heroTitleMainNode.content.text.trim() : ""
+      const accentText = typeof heroTitleAccentNode?.content?.text === "string" ? heroTitleAccentNode.content.text.trim() : ""
+      if (mainText && heroTitleMainNode?.explicitContent) nextTitleSegments[0] = { ...nextTitleSegments[0], text: mainText }
+      if (accentText && heroTitleAccentNode?.explicitContent) {
+        nextTitleSegments[1] = { ...(nextTitleSegments[1] || { color: "#FF8C21", bold: true }), text: accentText }
+      }
+      if (heroTitleMainNode?.explicitStyle && nextTitleSegments[0]) {
+        nextTitleSegments[0] = {
+          ...nextTitleSegments[0],
+          color: asCssColor(heroTitleMainNode.style.color) || nextTitleSegments[0].color,
+          bold: Number(heroTitleMainNode.style.fontWeight || 0) >= 600 || nextTitleSegments[0].bold,
+          fontSize: asCssLength(heroTitleMainNode.style.fontSize) || nextTitleSegments[0].fontSize,
+        }
+      }
+      if (heroTitleAccentNode?.explicitStyle && nextTitleSegments[1]) {
+        nextTitleSegments[1] = {
+          ...nextTitleSegments[1],
+          color: asCssColor(heroTitleAccentNode.style.color) || nextTitleSegments[1].color,
+          bold: Number(heroTitleAccentNode.style.fontWeight || 0) >= 600 || nextTitleSegments[1].bold,
+          fontSize: asCssLength(heroTitleAccentNode.style.fontSize) || nextTitleSegments[1].fontSize,
+        }
+      }
+    }
+
+    if (nextTitleSegments.length > 0 && (
+      heroTitleNode?.explicitContent ||
+      heroTitleMainNode?.explicitContent ||
+      heroTitleAccentNode?.explicitContent ||
+      heroTitleMainNode?.explicitStyle ||
+      heroTitleAccentNode?.explicitStyle
+    )) {
+      heroPatch.titleSegments = nextTitleSegments
+      heroPatch.title = nextTitleSegments[0]?.text || existingHero.title || ""
+      heroPatch.titleHighlight = nextTitleSegments[1]?.text || existingHero.titleHighlight || ""
+      persistedFields.push("titleSegments")
+      persistedNodes.push("hero-title")
+    }
 
     if (heroTitleMainNode?.explicitContent) {
       const heroTitleMainText = typeof heroTitleMainNode.content?.text === "string" ? heroTitleMainNode.content.text.trim() : ""
@@ -267,19 +447,21 @@ export async function POST(request: Request) {
       skippedNodes.push("hero-subtitle-position-or-style")
     }
 
-    if (heroLogoNode && (heroLogoNode.explicitContent || heroLogoNode.explicitPosition || heroLogoNode.explicitSize || heroLogoNode.explicitStyle)) {
-      skippedFields.push("hero-logo")
-      skippedNodes.push("hero-logo")
+    const nextElementStyles: Record<string, PersistedElementStyle> = {
+      ...(existingHero.elementStyles || {}),
     }
-    if (heroScrollNode && (heroScrollNode.explicitContent || heroScrollNode.explicitPosition || heroScrollNode.explicitSize || heroScrollNode.explicitStyle)) {
-      skippedFields.push("hero-scroll-indicator")
-      skippedNodes.push("hero-scroll-indicator")
-    }
-
-    const positionOnlyEdits = payload.nodes.some((node) => node.explicitPosition || node.explicitSize)
-    if (positionOnlyEdits) {
-      skippedFields.push("hero-layout")
-      skippedNodes.push("hero-layout")
+    payload.nodes.forEach((node) => {
+      const style = buildPersistedElementStyle(node)
+      if (!style) return
+      nextElementStyles[node.id] = {
+        ...(nextElementStyles[node.id] || {}),
+        ...style,
+      }
+      persistedNodes.push(node.id)
+      persistedFields.push(`elementStyles.${node.id}`)
+    })
+    if (Object.keys(nextElementStyles).length > 0 && payload.nodes.some((node) => buildPersistedElementStyle(node))) {
+      heroPatch.elementStyles = nextElementStyles
     }
 
     if (Object.keys(heroPatch).length > 0) {

@@ -36,19 +36,19 @@ function buildInlineStyleFromOverride(
   if (override.explicitStyle) {
     if (override.style.opacity !== undefined) style.opacity = override.style.opacity
     if (override.content.gradientEnabled) {
-      style.background = `linear-gradient(135deg, ${override.content.gradientStart || "#111111"}, ${override.content.gradientEnd || "#000000"})`
+      style.backgroundImage = `linear-gradient(135deg, ${override.content.gradientStart || "#111111"}, ${override.content.gradientEnd || "#000000"})`
     } else if (override.style.backgroundColor) {
       style.backgroundColor = override.style.backgroundColor
     }
     if (override.style.color) style.color = override.style.color
-    if (override.style.fontSize) style.fontSize = override.style.fontSize
+    if (includeGeometry && override.style.fontSize) style.fontSize = override.style.fontSize
     if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
     if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
     if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
     if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
-    if (override.style.minHeight) style.minHeight = override.style.minHeight
-    if (override.style.paddingTop) style.paddingTop = override.style.paddingTop
-    if (override.style.paddingBottom) style.paddingBottom = override.style.paddingBottom
+    if (includeGeometry && override.style.minHeight) style.minHeight = override.style.minHeight
+    if (includeGeometry && override.style.paddingTop) style.paddingTop = override.style.paddingTop
+    if (includeGeometry && override.style.paddingBottom) style.paddingBottom = override.style.paddingBottom
   }
   return Object.keys(style).length > 0 ? style : undefined
 }
@@ -88,7 +88,7 @@ function buildInlineTextStyleFromOverride(
   const gradientEnd = override.content.gradientEnd || "#FF6C00"
 
   if (gradientEnabled) {
-    style.background = `linear-gradient(90deg, ${gradientStart}, ${gradientEnd})`
+    style.backgroundImage = `linear-gradient(90deg, ${gradientStart}, ${gradientEnd})`
     style.WebkitBackgroundClip = "text"
     style.backgroundClip = "text"
     style.WebkitTextFillColor = "transparent"

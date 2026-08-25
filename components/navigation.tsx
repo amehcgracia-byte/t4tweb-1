@@ -179,17 +179,17 @@ export function Navigation({ data }: { data: NavigationData }) {
         style={{ boxShadow: isScrolled ? "0 10px 30px rgba(0,0,0,0.25)" : "none" }}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-20 items-center md:h-[5.5rem]">
+        <div className="flex h-20 items-center lg:h-[5.5rem]">
           <div
             data-editor-node-id="navigation-inner"
             data-editor-node-type="card"
             data-editor-node-label="Navigation Inner Container"
-            className="flex h-16 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 md:h-[4.5rem] md:px-4"
+            className="flex h-16 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 lg:h-[4.5rem] lg:px-4"
           >
             <a
               ref={logoLinkRef}
               href="#top"
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full p-0 transition-transform duration-300 hover:-translate-y-0.5 sm:h-12 sm:gap-3 md:h-14"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full p-0 transition-transform duration-300 hover:-translate-y-0.5 sm:h-12 sm:gap-3 lg:h-14"
             >
               <div
                 ref={logoRef}
@@ -200,7 +200,10 @@ export function Navigation({ data }: { data: NavigationData }) {
                 style={{
                   width: "clamp(2.75rem, 9vw, 3.5rem)",
                   height: "clamp(2.75rem, 9vw, 3.5rem)",
-                  ...getElementLayoutStyle(data.elementStyles, "nav-logo", { includeGeometry: allowGeometryOverrides }),
+                  ...getElementLayoutStyle(data.elementStyles, "nav-logo", {
+                    includeGeometry: allowGeometryOverrides,
+                    includeResponsiveTypography: allowGeometryOverrides,
+                  }),
                 }}
               >
                 <Image
@@ -212,17 +215,20 @@ export function Navigation({ data }: { data: NavigationData }) {
               </div>
               <span 
                 ref={brandNameRef}
-                className="hidden font-serif text-lg font-medium tracking-wide text-white sm:text-xl md:block lg:text-2xl"
+                className="hidden font-serif text-lg font-medium tracking-wide text-white sm:text-xl lg:block lg:text-2xl"
                 data-editor-node-id="nav-brand-name"
                 data-editor-node-type="text"
                 data-editor-node-label="Brand Name"
-                style={getElementLayoutStyle(data.elementStyles, "nav-brand-name", { includeGeometry: allowGeometryOverrides })}
+                style={getElementLayoutStyle(data.elementStyles, "nav-brand-name", {
+                  includeGeometry: allowGeometryOverrides,
+                  includeResponsiveTypography: allowGeometryOverrides,
+                })}
               >
                 {data.brandName}
               </span>
             </a>
 
-            <div className="hidden items-center gap-0.5 md:flex md:gap-1 lg:gap-2">
+            <div className="hidden items-center gap-0.5 lg:flex lg:gap-2">
               {navLinks.map((link, index) => (
                 <a 
                   key={link.href} 
@@ -232,7 +238,10 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id={`nav-link-${index}`}
                   data-editor-node-type="button"
                   data-editor-node-label={`Nav Link: ${link.label}`}
-                  style={getElementLayoutStyle(data.elementStyles, `nav-link-${index}`, { includeGeometry: allowGeometryOverrides })}
+                  style={getElementLayoutStyle(data.elementStyles, `nav-link-${index}`, {
+                    includeGeometry: allowGeometryOverrides,
+                    includeResponsiveTypography: allowGeometryOverrides,
+                  })}
                 >
                   {link.label}
                 </a>
@@ -244,13 +253,16 @@ export function Navigation({ data }: { data: NavigationData }) {
                 data-editor-node-type="button"
                 data-editor-node-label="Book Button"
                 className={`${primaryCtaClass} ml-2 shrink-0 lg:ml-3`}
-                style={getElementLayoutStyle(data.elementStyles, "nav-book-button", { includeGeometry: allowGeometryOverrides })}
+                style={getElementLayoutStyle(data.elementStyles, "nav-book-button", {
+                  includeGeometry: allowGeometryOverrides,
+                  includeResponsiveTypography: allowGeometryOverrides,
+                })}
               >
                 {data.ctaLabel || "Book"}
               </a>
             </div>
 
-            <div className="flex shrink-0 items-center md:hidden">
+            <div className="flex shrink-0 items-center lg:hidden">
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -274,7 +286,7 @@ export function Navigation({ data }: { data: NavigationData }) {
         {isMobileMenuOpen && (
           <div
             id="mobile-nav-panel"
-            className="max-h-[calc(100dvh-4.5rem)] overflow-y-auto border-t border-white/10 pb-5 pt-2.5 md:hidden"
+            className="max-h-[calc(100dvh-4.5rem)] overflow-y-auto border-t border-white/10 pb-5 pt-2.5 lg:hidden"
             style={{ maxHeight: "calc(100vh - 4.5rem)" }}
           >
             <div className="rounded-xl border border-white/10 bg-black/95 px-2 backdrop-blur-sm">
@@ -288,7 +300,10 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id={`nav-mobile-link-${index}`}
                   data-editor-node-type="button"
                   data-editor-node-label={`Mobile Nav: ${link.label}`}
-                  style={getElementLayoutStyle(data.elementStyles, `nav-mobile-link-${index}`, { includeGeometry: allowGeometryOverrides })}
+                  style={getElementLayoutStyle(data.elementStyles, `nav-mobile-link-${index}`, {
+                    includeGeometry: allowGeometryOverrides,
+                    includeResponsiveTypography: allowGeometryOverrides,
+                  })}
                 >
                   {link.label}
                 </a>
@@ -302,7 +317,10 @@ export function Navigation({ data }: { data: NavigationData }) {
                   data-editor-node-id="nav-mobile-book-button"
                   data-editor-node-type="button"
                   data-editor-node-label="Mobile Book Button"
-                  style={getElementLayoutStyle(data.elementStyles, "nav-mobile-book-button", { includeGeometry: allowGeometryOverrides })}
+                  style={getElementLayoutStyle(data.elementStyles, "nav-mobile-book-button", {
+                    includeGeometry: allowGeometryOverrides,
+                    includeResponsiveTypography: allowGeometryOverrides,
+                  })}
                 >
                   {data.ctaLabel || "Book the band"}
                 </a>

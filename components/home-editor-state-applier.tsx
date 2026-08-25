@@ -11,6 +11,11 @@ const DOC_DRIVEN_IMAGE_NODE_IDS = new Set<string>([
   "intro-banner-gif",
 ])
 
+const DOC_DRIVEN_TEXT_NODE_IDS = new Set<string>([
+  "hero-title-main",
+  "hero-title-accent",
+])
+
 const COMPONENT_DRIVEN_NODE_IDS = new Set<string>([
   "latest-release-section",
   "latest-release-bg",
@@ -19,6 +24,11 @@ const COMPONENT_DRIVEN_NODE_IDS = new Set<string>([
   "latest-release-subtitle",
   "latest-release-watch-button",
   "latest-release-shows-button",
+])
+
+const RESPONSIVE_CONTAINER_NODE_IDS = new Set<string>([
+  "hero-section",
+  "intro-section",
 ])
 
 function isComponentDrivenNode(nodeId: string): boolean {
@@ -49,6 +59,7 @@ function isComponentDrivenNode(nodeId: string): boolean {
 
 function isDocDrivenNode(nodeId: string): boolean {
   if (DOC_DRIVEN_IMAGE_NODE_IDS.has(nodeId)) return true
+  if (DOC_DRIVEN_TEXT_NODE_IDS.has(nodeId)) return true
   if (nodeId === "hero-section" || nodeId === "hero-title" || nodeId === "hero-subtitle" || nodeId === "hero-scroll-indicator" || nodeId === "hero-buttons") return true
   if (nodeId === "navigation" || nodeId === "navigation-inner" || nodeId === "nav-brand-name" || nodeId === "nav-book-button" || nodeId === "nav-mobile-book-button") return true
   if (/^nav-(link|mobile-link)-\d+$/.test(nodeId)) return true
@@ -61,6 +72,24 @@ function escapeEditorId(id: string): string {
     return CSS.escape(id)
   }
   return id.replace(/(["\\#.:\[\]])/g, "\\$1")
+}
+
+function applyTextGradient(el: HTMLElement, start: string, end: string): void {
+  el.style.backgroundImage = `linear-gradient(90deg, ${start}, ${end})`
+  el.style.backgroundClip = "text"
+  el.style.webkitBackgroundClip = "text"
+  el.style.webkitTextFillColor = "transparent"
+  el.style.color = "transparent"
+  el.dataset.editorManagedGradient = "true"
+}
+
+function clearTextGradient(el: HTMLElement): void {
+  if (el.dataset.editorManagedGradient !== "true") return
+  el.style.removeProperty("background-image")
+  el.style.removeProperty("background-clip")
+  el.style.removeProperty("-webkit-background-clip")
+  el.style.removeProperty("-webkit-text-fill-color")
+  delete el.dataset.editorManagedGradient
 }
 
 export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverride[] }) {
@@ -83,6 +112,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
     const applyOverrides = () => {
       const editorPreviewActive = document.documentElement.hasAttribute("data-editor-active")
       const allowGeometryOverrides = editorPreviewActive && window.matchMedia("(min-width: 1024px)").matches
+      const allowResponsiveTypography = allowGeometryOverrides
       nodes.forEach((node) => {
       const selector = `[data-editor-node-id="${escapeEditorId(node.nodeId)}"]`
       const el = document.querySelector<HTMLElement>(selector)
@@ -98,7 +128,9 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
 
       const scale = typeof node.style.scale === "number" ? Math.max(0.1, node.style.scale) : 1
 
-      if (allowGeometryOverrides && (node.explicitPosition || (node.explicitStyle && scale !== 1))) {
+      const applyNodeGeometry = allowGeometryOverrides && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId)
+
+      if (applyNodeGeometry && (node.explicitPosition || (node.explicitStyle && scale !== 1))) {
         el.style.transform = scale !== 1
           ? `translate(${Math.round(node.geometry.x)}px, ${Math.round(node.geometry.y)}px) scale(${scale})`
           : `translate(${Math.round(node.geometry.x)}px, ${Math.round(node.geometry.y)}px)`
@@ -112,7 +144,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
         delete el.dataset.editorManagedTransform
       }
 
-      if (allowGeometryOverrides && node.explicitSize) {
+      if (applyNodeGeometry && node.explicitSize) {
         el.style.width = `${Math.max(8, Math.round(node.geometry.width))}px`
         el.style.height = `${Math.max(8, Math.round(node.geometry.height))}px`
         el.dataset.editorManagedSize = "true"
@@ -137,24 +169,25 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
       if (node.explicitStyle) {
         if (node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
         if ((node.nodeType === "text" || node.nodeType === "button") && node.content.gradientEnabled) {
-          el.style.background = `linear-gradient(90deg, ${node.content.gradientStart || "#FFB15A"}, ${node.content.gradientEnd || "#FF6C00"})`
-          el.style.webkitBackgroundClip = "text"
-          el.style.backgroundClip = "text"
-          el.style.webkitTextFillColor = "transparent"
-          el.style.color = "transparent"
+          applyTextGradient(
+            el,
+            node.content.gradientStart || "#FFB15A",
+            node.content.gradientEnd || "#FF6C00"
+          )
         } else {
+          clearTextGradient(el)
           if (node.style.color) el.style.color = node.style.color
         }
         if (node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
-        if (node.style.fontSize) el.style.fontSize = node.style.fontSize
+        if (allowResponsiveTypography && node.style.fontSize) el.style.fontSize = node.style.fontSize
         if (node.style.fontFamily) el.style.fontFamily = node.style.fontFamily
         if (node.style.fontWeight) el.style.fontWeight = node.style.fontWeight
         if (node.style.fontStyle) el.style.fontStyle = node.style.fontStyle
         if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
         if (node.style.textAlign) el.style.textAlign = node.style.textAlign
-        if (node.style.minHeight) el.style.minHeight = node.style.minHeight
-        if (node.style.paddingTop) el.style.paddingTop = node.style.paddingTop
-        if (node.style.paddingBottom) el.style.paddingBottom = node.style.paddingBottom
+        if (allowResponsiveTypography && node.style.minHeight) el.style.minHeight = node.style.minHeight
+        if (allowResponsiveTypography && node.style.paddingTop) el.style.paddingTop = node.style.paddingTop
+        if (allowResponsiveTypography && node.style.paddingBottom) el.style.paddingBottom = node.style.paddingBottom
       }
 
       if (node.explicitContent) {
@@ -187,7 +220,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
 
         if (node.nodeType === "card") {
           if (node.content.gradientEnabled) {
-            el.style.background = `linear-gradient(135deg, ${node.content.gradientStart || "#111111"}, ${node.content.gradientEnd || "#000000"})`
+            el.style.backgroundImage = `linear-gradient(135deg, ${node.content.gradientStart || "#111111"}, ${node.content.gradientEnd || "#000000"})`
           }
           if (node.content.date !== undefined) el.dataset.concertDate = node.content.date
           if (node.content.venue !== undefined) el.dataset.concertVenue = node.content.venue

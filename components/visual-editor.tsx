@@ -197,6 +197,10 @@ function parseGrouped(value: string | null): boolean {
   return value === "true"
 }
 
+function isViewportContainerNode(nodeId: string): boolean {
+  return nodeId === "hero-section" || nodeId === "intro-section"
+}
+
 function parseDatasetNumber(value: string | undefined): number | null {
   if (!value) return null
   const parsed = Number(value)
@@ -243,6 +247,21 @@ function rgbToHex(rgb: string): string {
   if (!match || match.length < 3) return "#ffffff"
   const [r, g, b] = match.slice(0, 3).map(Number)
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+}
+
+function readGradientStyle(style: CSSStyleDeclaration): Pick<TextSegment, "gradientEnabled" | "gradientStart" | "gradientEnd"> {
+  const backgroundImage = style.backgroundImage || ""
+  const colors = backgroundImage.match(/#[0-9a-f]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\)/gi) || []
+  const toHex = (value: string | undefined, fallback: string) => {
+    if (!value) return fallback
+    if (value.startsWith("#")) return value
+    return rgbToHex(value)
+  }
+  return {
+    gradientEnabled: backgroundImage !== "none" && backgroundImage.includes("gradient"),
+    gradientStart: toHex(colors[0], "#FFB15A"),
+    gradientEnd: toHex(colors[1], "#FF6C00"),
+  }
 }
 
 function parseCssColor(input: string | undefined): { r: number; g: number; b: number; a: number } | null {
@@ -387,15 +406,22 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
           const childText = childEl.textContent?.trim()
           if (!childText) return
           const childStyle = getComputedStyle(childEl)
+          const gradient = readGradientStyle(childStyle)
+          const segmentIndex = segments.length
           segments.push({
             text: childText,
-            color: rgbToHex(childStyle.color),
+            // A clipped gradient reports transparent/black as computed color.
+            // Never serialize that implementation detail as the segment color.
+            color: gradient.gradientEnabled
+              ? (segmentIndex === 0 ? "#ffffff" : "#FF8C21")
+              : rgbToHex(childStyle.color),
             bold: Number(childStyle.fontWeight || "400") >= 600,
             italic: childStyle.fontStyle === "italic",
             underline: (childStyle.textDecorationLine || "").includes("underline"),
             opacity: Number(childStyle.opacity || "1"),
             fontSize: childStyle.fontSize,
             fontFamily: childStyle.fontFamily,
+            ...gradient,
           })
         }
       })
@@ -515,10 +541,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const applyNodeToDom = useCallback((node: EditorNode, entry: RuntimeEntry) => {
     const el = entry.element
     const g = node.geometry
+    const isViewportContainer = isViewportContainerNode(node.id)
     const hasManagedTransform = el.dataset.editorManagedTransform === "true"
     const hasManagedSize = el.dataset.editorManagedSize === "true"
     const nodeScale = Math.max(0.1, node.style.scale ?? 1)
-    if (node.explicitPosition || (node.explicitStyle && nodeScale !== 1)) {
+    if (!isViewportContainer && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1))) {
       el.style.transform = nodeScale !== 1
         ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})`
         : `translate(${g.x}px, ${g.y}px)`
@@ -531,7 +558,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         delete el.dataset.editorManagedTransform
       }
     }
-    if (node.explicitSize) {
+    if (!isViewportContainer && node.explicitSize) {
       el.style.width = `${Math.max(8, g.width)}px`
       el.style.height = `${Math.max(8, g.height)}px`
       el.dataset.editorManagedSize = "true"
@@ -558,6 +585,13 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             span.style.opacity = String(segment.opacity)
             if (segment.fontSize) span.style.fontSize = segment.fontSize
             if (segment.fontFamily) span.style.fontFamily = segment.fontFamily
+            if (segment.gradientEnabled) {
+              span.style.backgroundImage = `linear-gradient(90deg, ${segment.gradientStart || "#FFB15A"}, ${segment.gradientEnd || "#FF6C00"})`
+              span.style.backgroundClip = "text"
+              span.style.webkitBackgroundClip = "text"
+              span.style.webkitTextFillColor = "transparent"
+              span.style.color = "transparent"
+            }
             span.style.marginRight = "0.25em"
             el.appendChild(span)
           })
@@ -1451,7 +1485,7 @@ export function VisualEditorOverlay() {
 
   return (
     <>
-      <div data-editor-toolbar className="fixed top-3 left-3 z-[9999] flex items-center gap-2 rounded-full bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white">
+      <div data-editor-toolbar className="fixed left-2 right-2 top-3 z-[9999] flex w-max max-w-[calc(100vw-1rem)] items-center gap-2 overflow-x-auto rounded-full bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white sm:left-3 sm:right-auto sm:w-auto sm:max-w-none">
         <button aria-label="Undo" title="Undo" onClick={undo} disabled={!canUndo} className="rounded p-1.5 hover:bg-white/10 disabled:opacity-40">
           ↶
         </button>
@@ -1499,7 +1533,7 @@ export function VisualEditorOverlay() {
       {selectedEntry && <SelectionOverlay entry={selectedEntry} />}
 
       {openPanel && selectedNode && (
-        <div data-editor-panel className="fixed top-16 right-3 z-[9997] w-72 rounded-xl bg-white text-slate-900 shadow-2xl">
+        <div data-editor-panel className="fixed left-2 right-2 top-16 z-[9997] w-auto max-w-72 rounded-xl bg-white text-slate-900 shadow-2xl sm:left-auto sm:right-3 sm:w-72">
           <div className="bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -1593,6 +1627,53 @@ export function VisualEditorOverlay() {
                           />
                         </div>
                       </div>
+                      <label className="mt-2 flex items-center gap-2 text-[11px]">
+                        <input
+                          type="checkbox"
+                          checked={segment.gradientEnabled ?? false}
+                          onChange={(e) => {
+                            const next = [...(selectedNode.content.textSegments || [])]
+                            next[index] = {
+                              ...next[index],
+                              gradientEnabled: e.target.checked,
+                              gradientStart: next[index].gradientStart || "#FFB15A",
+                              gradientEnd: next[index].gradientEnd || "#FF6C00",
+                            }
+                            dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                          }}
+                        />
+                        Use gradient
+                      </label>
+                      {segment.gradientEnabled && (
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <label className="text-[10px]">
+                            Start
+                            <input
+                              type="color"
+                              className="h-8 w-full rounded border p-1"
+                              value={segment.gradientStart || "#FFB15A"}
+                              onChange={(e) => {
+                                const next = [...(selectedNode.content.textSegments || [])]
+                                next[index] = { ...next[index], gradientStart: e.target.value }
+                                dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                              }}
+                            />
+                          </label>
+                          <label className="text-[10px]">
+                            End
+                            <input
+                              type="color"
+                              className="h-8 w-full rounded border p-1"
+                              value={segment.gradientEnd || "#FF6C00"}
+                              onChange={(e) => {
+                                const next = [...(selectedNode.content.textSegments || [])]
+                                next[index] = { ...next[index], gradientEnd: e.target.value }
+                                dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
+                              }}
+                            />
+                          </label>
+                        </div>
+                      )}
                       <div className="mt-2 flex flex-wrap gap-2">
                         <button
                           type="button"

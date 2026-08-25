@@ -89,12 +89,22 @@ export function clearScrollIndicatorLayoutFromElement(el: HTMLElement): void {
 export function getElementLayoutStyle(
   elementStyles: Record<string, unknown> | undefined,
   targetId: string,
-  options?: { includeGeometry?: boolean }
+  options?: {
+    includeGeometry?: boolean
+    /**
+     * Saved editor typography is measured in desktop pixels. It must only be
+     * restored while editing on a desktop viewport; public/mobile layouts use
+     * the component's responsive classes instead.
+     */
+    includeResponsiveTypography?: boolean
+  }
 ): CSSProperties {
   if (!elementStyles || !elementStyles[targetId]) return {}
 
   const styles = elementStyles[targetId] as Record<string, unknown>
   const includeGeometry = options?.includeGeometry ?? true
+  const includeResponsiveTypography = options?.includeResponsiveTypography ?? includeGeometry
+  const isViewportContainer = targetId === "hero-section" || targetId === "intro-section"
   const hasX = typeof styles.x === "number"
   const hasY = typeof styles.y === "number"
   const tx = hasX ? roundLayoutPx(styles.x as number) : 0
@@ -102,7 +112,10 @@ export function getElementLayoutStyle(
   const scaleVal = typeof styles.scale === "number" ? styles.scale : 1
   const needTranslate = hasX || hasY
   const needScale = typeof styles.scale === "number" && scaleVal !== 1
-  const shouldApplyGeometry = includeGeometry && (needTranslate || needScale)
+  // The hero and intro are viewport-wide containers. Their saved editor
+  // measurements describe the viewport on which they were edited and must not
+  // turn into fixed-width sections on another monitor.
+  const shouldApplyGeometry = includeGeometry && !isViewportContainer && (needTranslate || needScale)
 
   const layout =
     shouldApplyGeometry
@@ -123,16 +136,24 @@ export function getElementLayoutStyle(
 
   const result: CSSProperties = { ...layout }
 
-  if (includeGeometry && !shouldApplyGeometry) {
+  if (includeGeometry && !isViewportContainer && !shouldApplyGeometry) {
     if (typeof styles.width === "number") result.width = `${roundLayoutPx(styles.width as number)}px`
     if (typeof styles.height === "number") result.height = `${roundLayoutPx(styles.height as number)}px`
   }
-  if (typeof styles.fontSize === "number") result.fontSize = `${styles.fontSize}px`
+  if (includeResponsiveTypography && typeof styles.fontSize === "number") {
+    result.fontSize = `${styles.fontSize}px`
+  }
   if (typeof styles.fontWeight === "number") result.fontWeight = styles.fontWeight
-  if (typeof styles.letterSpacing === "number") result.letterSpacing = `${styles.letterSpacing}px`
-  if (typeof styles.lineHeight === "number") result.lineHeight = styles.lineHeight
+  if (includeResponsiveTypography && typeof styles.letterSpacing === "number") {
+    result.letterSpacing = `${styles.letterSpacing}px`
+  }
+  if (includeResponsiveTypography && typeof styles.lineHeight === "number") {
+    result.lineHeight = styles.lineHeight
+  }
   if (typeof styles.color === "string") result.color = styles.color
-  if (includeGeometry && typeof styles.maxWidth === "number") result.maxWidth = `${styles.maxWidth}px`
+  if (includeResponsiveTypography && typeof styles.maxWidth === "number") {
+    result.maxWidth = `${styles.maxWidth}px`
+  }
 
   return result
 }

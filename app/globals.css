@@ -864,6 +864,36 @@ html:not([data-editor-active]) [data-editor-node-type="section"]:not([data-edito
   transform-origin: initial !important;
 }
 
+/* Viewport-wide compositions must remain viewport-wide even if an older
+ * editor snapshot left pixel geometry in the rendered markup. */
+html:not([data-editor-active]) [data-editor-node-id="hero-section"],
+html:not([data-editor-active]) [data-editor-node-id="navigation"],
+html:not([data-editor-active]) [data-editor-node-id="intro-section"],
+html:not([data-editor-active]) [data-editor-node-id="latest-release-section"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  transform: none !important;
+  transform-origin: initial !important;
+}
+
+/* Runtime marker used by the editor when it writes temporary geometry. */
+html:not([data-editor-active]) [data-editor-managed-transform="true"] {
+  transform: none !important;
+  transform-origin: initial !important;
+}
+
+html:not([data-editor-active]) [data-editor-managed-size="true"] {
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
 /* Press Kit is a normal-flow stack; its saved desktop measurements must not
  * clip the header or push the card over the description on narrow screens. */
 html:not([data-editor-active]) [data-editor-node-id="press-kit-header"],
