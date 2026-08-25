@@ -1340,8 +1340,9 @@ export function VisualEditorOverlay() {
       }
 
       if (data.status === "ok" && data.step === "done" && data.verification?.ok !== false) {
-        setDeployStatus("done")
+        setDeployStatus("success")
         if (!lines.includes("done")) lines.push("done")
+        lines.push("success: saved and published")
       }
       lines.push(`routeVersion: ${data.routeVersion || "missing"}`)
       lines.push(`step: ${data.step || "missing"}`)
@@ -1672,7 +1673,7 @@ export function VisualEditorOverlay() {
         </button>
         {deployStatus && (
           <span className="ml-1 rounded bg-black/25 px-2 py-0.5 text-[10px] uppercase tracking-wide">
-            {deployStatus}
+            {deployStatus === "success" ? "SUCCESS · SAVED & PUBLISHED" : deployStatus}
           </span>
         )}
       </div>
