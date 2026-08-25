@@ -467,6 +467,14 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const transactionRef = useRef<{ active: boolean; baseline: Map<string, EditorNode> | null }>({ active: false, baseline: null })
   const deletedIdsRef = useRef<Set<string>>(new Set())
 
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-editor-active", isEditing)
+
+    return () => {
+      document.documentElement.removeAttribute("data-editor-active")
+    }
+  }, [isEditing])
+
   const assets = useMemo<AssetItem[]>(() => {
     if (typeof document === "undefined") return []
     const imgs = Array.from(document.querySelectorAll<HTMLImageElement>("img[src]"))
