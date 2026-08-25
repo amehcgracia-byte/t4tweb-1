@@ -47,6 +47,13 @@ export default async function Home() {
       acc[node.nodeId] = node
       return acc
     }, {})
+
+  const pressKitNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("press-kit-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
   const liveNodeOverrides = homeEditorNodes
     .filter((node) => node.nodeId.startsWith("live-"))
     .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
@@ -92,7 +99,7 @@ export default async function Home() {
       <SectionDivider editorId="section-divider-about-press" />
 
       <SceneSection id="press-kit">
-        <PressKitSection />
+        <PressKitSection overrides={pressKitNodeOverrides} />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-press-band" />
