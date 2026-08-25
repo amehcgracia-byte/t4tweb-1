@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { formatDisplayDate } from "@/lib/format-date"
 
 let cachedUrgency: string | null = null
 let cachedUrgencyPromise: Promise<string | null> | null = null
@@ -34,11 +35,7 @@ function buildUrgencyFromConcerts(concerts: Concert[]): string | null {
   if (!futureShows.length) return null
 
   const nextShow = futureShows[0]
-  const formattedDate = new Date(nextShow.date).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  })
+  const formattedDate = formatDisplayDate(nextShow.date)
 
   return `Next show: ${formattedDate} · ${nextShow.city}. Booking requests are open now.`
 }

@@ -9,6 +9,7 @@ import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import { getTraceNodeId } from "@/lib/sanity/env"
+import { formatDisplayDate } from "@/lib/format-date"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 
 interface Concert {
@@ -71,12 +72,7 @@ function resolveHrefOverride(node: HomeEditorNodeOverride | undefined, fallback:
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  })
+  return formatDisplayDate(dateStr)
 }
 
 interface LiveSectionProps {
