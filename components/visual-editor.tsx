@@ -27,17 +27,6 @@ interface TextSegment {
   gradientEnd?: string
 }
 
-interface TextSegment {
-  text: string
-  color: string
-  bold: boolean
-  italic: boolean
-  underline: boolean
-  opacity: number
-  fontSize?: string
-  fontFamily?: string
-}
-
 interface NodeGeometry {
   x: number
   y: number
@@ -240,61 +229,91 @@ function getConcertFieldFromNodeContent(node: EditorNode | null, field: ConcertF
   return typeof value === "string" ? value : ""
 }
 
-function rgbToHex(rgb: string): string {
-  if (!rgb) return "#ffffff"
-  if (rgb.startsWith("#")) return rgb
-  const match = rgb.match(/\d+/g)
-  if (!match || match.length < 3) return "#ffffff"
-  const [r, g, b] = match.slice(0, 3).map(Number)
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
-}
-
-function readGradientStyle(style: CSSStyleDeclaration): Pick<TextSegment, "gradientEnabled" | "gradientStart" | "gradientEnd"> {
-  const backgroundImage = style.backgroundImage || ""
-  const colors = backgroundImage.match(/#[0-9a-f]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\)/gi) || []
-  const toHex = (value: string | undefined, fallback: string) => {
-    if (!value) return fallback
-    if (value.startsWith("#")) return value
-    return rgbToHex(value)
-  }
-  return {
-    gradientEnabled: backgroundImage !== "none" && backgroundImage.includes("gradient"),
-    gradientStart: toHex(colors[0], "#FFB15A"),
-    gradientEnd: toHex(colors[1], "#FF6C00"),
-  }
+function clampColorChannel(value: number): number {
+  return Math.max(0, Math.min(255, value))
 }
 
 function parseCssColor(input: string | undefined): { r: number; g: number; b: number; a: number } | null {
   if (!input) return null
-  const color = input.trim()
+  const color = input.trim().toLowerCase()
   if (!color) return null
+  if (color === "transparent") return { r: 0, g: 0, b: 0, a: 0 }
+
   if (color.startsWith("#")) {
     const hex = color.slice(1)
-    if (hex.length === 3) {
-      const r = Number.parseInt(hex[0] + hex[0], 16)
-      const g = Number.parseInt(hex[1] + hex[1], 16)
-      const b = Number.parseInt(hex[2] + hex[2], 16)
-      return { r, g, b, a: 1 }
+    if (![3, 4, 6, 8].includes(hex.length) || !/^[0-9a-f]+$/i.test(hex)) return null
+    const expanded = hex.length <= 4 ? hex.split("").map((part) => part + part).join("") : hex
+    return {
+      r: Number.parseInt(expanded.slice(0, 2), 16),
+      g: Number.parseInt(expanded.slice(2, 4), 16),
+      b: Number.parseInt(expanded.slice(4, 6), 16),
+      a: expanded.length === 8 ? Number.parseInt(expanded.slice(6, 8), 16) / 255 : 1,
     }
-    if (hex.length === 6 || hex.length === 8) {
-      const r = Number.parseInt(hex.slice(0, 2), 16)
-      const g = Number.parseInt(hex.slice(2, 4), 16)
-      const b = Number.parseInt(hex.slice(4, 6), 16)
-      const a = hex.length === 8 ? Number.parseInt(hex.slice(6, 8), 16) / 255 : 1
-      return { r, g, b, a }
-    }
-    return null
   }
-  const rgbaMatch = color.match(/rgba?\(([^)]+)\)/i)
-  if (!rgbaMatch) return null
-  const parts = rgbaMatch[1].split(",").map((part) => part.trim())
-  if (parts.length < 3) return null
-  const r = Number(parts[0])
-  const g = Number(parts[1])
-  const b = Number(parts[2])
-  const a = parts[3] !== undefined ? Number(parts[3]) : 1
-  if (![r, g, b, a].every((value) => Number.isFinite(value))) return null
-  return { r, g, b, a: Math.max(0, Math.min(1, a)) }
+
+  const parseAlpha = (value: string | undefined): number => {
+    if (!value) return 1
+    const parsed = value.endsWith("%") ? Number.parseFloat(value) / 100 : Number.parseFloat(value)
+    return Number.isFinite(parsed) ? Math.max(0, Math.min(1, parsed)) : 1
+  }
+  const parseChannel = (value: string): number | null => {
+    const parsed = value.endsWith("%") ? (Number.parseFloat(value) * 255) / 100 : Number.parseFloat(value)
+    return Number.isFinite(parsed) ? clampColorChannel(parsed) : null
+  }
+
+  const rgbMatch = color.match(/^rgba?\((.*)\)$/i)
+  if (rgbMatch) {
+    const [channelPart, alphaPart] = rgbMatch[1].split("/").map((part) => part.trim())
+    const channels = channelPart.replace(/,/g, " ").split(/\s+/).filter(Boolean)
+    const explicitAlpha = alphaPart || (channels.length > 3 ? channels.pop() : undefined)
+    if (channels.length < 3) return null
+    const r = parseChannel(channels[0])
+    const g = parseChannel(channels[1])
+    const b = parseChannel(channels[2])
+    if (r === null || g === null || b === null) return null
+    return { r, g, b, a: parseAlpha(explicitAlpha) }
+  }
+
+  const srgbMatch = color.match(/^color\(\s*srgb\s+([^)]*)\)$/i)
+  if (srgbMatch) {
+    const [channelPart, alphaPart] = srgbMatch[1].split("/").map((part) => part.trim())
+    const channels = channelPart.split(/\s+/).filter(Boolean)
+    const parseSrgbChannel = (value: string): number | null => {
+      const parsed = value.endsWith("%") ? Number.parseFloat(value) / 100 : Number.parseFloat(value)
+      return Number.isFinite(parsed) ? clampColorChannel(parsed * 255) : null
+    }
+    const r = parseSrgbChannel(channels[0] || "")
+    const g = parseSrgbChannel(channels[1] || "")
+    const b = parseSrgbChannel(channels[2] || "")
+    if (r === null || g === null || b === null) return null
+    return { r, g, b, a: parseAlpha(alphaPart) }
+  }
+
+  return null
+}
+
+function rgbToHex(input: string): string {
+  const parsed = parseCssColor(input)
+  if (!parsed || parsed.a <= 0) return "#ffffff"
+  const toHex = (value: number) => Math.round(value).toString(16).padStart(2, "0")
+  return `#${toHex(parsed.r)}${toHex(parsed.g)}${toHex(parsed.b)}`
+}
+
+function normalizeGradientEditorColor(value: string | undefined, fallback: string): string {
+  if (!value) return fallback
+  const parsed = parseCssColor(value)
+  if (!parsed || parsed.a <= 0) return fallback
+  return rgbToHex(value)
+}
+
+function readGradientStyle(style: CSSStyleDeclaration): Pick<TextSegment, "gradientEnabled" | "gradientStart" | "gradientEnd"> {
+  const backgroundImage = style.backgroundImage || ""
+  const colors = backgroundImage.match(/#[0-9a-f]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\)|color\([^)]*\)|transparent/gi) || []
+  return {
+    gradientEnabled: backgroundImage !== "none" && backgroundImage.includes("gradient"),
+    gradientStart: normalizeGradientEditorColor(colors[0], "#FFB15A"),
+    gradientEnd: normalizeGradientEditorColor(colors[1], "#FF6C00"),
+  }
 }
 
 function withColorOpacity(input: string, opacity: number): string {
@@ -1533,7 +1552,7 @@ export function VisualEditorOverlay() {
       {selectedEntry && <SelectionOverlay entry={selectedEntry} />}
 
       {openPanel && selectedNode && (
-        <div data-editor-panel className="fixed left-2 right-2 top-16 z-[9997] w-auto max-w-72 rounded-xl bg-white text-slate-900 shadow-2xl sm:left-auto sm:right-3 sm:w-72">
+        <div data-editor-panel className="isolate fixed left-2 right-2 top-16 z-[9997] max-h-[calc(100vh-5rem)] w-auto max-w-72 overflow-hidden rounded-xl bg-white text-slate-900 shadow-2xl sm:left-auto sm:right-3 sm:w-72">
           <div className="bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-3 py-2 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -1544,7 +1563,7 @@ export function VisualEditorOverlay() {
             </div>
           </div>
 
-          <div className="space-y-2 p-3 text-slate-900">
+          <div className="max-h-[calc(100vh-8rem)] space-y-2 overflow-y-auto overscroll-contain p-3 text-slate-900">
             {selectedBandMemberIndex !== null && (
               <div className="space-y-2 rounded border border-slate-200 p-2">
                 <label className="text-[11px] font-semibold">Member Number</label>

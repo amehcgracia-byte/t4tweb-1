@@ -129,6 +129,7 @@ function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementSt
 
   const style: PersistedElementStyle = {}
   style.responsiveLayout = true
+  if (node.explicitPosition || node.explicitSize) style.respectPosition = true
   if (node.explicitPosition) {
     const x = asFiniteNumber(node.geometry?.x)
     const y = asFiniteNumber(node.geometry?.y)
@@ -412,9 +413,6 @@ export async function POST(request: Request) {
         failedFields.push("title")
         failedNodes.push("hero-title-main-empty")
       }
-    } else if (heroTitleMainNode?.explicitPosition || heroTitleMainNode?.explicitSize || heroTitleMainNode?.explicitStyle) {
-      skippedFields.push("titlePositionOrStyle")
-      skippedNodes.push("hero-title-main-position-or-style")
     }
 
     if (heroTitleAccentNode?.explicitContent) {
@@ -427,9 +425,6 @@ export async function POST(request: Request) {
         failedFields.push("titleHighlight")
         failedNodes.push("hero-title-accent-empty")
       }
-    } else if (heroTitleAccentNode?.explicitPosition || heroTitleAccentNode?.explicitSize || heroTitleAccentNode?.explicitStyle) {
-      skippedFields.push("titleHighlightPositionOrStyle")
-      skippedNodes.push("hero-title-accent-position-or-style")
     }
 
     if (heroSubtitleNode?.explicitContent) {
@@ -443,9 +438,6 @@ export async function POST(request: Request) {
         failedFields.push("subtitle")
         failedNodes.push("hero-subtitle-empty")
       }
-    } else if (heroSubtitleNode?.explicitPosition || heroSubtitleNode?.explicitSize || heroSubtitleNode?.explicitStyle) {
-      skippedFields.push("subtitlePositionOrStyle")
-      skippedNodes.push("hero-subtitle-position-or-style")
     }
 
     const nextElementStyles: Record<string, PersistedElementStyle> = {
@@ -505,12 +497,12 @@ export async function POST(request: Request) {
       targetSection: TARGET_SECTION,
       heroTitleMode,
       revalidatedPath: REVALIDATED_PATH,
-      persistedNodes,
-      skippedNodes,
-      failedNodes,
-      persistedFields,
-      skippedFields,
-      failedFields,
+      persistedNodes: [...new Set(persistedNodes)],
+      skippedNodes: [...new Set(skippedNodes)],
+      failedNodes: [...new Set(failedNodes)],
+      persistedFields: [...new Set(persistedFields)],
+      skippedFields: [...new Set(skippedFields)],
+      failedFields: [...new Set(failedFields)],
       diagnostics,
       envDiagnostics,
     })
