@@ -365,11 +365,6 @@ function withColorOpacity(input: string, opacity: number): string {
   return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${alpha.toFixed(3)})`
 }
 
-function readColorOpacity(input: string | undefined): number {
-  const parsed = parseCssColor(input)
-  return parsed?.a ?? 1
-}
-
 function colorInputValue(value: string | undefined, fallback: string): string {
   const parsed = parseCssColor(value)
   if (!parsed || parsed.a <= 0) return rgbToHex(fallback)
@@ -769,6 +764,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     }
     if (node.type === "card") {
       if (node.explicitContent && node.content.text !== undefined) el.textContent = node.content.text
+      if (node.explicitStyle && node.style.color) el.style.color = node.style.color
       if (node.explicitStyle && node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
     }
     if (node.type === "image" || node.type === "background") {
@@ -798,6 +794,8 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     }
     if (node.type === "section") {
       if (node.explicitStyle) {
+        if (node.style.color) el.style.color = node.style.color
+        if (node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
         if (node.style.minHeight) el.style.minHeight = node.style.minHeight
         if (node.style.paddingTop) el.style.paddingTop = node.style.paddingTop
         if (node.style.paddingBottom) el.style.paddingBottom = node.style.paddingBottom
@@ -1999,17 +1997,24 @@ export function VisualEditorOverlay() {
 
             {selectedNode.type === "button" && (
               <>
-                <label className="text-[10px]">Button opacity ({readColorOpacity(selectedNode.style.backgroundColor).toFixed(2)})</label>
+                <label className="text-[10px]">Button opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
                 <input
                   type="range"
                   min={0}
                   max={1}
                   step={0.05}
                   className="w-full"
-                  value={readColorOpacity(selectedNode.style.backgroundColor)}
-                   onChange={(e) => {
-                     dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) / 100 } })
-                   }}
+                  value={selectedNode.style.opacity ?? 1}
+                  onChange={(e) => {
+                    dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })
+                  }}
+                />
+                <label className="text-[10px]">Button background color</label>
+                <EditorColorInput
+                  className="h-8 w-full rounded border p-1"
+                  value={selectedNode.style.backgroundColor}
+                  fallback="#FF8C21"
+                  onValueChange={(value) => dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { backgroundColor: value } })}
                 />
                 <label className="text-xs font-semibold">Link</label>
                 <input
@@ -2238,12 +2243,38 @@ export function VisualEditorOverlay() {
                   value={selectedNode.style.opacity ?? 1}
                   onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
                 />
+                <label className="text-[10px]">Card text color</label>
+                <EditorColorInput
+                  className="h-8 w-full rounded border p-1"
+                  value={selectedNode.style.color}
+                  fallback="#ffffff"
+                  onValueChange={(value) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { color: value } })}
+                />
                 <label className="text-[10px]">Background Color</label>
                 <EditorColorInput
                   className="h-8 w-full rounded border p-1"
                   value={selectedNode.style.backgroundColor}
                   fallback="#000000"
                   onValueChange={(value) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { backgroundColor: value } })}
+                />
+              </>
+            )}
+
+            {selectedNode.type === "section" && (
+              <>
+                <label className="text-[10px]">Section text color</label>
+                <EditorColorInput
+                  className="h-8 w-full rounded border p-1"
+                  value={selectedNode.style.color}
+                  fallback="#ffffff"
+                  onValueChange={(value) => dispatch({ type: "UPDATE_SECTION", nodeId: selectedNode.id, patch: { color: value } })}
+                />
+                <label className="text-[10px]">Section background color</label>
+                <EditorColorInput
+                  className="h-8 w-full rounded border p-1"
+                  value={selectedNode.style.backgroundColor}
+                  fallback="#000000"
+                  onValueChange={(value) => dispatch({ type: "UPDATE_SECTION", nodeId: selectedNode.id, patch: { backgroundColor: value } })}
                 />
               </>
             )}
