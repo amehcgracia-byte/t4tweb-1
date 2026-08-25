@@ -169,6 +169,7 @@ function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementSt
   }
   if (node.explicitStyle) {
     const numericFields: Array<[string, unknown]> = [
+      ["opacity", node.style.opacity],
       ["scale", node.style.scale],
       ["fontSize", node.style.fontSize],
       ["fontWeight", node.style.fontWeight],
@@ -182,6 +183,8 @@ function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementSt
     })
     const color = asCssColor(node.style.color)
     if (color) style.color = color
+    const backgroundColor = asCssColor(node.style.backgroundColor)
+    if (backgroundColor) style.backgroundColor = backgroundColor
   }
   return Object.keys(style).length > 0 ? style : null
 }
