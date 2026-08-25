@@ -387,8 +387,12 @@ function EditorColorInput({ value, fallback, className, onValueChange }: EditorC
       type="color"
       className={className}
       value={normalizedValue}
-      onChange={(event) => onValueChange(event.currentTarget.value)}
-      onInput={(event) => onValueChange(event.currentTarget.value)}
+      // Commit only the final native color-picker value. Some browsers emit
+      // an intermediate black value through input while the picker is opening.
+      onChange={(event) => {
+        const next = event.currentTarget.value
+        if (/^#[0-9a-f]{6}$/i.test(next)) onValueChange(next)
+      }}
     />
   )
 }
