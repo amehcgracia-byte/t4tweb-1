@@ -1434,7 +1434,15 @@ export function VisualEditorOverlay() {
         return
       }
       if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]") || target.closest("[data-editor-deploy-modal]")) return
-      const hit = getEditableAtPosition(e.clientX, e.clientY)
+      const directNode = target.closest<HTMLElement>("[data-editor-node-id]")
+      const directEntry = directNode?.dataset.editorNodeId
+        ? registry.get(directNode.dataset.editorNodeId)
+        : undefined
+      // Prefer the actual element receiving the pointer. Coordinate hit-testing
+      // can select a neighbouring card after responsive/order changes.
+      const hit = directEntry?.eligible
+        ? directEntry
+        : getEditableAtPosition(e.clientX, e.clientY)
       if (hit) {
         if (multiModifier.current) {
           e.preventDefault()

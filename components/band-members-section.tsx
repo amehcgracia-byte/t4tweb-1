@@ -291,7 +291,9 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                 data-editor-node-type="card"
                 data-editor-node-label={member.fullName}
                 data-editor-grouped="true"
-                style={buildInlineStyleFromOverride(overrides[`member-item-${index}`], allowGeometryOverrides)}
+                // Member cards stay in normal flow so stale desktop geometry cannot overlap
+                // adjacent cards in the editor after responsive/order changes.
+                style={buildInlineStyleFromOverride(overrides[`member-item-${index}`], false)}
                 role="button"
                 tabIndex={0}
                 aria-label={`${member.fullName} card`}
