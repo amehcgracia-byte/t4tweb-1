@@ -112,7 +112,7 @@ function getHeroTitleSegmentStyle(
   const gradientEnabled = segment?.gradientEnabled ?? fallbackGradient
   const style: CSSProperties = {
     color: segment?.color || fallbackColor,
-    fontWeight: segment?.bold ? 700 : undefined,
+    fontWeight: segment?.bold ? 700 : 400,
     fontStyle: segment?.italic ? "italic" : undefined,
     textDecoration: segment?.underline ? "underline" : undefined,
     opacity: segment?.opacity,

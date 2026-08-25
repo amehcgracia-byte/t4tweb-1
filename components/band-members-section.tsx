@@ -242,7 +242,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
 
         <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-2 lg:gap-14">
           {/* Desktop photo - hidden on mobile */}
-          <div className="relative hidden max-h-[78vh] min-h-[420px] overflow-hidden rounded-3xl bg-zinc-950 shadow-2xl lg:block lg:aspect-[3/4]">
+          <div className="order-2 relative hidden max-h-[78vh] min-h-[420px] overflow-hidden rounded-3xl bg-zinc-950 shadow-2xl lg:order-2 lg:block lg:aspect-[3/4]">
             {displayedMembers.map((member, index) => (
               <motion.div
                 key={member.id}
@@ -279,7 +279,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
           </div>
 
 
-          <div className="space-y-2.5 md:space-y-4">
+          <div className="order-1 space-y-2.5 md:space-y-4 lg:order-1">
             {displayedMembers.map((member, index) => (
               <motion.div
                 key={member.id}
