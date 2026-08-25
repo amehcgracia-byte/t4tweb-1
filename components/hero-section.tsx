@@ -485,10 +485,6 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-node-label="Hero Title"
             data-editor-grouped="true"
             className="mb-6 max-w-[880px] text-balance break-words text-3xl font-semibold leading-tight tracking-tight text-white"
-            style={getElementStyle(content.elementStyles, "hero-title", {
-              includeGeometry: allowGeometryOverrides,
-              includeResponsiveTypography: allowGeometryOverrides,
-            })}
           >
             {titleSegmentsForRender.map((segment, index) => {
               const isAccent = index === 1
@@ -516,10 +512,12 @@ export function HeroSection({ data }: { data: HeroData }) {
                     : "mr-[0.25em]"}
                   style={{
                     ...segmentStyle,
-                    ...getElementStyle(content.elementStyles, segmentId, {
-                      includeGeometry: allowGeometryOverrides,
-                      includeResponsiveTypography: allowGeometryOverrides,
-                    }),
+                    ...(allowGeometryOverrides
+                      ? getElementStyle(content.elementStyles, segmentId, {
+                          includeGeometry: true,
+                          includeResponsiveTypography: true,
+                        })
+                      : {}),
                   }}
                 >
                   {segment.text}
@@ -538,10 +536,12 @@ export function HeroSection({ data }: { data: HeroData }) {
               style={{
                 width: "clamp(6rem, 22vw, 8.8125rem)",
                 height: "clamp(6rem, 22vw, 8.8125rem)",
-                ...getElementStyle(content.elementStyles, "hero-logo", {
-                  includeGeometry: allowGeometryOverrides,
-                  includeResponsiveTypography: allowGeometryOverrides,
-                }),
+                ...(allowGeometryOverrides
+                  ? getElementStyle(content.elementStyles, "hero-logo", {
+                      includeGeometry: true,
+                      includeResponsiveTypography: true,
+                    })
+                  : {}),
               }}
             >
               <Image
@@ -560,10 +560,12 @@ export function HeroSection({ data }: { data: HeroData }) {
               data-editor-node-type="text"
               data-editor-node-label="Subtítulo"
               className="mt-2.5 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#ffd3a3] sm:text-sm sm:tracking-[0.3em]"
-              style={getElementStyle(content.elementStyles, "hero-subtitle", {
-                includeGeometry: allowGeometryOverrides,
-                includeResponsiveTypography: allowGeometryOverrides,
-              })}
+              style={allowGeometryOverrides
+                ? getElementStyle(content.elementStyles, "hero-subtitle", {
+                    includeGeometry: true,
+                    includeResponsiveTypography: true,
+                  })
+                : undefined}
             >
               {content.subtitle}
             </p>

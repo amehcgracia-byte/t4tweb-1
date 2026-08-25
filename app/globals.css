@@ -894,22 +894,6 @@ html:not([data-editor-active]) [data-editor-managed-size="true"] {
   min-width: 0 !important;
 }
 
-/* Desktop editor offsets are published as bounded composition adjustments.
- * On mobile the normal responsive flow remains authoritative. */
-@media (min-width: 1024px) {
-  html:not([data-editor-active]) [data-editor-node-id="hero-title"],
-  html:not([data-editor-active]) [data-editor-node-id="hero-title-main"],
-  html:not([data-editor-active]) [data-editor-node-id="hero-title-accent"],
-  html:not([data-editor-active]) [data-editor-node-id="hero-logo"],
-  html:not([data-editor-active]) [data-editor-node-id="hero-subtitle"] {
-    transform: translate(
-      clamp(-12rem, var(--editor-public-x, 0px), 12rem),
-      clamp(-8rem, var(--editor-public-y, 0px), 8rem)
-    );
-    transform-origin: top left;
-  }
-}
-
 /* Press Kit is a normal-flow stack; its saved desktop measurements must not
  * clip the header or push the card over the description on narrow screens. */
 html:not([data-editor-active]) [data-editor-node-id="press-kit-header"],

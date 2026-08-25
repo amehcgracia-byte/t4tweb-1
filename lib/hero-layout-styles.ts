@@ -136,21 +136,6 @@ export function getElementLayoutStyle(
 
   const result: CSSProperties = { ...layout }
 
-  // Keep editor-authored offsets visible on desktop publication without
-  // turning them into a mobile layout contract. globals.css consumes these
-  // variables only at >=1024px; mobile falls back to the responsive classes.
-  const publicPositionTargets = new Set([
-    "hero-title",
-    "hero-title-main",
-    "hero-title-accent",
-    "hero-logo",
-    "hero-subtitle",
-  ])
-  if (!includeGeometry && publicPositionTargets.has(targetId) && (hasX || hasY)) {
-    ;(result as CSSProperties & Record<string, string>)["--editor-public-x"] = `${tx}px`
-    ;(result as CSSProperties & Record<string, string>)["--editor-public-y"] = `${ty}px`
-  }
-
   if (includeGeometry && !isViewportContainer && !shouldApplyGeometry) {
     if (typeof styles.width === "number") result.width = `${roundLayoutPx(styles.width as number)}px`
     if (typeof styles.height === "number") result.height = `${roundLayoutPx(styles.height as number)}px`
