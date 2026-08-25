@@ -502,7 +502,12 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-node-type="text"
             data-editor-node-label="Hero Title"
             data-editor-grouped="true"
-            className="mb-5 w-full max-w-[min(94vw,1120px)] text-balance break-words text-[clamp(2.25rem,4.7vw,5.5rem)] font-semibold leading-[0.94] tracking-[-0.035em] text-white sm:mb-7"\n            style={getElementStyle(content.elementStyles, "hero-title", {\n              includeGeometry: true,\n              includeResponsiveTypography: true,\n            })}\n          >
+            className="mb-5 w-full max-w-[min(94vw,1120px)] text-balance break-words text-[clamp(2.25rem,4.7vw,5.5rem)] font-semibold leading-[0.94] tracking-[-0.035em] text-white sm:mb-7"
+            style={getElementStyle(content.elementStyles, "hero-title", {
+              includeGeometry: true,
+              includeResponsiveTypography: true,
+            })}
+          >
             {titleSegmentsForRender.map((segment, index) => {
               const isAccent = index === 1
               const gradientEnabled = segment.gradientEnabled ?? isAccent
