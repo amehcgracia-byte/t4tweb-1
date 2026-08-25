@@ -112,10 +112,11 @@ export function getElementLayoutStyle(
   const scaleVal = typeof styles.scale === "number" ? styles.scale : 1
   const needTranslate = hasX || hasY
   const needScale = typeof styles.scale === "number" && scaleVal !== 1
+  const respectSavedGeometry = styles.responsiveLayout !== true || styles.respectPosition === true
   // The hero and intro are viewport-wide containers. Their saved editor
   // measurements describe the viewport on which they were edited and must not
   // turn into fixed-width sections on another monitor.
-  const shouldApplyGeometry = includeGeometry && !isViewportContainer && (needTranslate || needScale)
+  const shouldApplyGeometry = includeGeometry && respectSavedGeometry && !isViewportContainer && (needTranslate || needScale)
 
   const layout =
     shouldApplyGeometry
@@ -136,7 +137,7 @@ export function getElementLayoutStyle(
 
   const result: CSSProperties = { ...layout }
 
-  if (includeGeometry && !isViewportContainer && !shouldApplyGeometry) {
+  if (includeGeometry && respectSavedGeometry && !isViewportContainer && !shouldApplyGeometry) {
     if (typeof styles.width === "number") result.width = `${roundLayoutPx(styles.width as number)}px`
     if (typeof styles.height === "number") result.height = `${roundLayoutPx(styles.height as number)}px`
   }
