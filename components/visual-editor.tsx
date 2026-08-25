@@ -384,21 +384,14 @@ interface EditorColorInputProps {
 }
 
 function EditorColorInput({ value, fallback, className, onValueChange }: EditorColorInputProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
   const normalizedValue = colorInputValue(value, fallback)
-
-  useEffect(() => {
-    const input = inputRef.current
-    if (!input || document.activeElement === input) return
-    if (input.value !== normalizedValue) input.value = normalizedValue
-  }, [normalizedValue])
 
   return (
     <input
-      ref={inputRef}
       type="color"
       className={className}
-      defaultValue={normalizedValue}
+      value={normalizedValue}
+      onChange={(event) => onValueChange(event.currentTarget.value)}
       onInput={(event) => onValueChange(event.currentTarget.value)}
     />
   )
