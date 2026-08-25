@@ -9,7 +9,7 @@ import type { IntroBannerData } from "@/lib/sanity/intro-banner-loader"
 
 export function IntroBannerSection({ data }: { data: IntroBannerData }) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
-  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
+  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing, true)
 
   const sectionRef = useRef<HTMLDivElement>(null)
   const bannerGifRef = useRef<HTMLDivElement>(null)
