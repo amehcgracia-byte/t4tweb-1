@@ -53,7 +53,15 @@ interface HeroTitleSegment {
 
 type PersistedElementStyle = Record<string, number | string | boolean>
 
-const ROUTE_VERSION = "sanity-editor-v5-audited"
+interface DeployVerification {
+  ok: boolean
+  checkedNodes: string[]
+  failedNodes: string[]
+  failedFields: string[]
+  message: string
+}
+
+const ROUTE_VERSION = "sanity-editor-v6-save-verified"
 const TARGET_SECTION = "hero"
 const SANITY_DOC_TYPE = "heroSection"
 const REVALIDATED_PATH = "/"
@@ -96,6 +104,10 @@ const DOCUMENT_LAYOUT_NODE_IDS = new Set([
 
 function asFiniteNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : undefined
+}
+
+function asFiniteDecimal(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined
 }
 
 function asCssColor(value: unknown): string | undefined {
@@ -142,10 +154,10 @@ function sanitizeTitleSegment(value: unknown, fallbackColor: string): HeroTitleS
 }
 
 function readNumberFromCss(value: unknown): number | undefined {
-  if (typeof value === "number") return asFiniteNumber(value)
+  if (typeof value === "number") return asFiniteDecimal(value)
   if (typeof value !== "string") return undefined
   const match = value.trim().match(/^-?\d+(?:\.\d+)?/)
-  return match ? asFiniteNumber(Number(match[0])) : undefined
+  return match ? asFiniteDecimal(Number(match[0])) : undefined
 }
 
 function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementStyle | null {
@@ -185,6 +197,24 @@ function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementSt
     if (color) style.color = color
     const backgroundColor = asCssColor(node.style.backgroundColor)
     if (backgroundColor) style.backgroundColor = backgroundColor
+    const lengthFields: Array<[string, unknown]> = [
+      ["minHeight", node.style.minHeight],
+      ["paddingTop", node.style.paddingTop],
+      ["paddingBottom", node.style.paddingBottom],
+    ]
+    lengthFields.forEach(([key, value]) => {
+      const parsed = asCssLength(value)
+      if (parsed) style[key] = parsed
+    })
+    const stringFields: Array<[string, unknown]> = [
+      ["fontFamily", node.style.fontFamily],
+      ["fontStyle", node.style.fontStyle],
+      ["textDecoration", node.style.textDecoration],
+      ["textAlign", node.style.textAlign],
+    ]
+    stringFields.forEach(([key, value]) => {
+      if (typeof value === "string" && value.trim()) style[key] = value.trim()
+    })
   }
   return Object.keys(style).length > 0 ? style : null
 }
@@ -254,6 +284,36 @@ function buildHomeEditorNode(node: DeployNodePayload): Record<string, unknown> |
     explicitSize: node.explicitSize,
     updatedAt: new Date().toISOString(),
   }
+}
+
+function valuesMatch(expected: unknown, actual: unknown): boolean {
+  if (typeof expected === "number" && typeof actual === "number") {
+    return Math.abs(expected - actual) < 0.001
+  }
+  return JSON.stringify(expected) === JSON.stringify(actual)
+}
+
+function verifyPersistedStyle(
+  node: DeployNodePayload,
+  styles: Record<string, PersistedElementStyle> | undefined,
+  prefix: string,
+  verification: DeployVerification,
+): void {
+  const expected = buildPersistedElementStyle(node)
+  if (!expected) return
+  verification.checkedNodes.push(node.id)
+  const actual = styles?.[node.id]
+  if (!actual) {
+    verification.failedNodes.push(node.id)
+    verification.failedFields.push(`${prefix}.${node.id}`)
+    return
+  }
+  Object.entries(expected).forEach(([key, value]) => {
+    if (!valuesMatch(value, actual[key])) {
+      verification.failedNodes.push(node.id)
+      verification.failedFields.push(`${prefix}.${node.id}.${key}`)
+    }
+  })
 }
 
 function getEnvDiagnostics(): DeployEnvDiagnostics {
@@ -461,6 +521,13 @@ export async function POST(request: Request) {
     const skippedNodes: string[] = []
     const failedNodes: string[] = []
     const heroPatch: Record<string, unknown> = {}
+    const verification: DeployVerification = {
+      ok: true,
+      checkedNodes: [],
+      failedNodes: [],
+      failedFields: [],
+      message: "",
+    }
 
     const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text")
     const heroTitleMainNode = payload.nodes.find((node) => node.id === "hero-title-main" && node.type === "text")
@@ -722,19 +789,196 @@ export async function POST(request: Request) {
       steps.push({ step: "saving", ok: true, message: `Home editor state patched: ${homeEditorNodes.length} node(s).` })
     }
 
+    // The write response alone is not enough: the public loaders use the
+    // published perspective. Read that perspective back before reporting
+    // success so the editor cannot claim "done" for a draft-only or partial
+    // mutation.
+    const publishedReadClient = createClient({
+      projectId,
+      dataset,
+      apiVersion: "2024-01-01",
+      useCdn: false,
+      perspective: "published",
+    })
+    const [publishedHero, publishedNavigation, publishedIntro, publishedHomeEditorState] = await Promise.all([
+      publishedReadClient.fetch<{
+        title?: string
+        titleHighlight?: string
+        titleSegments?: HeroTitleSegment[]
+        subtitle?: string
+        elementStyles?: Record<string, PersistedElementStyle>
+      } | null>(
+        `*[_type == "${SANITY_DOC_TYPE}"][0]{ title, titleHighlight, titleSegments, subtitle, elementStyles }`,
+      ),
+      publishedReadClient.fetch<{
+        brandName?: string
+        ctaLabel?: string
+        ctaHref?: string
+        links?: Array<{ label?: string; href?: string }>
+        elementStyles?: Record<string, PersistedElementStyle>
+      } | null>(`*[_type == "navigation"][0]{ brandName, ctaLabel, ctaHref, links[]{ label, href }, elementStyles }`),
+      publishedReadClient.fetch<{
+        bannerText?: string
+        bookLabel?: string
+        bookHref?: string
+        pressLabel?: string
+        pressHref?: string
+        elementStyles?: Record<string, PersistedElementStyle>
+      } | null>(`*[_type == "introBanner"][0]{ bannerText, bookLabel, bookHref, pressLabel, pressHref, elementStyles }`),
+      publishedReadClient.fetch<{ nodes?: Array<Record<string, unknown>> } | null>(
+        `*[_type == "homeEditorState" && _id == "homeEditorState"][0]{ nodes }`,
+      ),
+    ])
+
+    payload.nodes.forEach((node) => {
+      if (!hasExplicitEditorChange(node)) return
+      if (HERO_LAYOUT_NODE_IDS.has(node.id)) {
+        verifyPersistedStyle(node, publishedHero?.elementStyles, "hero.elementStyles", verification)
+      } else if (NAV_LAYOUT_NODE_IDS.has(node.id)) {
+        verifyPersistedStyle(node, publishedNavigation?.elementStyles, "navigation.elementStyles", verification)
+      } else if (INTRO_LAYOUT_NODE_IDS.has(node.id)) {
+        verifyPersistedStyle(node, publishedIntro?.elementStyles, "introBanner.elementStyles", verification)
+      }
+    })
+
+    const actualHomeNodes = new Map(
+      (Array.isArray(publishedHomeEditorState?.nodes) ? publishedHomeEditorState.nodes : [])
+        .map((node) => [String(node.nodeId || ""), node] as const)
+        .filter(([nodeId]) => Boolean(nodeId)),
+    )
+    homeEditorNodes.forEach((expectedNode) => {
+      const nodeId = String(expectedNode.nodeId)
+      const actualNode = actualHomeNodes.get(nodeId)
+      verification.checkedNodes.push(nodeId)
+      if (!actualNode) {
+        verification.failedNodes.push(nodeId)
+        verification.failedFields.push(`homeEditorState.nodes.${nodeId}`)
+        return
+      }
+      ;["geometry", "style", "content", "explicitContent", "explicitStyle", "explicitPosition", "explicitSize"].forEach((key) => {
+        if (!valuesMatch(expectedNode[key], actualNode[key])) {
+          verification.failedNodes.push(nodeId)
+          verification.failedFields.push(`homeEditorState.nodes.${nodeId}.${key}`)
+        }
+      })
+    })
+
+    const comparePublishedText = (node: DeployNodePayload, actual: string | undefined, field: string) => {
+      if (!node.explicitContent || typeof node.content?.text !== "string" || !node.content.text.trim()) return
+      verification.checkedNodes.push(node.id)
+      if (actual !== node.content.text.trim()) {
+        verification.failedNodes.push(node.id)
+        verification.failedFields.push(field)
+      }
+    }
+    comparePublishedText(heroSubtitleNode || ({} as DeployNodePayload), publishedHero?.subtitle, "hero.subtitle")
+    const mainTextNode = payload.nodes.find((node) => node.id === "hero-title-main")
+    const accentTextNode = payload.nodes.find((node) => node.id === "hero-title-accent")
+    comparePublishedText(mainTextNode || ({} as DeployNodePayload), publishedHero?.title, "hero.title")
+    comparePublishedText(accentTextNode || ({} as DeployNodePayload), publishedHero?.titleHighlight, "hero.titleHighlight")
+
+    if (Array.isArray(heroPatch.titleSegments)) {
+      verification.checkedNodes.push("hero-title")
+      const expectedSegments = heroPatch.titleSegments as HeroTitleSegment[]
+      const actualSegments = publishedHero?.titleSegments || []
+      const segmentsMatch = expectedSegments.length === actualSegments.length && expectedSegments.every((expectedSegment, index) => {
+        const actualSegment = actualSegments[index]
+        return Object.entries(expectedSegment).every(([key, value]) => valuesMatch(value, actualSegment?.[key as keyof HeroTitleSegment]))
+      })
+      if (!segmentsMatch) {
+        verification.failedNodes.push("hero-title")
+        verification.failedFields.push("hero.titleSegments")
+      }
+    }
+
+    const navigationNodesForVerification = payload.nodes.filter((node) => NAV_LAYOUT_NODE_IDS.has(node.id) && node.explicitContent)
+    navigationNodesForVerification.forEach((node) => {
+      if (node.id === "nav-brand-name" && typeof node.content?.text === "string" && node.content.text.trim()) {
+        verification.checkedNodes.push(node.id)
+        if (publishedNavigation?.brandName !== node.content.text.trim()) {
+          verification.failedNodes.push(node.id)
+          verification.failedFields.push("navigation.brandName")
+        }
+      }
+      if (node.id === "nav-book-button" || node.id === "nav-mobile-book-button") {
+        if (typeof node.content?.text === "string" && node.content.text.trim()) {
+          verification.checkedNodes.push(node.id)
+          if (publishedNavigation?.ctaLabel !== node.content.text.trim()) {
+            verification.failedNodes.push(node.id)
+            verification.failedFields.push("navigation.ctaLabel")
+          }
+        }
+        if (typeof node.content?.href === "string" && node.content.href.trim()) {
+          verification.checkedNodes.push(node.id)
+          if (publishedNavigation?.ctaHref !== node.content.href.trim()) {
+            verification.failedNodes.push(node.id)
+            verification.failedFields.push("navigation.ctaHref")
+          }
+        }
+      }
+      const match = node.id.match(/^nav-(?:mobile-)?link-(\d+)$/)
+      if (match) {
+        const index = Number(match[1])
+        const actualLink = publishedNavigation?.links?.[index]
+        if (typeof node.content?.text === "string" && node.content.text.trim()) {
+          verification.checkedNodes.push(node.id)
+          if (actualLink?.label !== node.content.text.trim()) {
+            verification.failedNodes.push(node.id)
+            verification.failedFields.push(`navigation.links[${index}].label`)
+          }
+        }
+        if (typeof node.content?.href === "string" && node.content.href.trim()) {
+          verification.checkedNodes.push(node.id)
+          if (actualLink?.href !== node.content.href.trim()) {
+            verification.failedNodes.push(node.id)
+            verification.failedFields.push(`navigation.links[${index}].href`)
+          }
+        }
+      }
+    })
+
+    const introNodesForVerification = payload.nodes.filter((node) => INTRO_LAYOUT_NODE_IDS.has(node.id) && node.explicitContent)
+    introNodesForVerification.forEach((node) => {
+      const checks: Array<[string, unknown, unknown]> = []
+      if (node.id === "intro-banner-text") checks.push(["introBanner.bannerText", node.content?.text, publishedIntro?.bannerText])
+      if (node.id === "intro-book-button") {
+        checks.push(["introBanner.bookLabel", node.content?.text, publishedIntro?.bookLabel])
+        checks.push(["introBanner.bookHref", node.content?.href, publishedIntro?.bookHref])
+      }
+      if (node.id === "intro-press-button") {
+        checks.push(["introBanner.pressLabel", node.content?.text, publishedIntro?.pressLabel])
+        checks.push(["introBanner.pressHref", node.content?.href, publishedIntro?.pressHref])
+      }
+      checks.forEach(([field, expected, actual]) => {
+        if (typeof expected !== "string" || !expected.trim()) return
+        verification.checkedNodes.push(node.id)
+        if (!valuesMatch(expected.trim(), actual)) {
+          verification.failedNodes.push(node.id)
+          verification.failedFields.push(field)
+        }
+      })
+    })
+
+    verification.failedNodes = [...new Set(verification.failedNodes)]
+    verification.failedFields = [...new Set(verification.failedFields)]
+    verification.ok = verification.failedNodes.length === 0 && verification.failedFields.length === 0 && failedNodes.length === 0 && failedFields.length === 0 && skippedNodes.length === 0
+    verification.message = verification.ok
+      ? `Published read-back verified ${verification.checkedNodes.length} editor node checks.`
+      : `Published read-back failed for ${verification.failedFields.length || verification.failedNodes.length} field(s).`
+
     const publishedDocumentId = existingHero._id
-    steps.push({ step: "publishing", ok: true, message: `Published Hero document: ${publishedDocumentId}` })
+    steps.push({ step: "publishing", ok: verification.ok, message: verification.ok ? `Published Hero document: ${publishedDocumentId}` : "Published read-back verification failed; deploy is incomplete." })
 
     revalidatePath(REVALIDATED_PATH)
-    steps.push({ step: "revalidating", ok: true, message: "Public site revalidated." })
+    steps.push({ step: "revalidating", ok: verification.ok, message: verification.ok ? "Public site revalidated." : "Public path was revalidated, but saved values could not be verified." })
 
-    return NextResponse.json({
-      status: "ok",
-      mode: "complete",
-      step: "done",
+    const responseBody = {
+      status: verification.ok ? "ok" : "failed",
+      mode: verification.ok ? "complete" : "incomplete",
+      step: verification.ok ? "done" : "failed",
       localSaved: false,
-      remoteReady: true,
-      message: "Deploy complete: editor changes saved in Sanity and public path revalidated.",
+      remoteReady: verification.ok,
+      message: verification.ok ? "Deploy complete: editor changes saved in Sanity and public path revalidated." : verification.message,
       steps,
       routeVersion: ROUTE_VERSION,
       sanityDocumentId: publishedDocumentId,
@@ -749,9 +993,11 @@ export async function POST(request: Request) {
       persistedFields: [...new Set(persistedFields)],
       skippedFields: [...new Set(skippedFields)],
       failedFields: [...new Set(failedFields)],
+      verification,
       diagnostics,
       envDiagnostics,
-    })
+    }
+    return NextResponse.json(responseBody, { status: verification.ok ? 200 : 409 })
   } catch (error) {
     const diagnostics = getEnvDiagnostics()
     const envDiagnostics = diagnostics

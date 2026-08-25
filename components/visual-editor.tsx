@@ -1285,6 +1285,18 @@ export function VisualEditorOverlay() {
           SANITY_API_TOKEN: "yes" | "no"
         }
         steps?: Array<{ step: string; ok: boolean; message: string }>
+        status?: "ok" | "failed"
+        failedNodes?: string[]
+        failedFields?: string[]
+        skippedNodes?: string[]
+        skippedFields?: string[]
+        verification?: {
+          ok: boolean
+          checkedNodes?: string[]
+          failedNodes?: string[]
+          failedFields?: string[]
+          message?: string
+        }
       }
       const envDiagnostics = data.envDiagnostics || data.diagnostics
 
@@ -1306,7 +1318,16 @@ export function VisualEditorOverlay() {
         setDeployStatus(data.step)
       }
 
-      if (!response.ok) {
+      const responseHasFailures =
+        data.status === "failed" ||
+        data.step === "failed" ||
+        (data.failedNodes?.length || 0) > 0 ||
+        (data.failedFields?.length || 0) > 0 ||
+        (data.skippedNodes?.length || 0) > 0 ||
+        (data.skippedFields?.length || 0) > 0 ||
+        data.verification?.ok === false
+
+      if (!response.ok || responseHasFailures) {
         setDeployStatus("failed")
         lines.push("failed")
         lines.push(`routeVersion: ${data.routeVersion || "missing"}`)
@@ -1318,7 +1339,7 @@ export function VisualEditorOverlay() {
         return
       }
 
-      if (data.step === "done" || lines.includes("revalidating")) {
+      if (data.status === "ok" && data.step === "done" && data.verification?.ok !== false) {
         setDeployStatus("done")
         if (!lines.includes("done")) lines.push("done")
       }
