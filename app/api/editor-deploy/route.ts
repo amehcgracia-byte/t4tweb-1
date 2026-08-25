@@ -53,7 +53,7 @@ interface HeroTitleSegment {
 
 type PersistedElementStyle = Record<string, number | string | boolean>
 
-const ROUTE_VERSION = "sanity-editor-v4-responsive"
+const ROUTE_VERSION = "sanity-editor-v5-audited"
 const TARGET_SECTION = "hero"
 const SANITY_DOC_TYPE = "heroSection"
 const REVALIDATED_PATH = "/"
@@ -67,6 +67,31 @@ const HERO_LAYOUT_NODE_IDS = new Set([
   "hero-logo",
   "hero-buttons",
   "hero-scroll-indicator",
+])
+
+const NAV_LAYOUT_NODE_IDS = new Set([
+  "navigation",
+  "navigation-inner",
+  "nav-logo",
+  "nav-brand-name",
+  "nav-book-button",
+  "nav-mobile-book-button",
+  ...Array.from({ length: 5 }, (_, index) => `nav-link-${index}`),
+  ...Array.from({ length: 5 }, (_, index) => `nav-mobile-link-${index}`),
+])
+
+const INTRO_LAYOUT_NODE_IDS = new Set([
+  "intro-section",
+  "intro-banner-gif",
+  "intro-banner-text",
+  "intro-book-button",
+  "intro-press-button",
+])
+
+const DOCUMENT_LAYOUT_NODE_IDS = new Set([
+  ...HERO_LAYOUT_NODE_IDS,
+  ...NAV_LAYOUT_NODE_IDS,
+  ...INTRO_LAYOUT_NODE_IDS,
 ])
 
 function asFiniteNumber(value: unknown): number | undefined {
@@ -124,7 +149,7 @@ function readNumberFromCss(value: unknown): number | undefined {
 }
 
 function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementStyle | null {
-  if (!HERO_LAYOUT_NODE_IDS.has(node.id)) return null
+  if (!DOCUMENT_LAYOUT_NODE_IDS.has(node.id)) return null
   if (!node.explicitPosition && !node.explicitSize && !node.explicitStyle) return null
 
   const style: PersistedElementStyle = {}
@@ -159,6 +184,73 @@ function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementSt
     if (color) style.color = color
   }
   return Object.keys(style).length > 0 ? style : null
+}
+
+function hasExplicitEditorChange(node: DeployNodePayload): boolean {
+  return node.explicitContent || node.explicitStyle || node.explicitPosition || node.explicitSize
+}
+
+function buildHomeEditorNode(node: DeployNodePayload): Record<string, unknown> | null {
+  if (!hasExplicitEditorChange(node)) return null
+
+  const geometry = {
+    x: asFiniteNumber(node.geometry?.x) ?? 0,
+    y: asFiniteNumber(node.geometry?.y) ?? 0,
+    width: Math.max(8, asFiniteNumber(node.geometry?.width) ?? 8),
+    height: Math.max(8, asFiniteNumber(node.geometry?.height) ?? 8),
+  }
+  const style: Record<string, unknown> = {}
+  const numericStyleKeys = ["opacity", "contrast", "saturation", "brightness", "scale"]
+  numericStyleKeys.forEach((key) => {
+    const value = node.style?.[key]
+    if (typeof value === "number" && Number.isFinite(value)) {
+      style[key] = key === "scale" ? Math.max(0.1, value) : value
+    }
+  })
+  const colorKeys = ["color", "backgroundColor"]
+  colorKeys.forEach((key) => {
+    const value = asCssColor(node.style?.[key])
+    if (value) style[key] = value
+  })
+  const lengthKeys = ["fontSize", "minHeight", "paddingTop", "paddingBottom"]
+  lengthKeys.forEach((key) => {
+    const value = asCssLength(node.style?.[key])
+    if (value) style[key] = value
+  })
+  const stringStyleKeys = ["fontFamily", "fontWeight", "fontStyle", "textDecoration", "textAlign"]
+  stringStyleKeys.forEach((key) => {
+    const value = node.style?.[key]
+    if (typeof value === "string" && value.trim()) style[key] = value.trim()
+  })
+  if (node.style?.negative === true) style.negative = true
+
+  const content: Record<string, unknown> = {}
+  const stringContentKeys = [
+    "text", "href", "src", "alt", "videoUrl", "mediaKind", "date", "venue", "city", "country",
+    "genre", "price", "status", "time", "capacity", "locationUrl",
+  ]
+  stringContentKeys.forEach((key) => {
+    const value = node.content?.[key]
+    if (typeof value === "string") content[key] = value
+  })
+  if (node.content?.gradientEnabled === true) content.gradientEnabled = true
+  ;["gradientStart", "gradientEnd"].forEach((key) => {
+    const value = asCssColor(node.content?.[key])
+    if (value) content[key] = value
+  })
+
+  return {
+    nodeId: node.id,
+    nodeType: node.type,
+    geometry,
+    style,
+    content,
+    explicitContent: node.explicitContent,
+    explicitStyle: node.explicitStyle,
+    explicitPosition: node.explicitPosition,
+    explicitSize: node.explicitSize,
+    updatedAt: new Date().toISOString(),
+  }
 }
 
 function getEnvDiagnostics(): DeployEnvDiagnostics {
@@ -299,6 +391,35 @@ export async function POST(request: Request) {
       `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments, elementStyles }`,
       { type: SANITY_DOC_TYPE }
     )
+    const [existingNavigation, existingIntro, existingHomeEditorState] = await Promise.all([
+      writeClient.fetch<{
+        _id: string
+        brandName?: string
+        ctaLabel?: string
+        ctaHref?: string
+        links?: Array<{ label?: string; href?: string }>
+        elementStyles?: Record<string, PersistedElementStyle>
+      } | null>(
+        `*[_type == "navigation"][0]{ _id, brandName, ctaLabel, ctaHref, links[]{ label, href }, elementStyles }`,
+      ),
+      writeClient.fetch<{
+        _id: string
+        bannerText?: string
+        bookLabel?: string
+        bookHref?: string
+        pressLabel?: string
+        pressHref?: string
+        elementStyles?: Record<string, PersistedElementStyle>
+      } | null>(
+        `*[_type == "introBanner"][0]{ _id, bannerText, bookLabel, bookHref, pressLabel, pressHref, elementStyles }`,
+      ),
+      writeClient.fetch<{
+        _id: string
+        nodes?: Array<Record<string, unknown>>
+      } | null>(
+        `*[_type == "homeEditorState" && _id == "homeEditorState"][0]{ _id, nodes }`,
+      ),
+    ])
     const heroTitleMode: "split-fields" = "split-fields"
 
     if (!existingHero?._id) {
@@ -444,6 +565,7 @@ export async function POST(request: Request) {
       ...(existingHero.elementStyles || {}),
     }
     payload.nodes.forEach((node) => {
+      if (!HERO_LAYOUT_NODE_IDS.has(node.id)) return
       const style = buildPersistedElementStyle(node)
       if (!style) return
       const previous = nextElementStyles[node.id]
@@ -465,7 +587,7 @@ export async function POST(request: Request) {
       persistedNodes.push(node.id)
       persistedFields.push(`elementStyles.${node.id}`)
     })
-    if (Object.keys(nextElementStyles).length > 0 && payload.nodes.some((node) => buildPersistedElementStyle(node))) {
+    if (Object.keys(nextElementStyles).length > 0 && payload.nodes.some((node) => HERO_LAYOUT_NODE_IDS.has(node.id) && buildPersistedElementStyle(node))) {
       heroPatch.elementStyles = nextElementStyles
     }
 
@@ -474,6 +596,127 @@ export async function POST(request: Request) {
       steps.push({ step: "saving", ok: true, message: `Hero section patched: ${existingHero._id}` })
     } else {
       steps.push({ step: "saving", ok: true, message: "No persistible Hero content changes detected; no patch applied." })
+    }
+
+    const navigationNodes = payload.nodes.filter((node) => NAV_LAYOUT_NODE_IDS.has(node.id) && hasExplicitEditorChange(node))
+    if (navigationNodes.length > 0) {
+      if (!existingNavigation?._id) {
+        navigationNodes.forEach((node) => {
+          skippedNodes.push(node.id)
+          skippedFields.push(`navigation.${node.id}`)
+        })
+      } else {
+        const navigationPatch: Record<string, unknown> = {}
+        const nextNavigationStyles: Record<string, PersistedElementStyle> = { ...(existingNavigation.elementStyles || {}) }
+        navigationNodes.forEach((node) => {
+          const style = buildPersistedElementStyle(node)
+          if (style) {
+            nextNavigationStyles[node.id] = { ...(nextNavigationStyles[node.id] || {}), ...style }
+            persistedNodes.push(node.id)
+            persistedFields.push(`navigation.elementStyles.${node.id}`)
+          }
+        })
+        if (Object.keys(nextNavigationStyles).length > 0) navigationPatch.elementStyles = nextNavigationStyles
+
+        const nextLinks = Array.isArray(existingNavigation.links)
+          ? existingNavigation.links.map((link) => ({ label: link.label || "", href: link.href || "" }))
+          : []
+        navigationNodes.forEach((node) => {
+          if (!node.explicitContent) return
+          if (node.id === "nav-brand-name" && typeof node.content?.text === "string" && node.content.text.trim()) {
+            navigationPatch.brandName = node.content.text.trim()
+            persistedNodes.push(node.id)
+            persistedFields.push("navigation.brandName")
+            return
+          }
+          if (node.id === "nav-book-button" || node.id === "nav-mobile-book-button") {
+            if (typeof node.content?.text === "string" && node.content.text.trim()) navigationPatch.ctaLabel = node.content.text.trim()
+            if (typeof node.content?.href === "string" && node.content.href.trim()) navigationPatch.ctaHref = node.content.href.trim()
+            if (typeof node.content?.text === "string" || typeof node.content?.href === "string") {
+              persistedNodes.push(node.id)
+              persistedFields.push("navigation.cta")
+            }
+            return
+          }
+          const match = node.id.match(/^nav-(?:mobile-)?link-(\d+)$/)
+          if (!match) return
+          const index = Number(match[1])
+          if (!Number.isFinite(index)) return
+          while (nextLinks.length <= index) nextLinks.push({ label: "", href: "" })
+          if (typeof node.content?.text === "string" && node.content.text.trim()) nextLinks[index].label = node.content.text.trim()
+          if (typeof node.content?.href === "string" && node.content.href.trim()) nextLinks[index].href = node.content.href.trim()
+          persistedNodes.push(node.id)
+          persistedFields.push(`navigation.links[${index}]`)
+        })
+        if (nextLinks.length > 0) navigationPatch.links = nextLinks
+        navigationPatch.updatedAt = new Date().toISOString()
+        if (Object.keys(navigationPatch).length > 1) {
+          await writeClient.patch(existingNavigation._id).set(navigationPatch).commit()
+          steps.push({ step: "saving", ok: true, message: `Navigation section patched: ${existingNavigation._id}` })
+        }
+      }
+    }
+
+    const introNodes = payload.nodes.filter((node) => INTRO_LAYOUT_NODE_IDS.has(node.id) && hasExplicitEditorChange(node))
+    if (introNodes.length > 0) {
+      if (!existingIntro?._id) {
+        introNodes.forEach((node) => {
+          skippedNodes.push(node.id)
+          skippedFields.push(`introBanner.${node.id}`)
+        })
+      } else {
+        const introPatch: Record<string, unknown> = {}
+        const nextIntroStyles: Record<string, PersistedElementStyle> = { ...(existingIntro.elementStyles || {}) }
+        introNodes.forEach((node) => {
+          const style = buildPersistedElementStyle(node)
+          if (style) {
+            nextIntroStyles[node.id] = { ...(nextIntroStyles[node.id] || {}), ...style }
+            persistedNodes.push(node.id)
+            persistedFields.push(`introBanner.elementStyles.${node.id}`)
+          }
+          if (!node.explicitContent) return
+          if (node.id === "intro-banner-text" && typeof node.content?.text === "string" && node.content.text.trim()) {
+            introPatch.bannerText = node.content.text.trim()
+          } else if (node.id === "intro-book-button") {
+            if (typeof node.content?.text === "string" && node.content.text.trim()) introPatch.bookLabel = node.content.text.trim()
+            if (typeof node.content?.href === "string" && node.content.href.trim()) introPatch.bookHref = node.content.href.trim()
+          } else if (node.id === "intro-press-button") {
+            if (typeof node.content?.text === "string" && node.content.text.trim()) introPatch.pressLabel = node.content.text.trim()
+            if (typeof node.content?.href === "string" && node.content.href.trim()) introPatch.pressHref = node.content.href.trim()
+          }
+          if (node.explicitContent) {
+            persistedNodes.push(node.id)
+            persistedFields.push(`introBanner.content.${node.id}`)
+          }
+        })
+        if (Object.keys(nextIntroStyles).length > 0) introPatch.elementStyles = nextIntroStyles
+        introPatch.updatedAt = new Date().toISOString()
+        if (Object.keys(introPatch).length > 1) {
+          await writeClient.patch(existingIntro._id).set(introPatch).commit()
+          steps.push({ step: "saving", ok: true, message: `Intro section patched: ${existingIntro._id}` })
+        }
+      }
+    }
+
+    const homeEditorNodes = payload.nodes
+      .filter((node) => !DOCUMENT_LAYOUT_NODE_IDS.has(node.id))
+      .map(buildHomeEditorNode)
+      .filter((node): node is Record<string, unknown> => Boolean(node))
+    if (homeEditorNodes.length > 0) {
+      const existingNodes = Array.isArray(existingHomeEditorState?.nodes) ? existingHomeEditorState.nodes : []
+      const changedIds = new Set(homeEditorNodes.map((node) => String(node.nodeId)))
+      const mergedNodes = [
+        ...existingNodes.filter((node) => !changedIds.has(String(node.nodeId))),
+        ...homeEditorNodes,
+      ]
+      await writeClient.createIfNotExists({ _id: "homeEditorState", _type: "homeEditorState", nodes: [] })
+      await writeClient.patch("homeEditorState").set({ nodes: mergedNodes, updatedAt: new Date().toISOString() }).commit()
+      homeEditorNodes.forEach((node) => {
+        const nodeId = String(node.nodeId)
+        persistedNodes.push(nodeId)
+        persistedFields.push(`homeEditorState.nodes.${nodeId}`)
+      })
+      steps.push({ step: "saving", ok: true, message: `Home editor state patched: ${homeEditorNodes.length} node(s).` })
     }
 
     const publishedDocumentId = existingHero._id
@@ -488,7 +731,7 @@ export async function POST(request: Request) {
       step: "done",
       localSaved: false,
       remoteReady: true,
-      message: "Deploy complete: Hero section updated in Sanity and public path revalidated.",
+      message: "Deploy complete: editor changes saved in Sanity and public path revalidated.",
       steps,
       routeVersion: ROUTE_VERSION,
       sanityDocumentId: publishedDocumentId,
