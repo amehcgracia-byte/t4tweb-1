@@ -463,7 +463,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                   data-editor-node-label="Live History List"
                   data-editor-grouped="true"
                   className="space-y-3"
-                  style={getOverrideStyle(overrides["live-history-list"])}
+                  // History is a normal-flow list: typography and color overrides are safe,\n                  // but saved desktop geometry must not pull it above its heading.\n                  style={buildInlineStyleFromOverride(overrides["live-history-list"], false)}
                 >
                   {historyConcerts.map((concert, index) => (
                     <motion.div
