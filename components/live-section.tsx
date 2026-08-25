@@ -403,14 +403,14 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                        style={getOverrideStyle(overrides[`live-upcoming-event-${index}`])}
                      >
                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
-                         <div data-editor-node-id={`live-upcoming-event-${index}-date`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Date`} className="shrink-0 text-primary font-medium min-w-[100px]">{formatDate(concert.date)}</div>
+                         <div data-editor-node-id={`live-upcoming-event-${index}-date`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Date`} data-concert-field="date" className="shrink-0 text-primary font-medium min-w-[100px]" style={getOverrideStyle(overrides[`live-upcoming-event-${index}-date`])}>{resolveConcertDateText(`live-upcoming-event-${index}`, concert.date)}</div>
                         <div className="flex-1">
-                          <div data-editor-node-id={`live-upcoming-event-${index}-venue`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Venue`} className="font-serif text-lg text-foreground group-hover:text-primary transition-colors">{concert.venue}</div>
-                          <div data-editor-node-id={`live-upcoming-event-${index}-city`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Location`} className="text-muted-foreground text-sm">{concert.city}, {concert.country}</div>
+                          <div data-editor-node-id={`live-upcoming-event-${index}-venue`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Venue`} data-concert-field="venue" className="font-serif text-lg text-foreground group-hover:text-primary transition-colors" style={getOverrideStyle(overrides[`live-upcoming-event-${index}-venue`])}>{resolveConcertVenueText(`live-upcoming-event-${index}`, concert.venue)}</div>
+                          <div data-editor-node-id={`live-upcoming-event-${index}-city`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Location`} data-concert-field="city" className="text-muted-foreground text-sm" style={getOverrideStyle(overrides[`live-upcoming-event-${index}-city`])}>{resolveConcertLocationText(`live-upcoming-event-${index}`, concert.city, concert.country)}</div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground sm:ml-auto">
-                          <span data-editor-node-id={`live-upcoming-event-${index}-genre`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Genre`} className="px-3 py-1 bg-primary/10 rounded-full text-primary text-xs">{concert.genre}</span>
-                          <span>{concert.price === "Free" ? "Free" : `€${concert.price}`}</span>
+                          <span data-editor-node-id={`live-upcoming-event-${index}-genre`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Genre`} data-concert-field="genre" className="px-3 py-1 bg-primary/10 rounded-full text-primary text-xs" style={getOverrideStyle(overrides[`live-upcoming-event-${index}-genre`])}>{resolveConcertSimpleField(`live-upcoming-event-${index}`, "genre", concert.genre)}</span>
+                          <span data-editor-node-id={`live-upcoming-event-${index}-price`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Price`} data-concert-field="price" style={getOverrideStyle(overrides[`live-upcoming-event-${index}-price`])}>{(() => { const price = resolveConcertSimpleField(`live-upcoming-event-${index}`, "price", concert.price || "Free"); return price === "Free" ? "Free" : `€${price}` })()}</span>
                         </div>
                       </div>
                     </motion.div>
@@ -479,10 +479,10 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                        style={getOverrideStyle(overrides[`live-history-event-${index}`])}
                      >
                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
-                         <div data-editor-node-id={`live-history-event-${index}-date`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Date`} className="shrink-0 text-muted-foreground font-medium min-w-[100px]">{formatDate(concert.date)}</div>
+                         <div data-editor-node-id={`live-history-event-${index}-date`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Date`} data-concert-field="date" className="shrink-0 text-muted-foreground font-medium min-w-[100px]" style={getOverrideStyle(overrides[`live-history-event-${index}-date`])}>{resolveConcertDateText(`live-history-event-${index}`, concert.date)}</div>
                         <div className="flex-1">
-                          <div data-editor-node-id={`live-history-event-${index}-venue`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Venue`} className="font-serif text-lg text-muted-foreground group-hover:text-foreground transition-colors">{concert.venue}</div>
-                          <div data-editor-node-id={`live-history-event-${index}-city`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Location`} className="text-muted-foreground/70 text-sm">{concert.city}, {concert.country}</div>
+                          <div data-editor-node-id={`live-history-event-${index}-venue`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Venue`} data-concert-field="venue" className="font-serif text-lg text-muted-foreground group-hover:text-foreground transition-colors" style={getOverrideStyle(overrides[`live-history-event-${index}-venue`])}>{resolveConcertVenueText(`live-history-event-${index}`, concert.venue)}</div>
+                          <div data-editor-node-id={`live-history-event-${index}-city`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Location`} data-concert-field="city" className="text-muted-foreground/70 text-sm" style={getOverrideStyle(overrides[`live-history-event-${index}-city`])}>{resolveConcertLocationText(`live-history-event-${index}`, concert.city, concert.country)}</div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground/70 sm:ml-auto">
                            <span
@@ -493,7 +493,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                              className="px-3 py-1 bg-secondary/50 rounded-full text-xs"
                              style={getOverrideStyle(overrides[`live-history-event-${index}-genre`])}
                            >
-                             {concert.genre}
+                             {resolveConcertSimpleField(`live-history-event-${index}`, "genre", concert.genre)}
                            </span>
                            <span
                              data-editor-node-id={`live-history-event-${index}-price`}
@@ -502,7 +502,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                             data-concert-field="price"
                              style={getOverrideStyle(overrides[`live-history-event-${index}-price`])}
                            >
-                             {concert.price || "Free"}
+                             {resolveConcertSimpleField(`live-history-event-${index}`, "price", concert.price || "Free")}
                            </span>
                            <span
                              data-editor-node-id={`live-history-event-${index}-time`}
@@ -512,7 +512,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                              className="text-xs"
                              style={getOverrideStyle(overrides[`live-history-event-${index}-time`])}
                            >
-                             {concert.time}
+                             {resolveConcertSimpleField(`live-history-event-${index}`, "time", concert.time)}
                            </span>
                         </div>
                       </div>
