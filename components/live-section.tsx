@@ -91,7 +91,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
   const error = false
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
-  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
+  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing, true)
   const resolvedLiveBackgroundSrc = useHomeEditorImageSrc("live-section-bg-image", "/images/sections/live-bg.jpg")
   const getOverrideStyle = (override: HomeEditorNodeOverride | undefined): CSSProperties | undefined =>
     buildInlineStyleFromOverride(override, allowGeometryOverrides)

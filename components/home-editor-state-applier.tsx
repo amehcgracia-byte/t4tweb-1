@@ -111,8 +111,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
     }
 
     const applyOverrides = () => {
-      const editorPreviewActive = document.documentElement.hasAttribute("data-editor-active")
-      const allowGeometryOverrides = editorPreviewActive && window.matchMedia("(min-width: 1024px)").matches
+      const allowGeometryOverrides = window.matchMedia("(min-width: 1024px)").matches
       const allowResponsiveTypography = allowGeometryOverrides
       nodes.forEach((node) => {
       const selector = `[data-editor-node-id="${escapeEditorId(node.nodeId)}"]`

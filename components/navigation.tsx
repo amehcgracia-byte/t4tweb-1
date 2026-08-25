@@ -12,7 +12,7 @@ export function Navigation({ data }: { data: NavigationData }) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
+  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing, true)
 
   // Refs for editable elements
   const navRef = useRef<HTMLDivElement>(null)

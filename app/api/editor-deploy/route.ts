@@ -290,7 +290,16 @@ function valuesMatch(expected: unknown, actual: unknown): boolean {
   if (typeof expected === "number" && typeof actual === "number") {
     return Math.abs(expected - actual) < 0.001
   }
-  return JSON.stringify(expected) === JSON.stringify(actual)
+  if (Array.isArray(expected)) {
+    return Array.isArray(actual)
+      && expected.length === actual.length
+      && expected.every((value, index) => valuesMatch(value, actual[index]))
+  }
+  if (expected && typeof expected === "object") {
+    if (!actual || typeof actual !== "object") return false
+    return Object.entries(expected).every(([key, value]) => valuesMatch(value, actual[key as keyof typeof actual]))
+  }
+  return expected === actual
 }
 
 function verifyPersistedStyle(

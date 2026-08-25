@@ -7,6 +7,7 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
+import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 import type { BandMemberData } from "@/lib/sanity/band-members-loader"
 import { getTraceNodeId } from "@/lib/sanity/env"
@@ -129,6 +130,8 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
   const [members] = useState<BandMemberData[]>(initialMembers)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
+  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing, true)
+  const resolvedBandBackgroundSrc = useHomeEditorImageSrc("band-members-bg", "/images/t4t-2.jpg")
   const traceNodeId = getTraceNodeId()
 
   useEffect(() => {
@@ -196,6 +199,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
       data-editor-node-type="section"
       data-editor-node-label="Sección Miembros de la Banda"
       className="relative isolate min-h-screen w-full overflow-hidden bg-black"
+      style={buildInlineStyleFromOverride(overrides["band-members-section"], allowGeometryOverrides)}
     >
       {/* Fondo full width */}
       <div 
@@ -204,9 +208,10 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo banda"
         className="absolute inset-0 z-0"
+        style={buildInlineStyleFromOverride(overrides["band-members-bg"], allowGeometryOverrides)}
       >
         <Image
-          src="/images/t4t-2.jpg"
+          src={resolvedBandBackgroundSrc}
           alt="Band background"
           fill
           className="object-cover"
@@ -257,6 +262,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                     data-member-photo-index={index}
                     className="object-cover"
                     priority={index === 0}
+                    style={buildInlineImageStyleFromOverride(overrides[`member-item-${index}-image`])}
                   />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
@@ -285,6 +291,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                 data-editor-node-type="card"
                 data-editor-node-label={member.fullName}
                 data-editor-grouped="true"
+                style={buildInlineStyleFromOverride(overrides[`member-item-${index}`], allowGeometryOverrides)}
                 role="button"
                 tabIndex={0}
                 aria-label={`${member.fullName} card`}

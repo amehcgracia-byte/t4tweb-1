@@ -3,11 +3,11 @@
 import { useCallback, useSyncExternalStore } from "react"
 
 /**
- * Pixel geometry is an editor aid, not a public layout contract. Keep the
- * responsive CSS layout on public pages and only enable saved geometry while
- * the visual editor is active on a desktop-sized viewport.
+ * Keep saved pixel geometry limited to desktop-sized viewports. Components
+ * can opt into applying the same saved desktop layout on the public page,
+ * while mobile keeps its responsive CSS layout.
  */
-export function useDesktopLayoutOverridesEnabled(isEditing = false): boolean {
+export function useDesktopLayoutOverridesEnabled(isEditing = false, applyPublic = false): boolean {
   const subscribe = useCallback((onStoreChange: () => void) => {
     if (typeof window === "undefined") return () => {}
     const mediaQuery = window.matchMedia("(min-width: 1024px)")
@@ -16,8 +16,8 @@ export function useDesktopLayoutOverridesEnabled(isEditing = false): boolean {
   }, [])
 
   const getSnapshot = useCallback(
-    () => isEditing && typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
-    [isEditing],
+    () => (isEditing || applyPublic) && typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+    [applyPublic, isEditing],
   )
 
   return useSyncExternalStore(subscribe, getSnapshot, () => false)
