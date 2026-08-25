@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useSyncExternalStore } from "react"
 
 /**
  * Pixel geometry is an editor aid, not a public layout contract. Keep the
@@ -8,25 +8,17 @@ import { useEffect, useState } from "react"
  * the visual editor is active on a desktop-sized viewport.
  */
 export function useDesktopLayoutOverridesEnabled(isEditing = false): boolean {
-  const [enabled, setEnabled] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false
-    return isEditing && window.matchMedia("(min-width: 1024px)").matches
-  })
-
-  useEffect(() => {
-    if (!isEditing) {
-      setEnabled(false)
-      return
-    }
-
+  const subscribe = useCallback((onStoreChange: () => void) => {
+    if (typeof window === "undefined") return () => {}
     const mediaQuery = window.matchMedia("(min-width: 1024px)")
-    const update = () => setEnabled(mediaQuery.matches)
-    update()
-    mediaQuery.addEventListener("change", update)
-    return () => {
-      mediaQuery.removeEventListener("change", update)
-    }
-  }, [isEditing])
+    mediaQuery.addEventListener("change", onStoreChange)
+    return () => mediaQuery.removeEventListener("change", onStoreChange)
+  }, [])
 
-  return enabled
+  const getSnapshot = useCallback(
+    () => isEditing && typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+    [isEditing],
+  )
+
+  return useSyncExternalStore(subscribe, getSnapshot, () => false)
 }

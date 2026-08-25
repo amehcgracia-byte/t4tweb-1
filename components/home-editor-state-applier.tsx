@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 import { getTraceNodeId } from "@/lib/sanity/env"
+import { formatDisplayDate } from "@/lib/format-date"
 
 const DOC_DRIVEN_IMAGE_NODE_IDS = new Set<string>([
   "hero-bg-image",
@@ -241,10 +242,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
           const timeEl = el.querySelector<HTMLElement>('[data-concert-field="time"]')
 
           if (dateEl && node.content.date !== undefined) {
-            const parsed = new Date(node.content.date)
-            dateEl.textContent = Number.isNaN(parsed.getTime())
-              ? node.content.date
-              : parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+            dateEl.textContent = formatDisplayDate(node.content.date)
           }
           if (venueEl && node.content.venue !== undefined) venueEl.textContent = node.content.venue
           if (locationEl && (node.content.city !== undefined || node.content.country !== undefined)) {
