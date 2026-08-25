@@ -50,7 +50,7 @@ export function buildHeroScrollIndicatorLayoutStyle(opts: {
   if (needScale) parts.push(`scale(${scaleVal})`)
   const result: CSSProperties = {
     left: "50%",
-    bottom: "1rem",
+    bottom: "0.5rem",
     transform: parts.join(" "),
     transformOrigin: "center bottom",
   }
@@ -68,7 +68,7 @@ export function applyScrollIndicatorLayoutToElement(
   const tx = roundLayoutPx(g.x)
   const ty = roundLayoutPx(g.y)
   el.style.left = "50%"
-  el.style.bottom = "1rem"
+  el.style.bottom = "0.5rem"
   el.style.transformOrigin = "center bottom"
   const parts: string[] = [`translate(calc(-50% + ${tx}px), ${ty}px)`]
   if (nodeScale !== 1) parts.push(`scale(${nodeScale})`)
