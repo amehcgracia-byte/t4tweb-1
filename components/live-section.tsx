@@ -91,8 +91,8 @@ interface LiveSectionProps {
 export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const [concerts, setConcerts] = useState<Concert[]>(initialConcerts)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(false)
+  const loading = false
+  const error = false
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing)
@@ -118,49 +118,6 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
       unregisterEditable('live-section')
     }
   }, [isEditing, registerEditable, unregisterEditable])
-
-  useEffect(() => {
-    async function fetchConcerts() {
-      try {
-        const response = await fetch("/data/concerts.csv")
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        const text = await response.text()
-        const lines = text.trim().split("\n")
-        if (lines.length <= 1) {
-          setConcerts([])
-          setError(false)
-          setLoading(false)
-          return
-        }
-        const parsed = lines.slice(1).map(line => {
-          const values = line.split(",")
-          return {
-            venue: values[0] || "",
-            city: values[1] || "",
-            country: values[2] || "",
-            date: values[3] || "",
-            time: values[4] || "",
-            status: values[5] || "",
-            genre: values[6] || "",
-            capacity: values[7] || "",
-            price: values[8] || "Free",
-            locationUrl: values[9] || "",
-          }
-        })
-        const sorted = parsed.sort((a, b) =>
-          new Date(a.date).getTime() - new Date(b.date).getTime()
-        )
-        setConcerts(sorted)
-        setError(false)
-      } catch (error) {
-        console.error("Error loading concert data:", error)
-        setError(true)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchConcerts()
-  }, [])
 
   useEffect(() => {
     const onConcertFieldUpdate = (event: Event) => {
