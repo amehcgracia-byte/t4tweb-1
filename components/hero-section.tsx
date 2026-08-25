@@ -33,6 +33,7 @@ function scrollIndicatorHasLayout(
 
   const o = s as Record<string, unknown>
   if (o.responsiveLayout !== true) return false
+  if (o.respectPosition !== true) return false
 
   return (
     typeof o.x === "number" ||
@@ -50,6 +51,7 @@ function getScrollIndicatorStyle(
 
   const styles = elementStyles["hero-scroll-indicator"] as Record<string, unknown>
   if (styles.responsiveLayout !== true) return {}
+  if (styles.respectPosition !== true) return {}
   const tx = typeof styles.x === "number" ? roundLayoutPx(styles.x as number) : 0
   const ty = typeof styles.y === "number" ? roundLayoutPx(styles.y as number) : 0
   const scaleVal = typeof styles.scale === "number" ? styles.scale : 1
