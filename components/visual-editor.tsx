@@ -226,6 +226,7 @@ function extractBandMemberIndex(nodeId: string | null | undefined): number | nul
 }
 
 type ConcertField = "venue" | "city" | "country" | "date" | "time" | "status" | "genre" | "capacity" | "price" | "locationUrl"
+const concertFieldLabels: Record<ConcertField, string> = { date: "Date", venue: "Venue", city: "City / country", genre: "Genre", price: "Price", time: "Time", country: "Country", status: "Status", capacity: "Capacity", locationUrl: "Location link" }
 
 function getConcertFieldFromNodeContent(node: EditorNode | null, field: ConcertField): string {
   if (!node) return ""
@@ -1204,6 +1205,7 @@ export function VisualEditorOverlay() {
   const selectedBandMemberIndex = selectedNode?.id.startsWith("member-item-")
     ? Number(selectedNode.id.replace("member-item-", ""))
     : null
+  const selectedConcertCardId = extractConcertCardId(selectedNode?.id)
 
   const getBandMemberFieldValue = useCallback((index: number, field: "number" | "name" | "role" | "photo"): string => {
     if (typeof document === "undefined") return ""
@@ -2249,12 +2251,35 @@ export function VisualEditorOverlay() {
 
             {selectedNode.type === "card" && (
               <>
-                <label className="text-xs font-semibold">Card Text</label>
+                {selectedConcertCardId ? (
+                  <div className="space-y-2 rounded border border-orange-200 bg-orange-50 p-2">
+                    <div className="text-xs font-semibold text-orange-900">Concert fields</div>
+                    <div className="text-[10px] text-orange-800">These values are saved as public concert overrides.</div>
+                    {(["date", "venue", "city", "genre", "price", "time"] as ConcertField[])
+                      .filter((field) => nodes.has(`${selectedConcertCardId}-${field}`))
+                      .map((field) => (
+                        <label key={field} className="block text-[10px] font-semibold">
+                          {concertFieldLabels[field]}
+                          <input
+                            className="mt-1 w-full rounded border p-1 text-xs font-normal"
+                            value={nodes.get(`${selectedConcertCardId}-${field}`)?.content.text || ""}
+                            onChange={(e) => dispatch({
+                              type: "UPDATE_TEXT",
+                              nodeId: `${selectedConcertCardId}-${field}`,
+                              patch: { text: e.target.value },
+                            })}
+                          />
+                        </label>
+                      ))}
+                  </div>
+                ) : (
+                                  <label className="text-xs font-semibold">Card Text</label>
                 <textarea
                   className="w-full rounded border p-1 text-xs"
                   value={selectedNode.content.text || ""}
                   onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { text: e.target.value } })}
                 />
+                )}
                 <label className="text-[10px]">Opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
                 <input
                   type="range"
