@@ -5,6 +5,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
+import {
+  applyScrollIndicatorLayoutToElement,
+  clearScrollIndicatorLayoutFromElement,
+} from "@/lib/hero-layout-styles"
 
 type NodeType = "section" | "background" | "card" | "text" | "button" | "image"
 
@@ -274,6 +278,44 @@ function parseCssColor(input: string | undefined): { r: number; g: number; b: nu
     return { r, g, b, a: parseAlpha(explicitAlpha) }
   }
 
+  const hslMatch = color.match(/^hsla?\((.*)\)$/i)
+  if (hslMatch) {
+    const [channelPart, alphaPart] = hslMatch[1].split("/").map((part) => part.trim())
+    const channels = channelPart.replace(/,/g, " ").split(/\s+/).filter(Boolean)
+    const explicitAlpha = alphaPart || (channels.length > 3 ? channels.pop() : undefined)
+    if (channels.length < 3) return null
+
+    const hueMatch = channels[0].match(/^-?\d+(?:\.\d+)?/)
+    const saturation = Number.parseFloat(channels[1])
+    const lightness = Number.parseFloat(channels[2])
+    if (!hueMatch || !Number.isFinite(saturation) || !Number.isFinite(lightness)) return null
+
+    const hue = ((Number.parseFloat(hueMatch[0]) % 360) + 360) % 360
+    const s = Math.max(0, Math.min(100, saturation)) / 100
+    const l = Math.max(0, Math.min(100, lightness)) / 100
+    const chroma = (1 - Math.abs(2 * l - 1)) * s
+    const huePrime = hue / 60
+    const second = chroma * (1 - Math.abs((huePrime % 2) - 1))
+    const match = huePrime < 1
+      ? [chroma, second, 0]
+      : huePrime < 2
+        ? [second, chroma, 0]
+        : huePrime < 3
+          ? [0, chroma, second]
+          : huePrime < 4
+            ? [0, second, chroma]
+            : huePrime < 5
+              ? [second, 0, chroma]
+              : [chroma, 0, second]
+    const lightnessOffset = l - chroma / 2
+    return {
+      r: clampColorChannel((match[0] + lightnessOffset) * 255),
+      g: clampColorChannel((match[1] + lightnessOffset) * 255),
+      b: clampColorChannel((match[2] + lightnessOffset) * 255),
+      a: parseAlpha(explicitAlpha),
+    }
+  }
+
   const srgbMatch = color.match(/^color\(\s*srgb\s+([^)]*)\)$/i)
   if (srgbMatch) {
     const [channelPart, alphaPart] = srgbMatch[1].split("/").map((part) => part.trim())
@@ -326,6 +368,40 @@ function withColorOpacity(input: string, opacity: number): string {
 function readColorOpacity(input: string | undefined): number {
   const parsed = parseCssColor(input)
   return parsed?.a ?? 1
+}
+
+function colorInputValue(value: string | undefined, fallback: string): string {
+  const parsed = parseCssColor(value)
+  if (!parsed || parsed.a <= 0) return rgbToHex(fallback)
+  return rgbToHex(value || fallback)
+}
+
+interface EditorColorInputProps {
+  value?: string
+  fallback: string
+  className?: string
+  onValueChange: (value: string) => void
+}
+
+function EditorColorInput({ value, fallback, className, onValueChange }: EditorColorInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const normalizedValue = colorInputValue(value, fallback)
+
+  useEffect(() => {
+    const input = inputRef.current
+    if (!input || document.activeElement === input) return
+    if (input.value !== normalizedValue) input.value = normalizedValue
+  }, [normalizedValue])
+
+  return (
+    <input
+      ref={inputRef}
+      type="color"
+      className={className}
+      defaultValue={normalizedValue}
+      onInput={(event) => onValueChange(event.currentTarget.value)}
+    />
+  )
 }
 
 function isPersistableImageSrc(value: string | undefined): boolean {
@@ -386,15 +462,54 @@ function scanRegistry(): Map<string, RuntimeEntry> {
       rect,
       visible,
       eligible: visible,
-      transform: { x: 0, y: 0 },
+      transform: readElementTransform(el, id === "hero-scroll-indicator"),
       dimensions: { width: rect.width, height: rect.height },
     })
   })
   return map
 }
 
+function readElementTransform(el: HTMLElement, isScrollIndicator: boolean): { x: number; y: number; scale: number } {
+  const hasSavedPosition = el.dataset.editorExplicitPosition === "true"
+  const savedX = hasSavedPosition ? parseDatasetNumber(el.dataset.editorGeometryX) : null
+  const savedY = hasSavedPosition ? parseDatasetNumber(el.dataset.editorGeometryY) : null
+  const rawTransform = el.style.transform || getComputedStyle(el).transform
+  if (!rawTransform || rawTransform === "none") {
+    return { x: savedX ?? 0, y: savedY ?? 0, scale: 1 }
+  }
+
+  const layoutTranslate = isScrollIndicator
+    ? rawTransform.match(/translate\(\s*calc\(\s*-50%\s*\+\s*(-?\d+(?:\.\d+)?)px\s*\)\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/i)
+    : rawTransform.match(/translate\(\s*(-?\d+(?:\.\d+)?)px\s*,\s*(-?\d+(?:\.\d+)?)px\s*\)/i)
+  if (layoutTranslate) {
+    const scaleMatch = rawTransform.match(/scale\(\s*(-?\d+(?:\.\d+)?)\s*\)/i)
+    return {
+      x: savedX ?? (Number(layoutTranslate[1]) || 0),
+      y: savedY ?? (Number(layoutTranslate[2]) || 0),
+      scale: scaleMatch ? Math.max(0.1, Number(scaleMatch[1]) || 1) : 1,
+    }
+  }
+
+  const matrixMatch = rawTransform.match(/^matrix(3d)?\(([^)]+)\)$/i)
+  if (!matrixMatch) return { x: savedX ?? 0, y: savedY ?? 0, scale: 1 }
+  const values = matrixMatch[2].split(",").map(Number)
+  if (matrixMatch[1]) {
+    return {
+      x: savedX ?? (Number.isFinite(values[12]) ? values[12] : 0),
+      y: savedY ?? (Number.isFinite(values[13]) ? values[13] : 0),
+      scale: Number.isFinite(values[0]) ? Math.max(0.1, Math.abs(values[0])) : 1,
+    }
+  }
+  return {
+    x: savedX ?? (Number.isFinite(values[4]) ? values[4] : 0),
+    y: savedY ?? (Number.isFinite(values[5]) ? values[5] : 0),
+    scale: Number.isFinite(values[0]) ? Math.max(0.1, Math.abs(values[0])) : 1,
+  }
+}
+
 function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const el = entry.element
+  const savedTransform = readElementTransform(el, entry.id === "hero-scroll-indicator")
   const content: EditorNode["content"] = {}
   const isStructuredConcertCard =
     entry.type === "card" && (el.dataset.concertCard === "true" || Boolean(el.querySelector("[data-concert-field]")))
@@ -469,13 +584,20 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     }
   }
   const cs = getComputedStyle(el)
+  const savedWidth = parseDatasetNumber(el.dataset.editorGeometryWidth)
+  const savedHeight = parseDatasetNumber(el.dataset.editorGeometryHeight)
   return {
     id: entry.id,
     type: entry.type,
     sectionId: entry.sectionId,
     label: entry.label,
     isGrouped: entry.isGrouped,
-    geometry: { x: 0, y: 0, width: entry.rect.width, height: entry.rect.height },
+    geometry: {
+      x: savedTransform.x,
+      y: savedTransform.y,
+      width: el.dataset.editorExplicitSize === "true" && savedWidth !== null ? savedWidth : entry.rect.width,
+      height: el.dataset.editorExplicitSize === "true" && savedHeight !== null ? savedHeight : entry.rect.height,
+    },
     style: {
       color: rgbToHex(cs.color),
       backgroundColor: cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)" ? rgbToHex(cs.backgroundColor) : undefined,
@@ -484,16 +606,16 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       fontWeight: cs.fontWeight,
       fontStyle: cs.fontStyle,
       textDecoration: cs.textDecorationLine,
-      scale: 1,
+      scale: savedTransform.scale,
       minHeight: cs.minHeight,
       paddingTop: cs.paddingTop,
       paddingBottom: cs.paddingBottom,
     },
     content,
-    explicitContent: false,
-    explicitStyle: false,
-    explicitPosition: false,
-    explicitSize: false,
+    explicitContent: el.dataset.editorExplicitContent === "true",
+    explicitStyle: el.dataset.editorExplicitStyle === "true",
+    explicitPosition: el.dataset.editorExplicitPosition === "true",
+    explicitSize: el.dataset.editorExplicitSize === "true",
   }
 }
 
@@ -564,7 +686,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     const hasManagedTransform = el.dataset.editorManagedTransform === "true"
     const hasManagedSize = el.dataset.editorManagedSize === "true"
     const nodeScale = Math.max(0.1, node.style.scale ?? 1)
-    if (!isViewportContainer && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1))) {
+    if (node.id === "hero-scroll-indicator" && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1))) {
+      applyScrollIndicatorLayoutToElement(el, g, nodeScale)
+      el.dataset.editorManagedTransform = "true"
+    } else if (!isViewportContainer && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1))) {
       el.style.transform = nodeScale !== 1
         ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})`
         : `translate(${g.x}px, ${g.y}px)`
@@ -572,8 +697,12 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       el.dataset.editorManagedTransform = "true"
     } else {
       if (hasManagedTransform) {
-        el.style.removeProperty("transform")
-        el.style.removeProperty("transform-origin")
+        if (node.id === "hero-scroll-indicator") {
+          clearScrollIndicatorLayoutFromElement(el)
+        } else {
+          el.style.removeProperty("transform")
+          el.style.removeProperty("transform-origin")
+        }
         delete el.dataset.editorManagedTransform
       }
     }
@@ -594,9 +723,21 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (node.explicitContent) {
         if (node.id === "hero-title" && Array.isArray(node.content.textSegments) && node.content.textSegments.length > 0) {
           el.innerHTML = ""
-          node.content.textSegments.forEach((segment) => {
+          node.content.textSegments.forEach((segment, index) => {
             const span = document.createElement("span")
+            const segmentId = index === 0
+              ? "hero-title-main"
+              : index === 1
+                ? "hero-title-accent"
+                : `hero-title-segment-${index}`
             span.textContent = segment.text
+            span.dataset.editorNodeId = segmentId
+            span.dataset.editorNodeType = "text"
+            span.dataset.editorNodeLabel = index === 0
+              ? "Hero Title Main"
+              : index === 1
+                ? "Hero Title Accent"
+                : `Hero Title Segment ${index + 1}`
             span.style.color = segment.color
             span.style.fontWeight = segment.bold ? "700" : "400"
             span.style.fontStyle = segment.italic ? "italic" : "normal"
@@ -1619,13 +1760,13 @@ export function VisualEditorOverlay() {
                         }}
                       />
                       <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="color"
+                        <EditorColorInput
                           className="h-8 w-full rounded border p-1"
-                          value={segment.color || "#ffffff"}
-                          onChange={(e) => {
+                          value={segment.color}
+                          fallback="#ffffff"
+                          onValueChange={(value) => {
                             const next = [...(selectedNode.content.textSegments || [])]
-                            next[index] = { ...next[index], color: e.target.value }
+                            next[index] = { ...next[index], color: value }
                             dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
                           }}
                         />
@@ -1667,26 +1808,26 @@ export function VisualEditorOverlay() {
                         <div className="mt-2 grid grid-cols-2 gap-2">
                           <label className="text-[10px]">
                             Start
-                            <input
-                              type="color"
+                            <EditorColorInput
                               className="h-8 w-full rounded border p-1"
-                              value={segment.gradientStart || "#FFB15A"}
-                              onChange={(e) => {
+                              value={segment.gradientStart}
+                              fallback="#FFB15A"
+                              onValueChange={(value) => {
                                 const next = [...(selectedNode.content.textSegments || [])]
-                                next[index] = { ...next[index], gradientStart: e.target.value }
+                                next[index] = { ...next[index], gradientStart: value }
                                 dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
                               }}
                             />
                           </label>
                           <label className="text-[10px]">
                             End
-                            <input
-                              type="color"
+                            <EditorColorInput
                               className="h-8 w-full rounded border p-1"
-                              value={segment.gradientEnd || "#FF6C00"}
-                              onChange={(e) => {
+                              value={segment.gradientEnd}
+                              fallback="#FF6C00"
+                              onValueChange={(value) => {
                                 const next = [...(selectedNode.content.textSegments || [])]
-                                next[index] = { ...next[index], gradientEnd: e.target.value }
+                                next[index] = { ...next[index], gradientEnd: value }
                                 dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { textSegments: next } })
                               }}
                             />
@@ -1808,11 +1949,11 @@ export function VisualEditorOverlay() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[10px]">Text Color</label>
-                    <input
-                      type="color"
+                    <EditorColorInput
                       className="h-8 w-full rounded border p-1"
-                      value={selectedNode.style.color || "#ffffff"}
-                      onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { color: e.target.value } })}
+                      value={selectedNode.style.color}
+                      fallback="#ffffff"
+                      onValueChange={(value) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { color: value } })}
                     />
                   </div>
                   <div>
@@ -2105,11 +2246,11 @@ export function VisualEditorOverlay() {
                   onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
                 />
                 <label className="text-[10px]">Background Color</label>
-                <input
-                  type="color"
+                <EditorColorInput
                   className="h-8 w-full rounded border p-1"
-                  value={selectedNode.style.backgroundColor || "#000000"}
-                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { backgroundColor: e.target.value } })}
+                  value={selectedNode.style.backgroundColor}
+                  fallback="#000000"
+                  onValueChange={(value) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { backgroundColor: value } })}
                 />
               </>
             )}
