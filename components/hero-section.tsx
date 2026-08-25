@@ -139,17 +139,25 @@ function normalizeGradientColor(value: string | undefined, fallback: string): st
   const color = value.trim()
   if (/^#[0-9a-f]{3,8}$/i.test(color)) {
     const hex = color.slice(1)
-    const normalized = hex.length === 3
-      ? hex.split("").map((part) => part + part).join("")
+    const normalized = hex.length === 3 || hex.length === 4
+      ? hex.slice(0, 3).split("").map((part) => part + part).join("")
       : hex.slice(0, 6)
-    if (normalized.toLowerCase() === "000000") return fallback
-    return color
+    const alpha = hex.length === 4 || hex.length === 8 ? Number.parseInt(hex.slice(-2), 16) : 255
+    return alpha === 0 ? fallback : `#${normalized}`
   }
   if (/^(?:rgb|hsl)a?\([^)]*\)$/i.test(color)) {
     if (/rgba?\(\s*0\s*,\s*0\s*,\s*0(?:\s*,\s*0)?\s*\)/i.test(color)) return fallback
     return color
   }
   return fallback
+}
+
+const RESPONSIVE_HERO_TITLE_SIZE = "clamp(2.25rem, 4.7vw, 5.5rem)"
+
+function isOversizedHeroTitleFontSize(value: unknown): boolean {
+  if (typeof value !== "number" && typeof value !== "string") return false
+  const parsed = typeof value === "number" ? value : Number.parseFloat(value)
+  return Number.isFinite(parsed) && parsed >= 96
 }
 
 
@@ -486,13 +494,13 @@ export function HeroSection({ data }: { data: HeroData }) {
       />
 
       <div className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col justify-end px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center pb-20 pt-16 text-center sm:pb-24 sm:pt-20">
+        <div className="flex flex-col items-center pb-24 pt-16 text-center sm:pb-28 sm:pt-20">
           <h1
             data-editor-node-id="hero-title"
             data-editor-node-type="text"
             data-editor-node-label="Hero Title"
             data-editor-grouped="true"
-            className="mb-5 w-full max-w-[min(94vw,1180px)] text-balance break-words text-[clamp(2.45rem,5.4vw,6.5rem)] font-semibold leading-[0.94] tracking-[-0.035em] text-white sm:mb-7"
+            className="mb-5 w-full max-w-[min(94vw,1120px)] text-balance break-words text-[clamp(2.25rem,4.7vw,5.5rem)] font-semibold leading-[0.94] tracking-[-0.035em] text-white sm:mb-7"
           >
             {titleSegmentsForRender.map((segment, index) => {
               const isAccent = index === 1
@@ -508,6 +516,13 @@ export function HeroSection({ data }: { data: HeroData }) {
                 : index === 1
                   ? "hero-title-accent"
                   : `hero-title-segment-${index}`
+              const savedSegmentStyle = hasResponsiveHeroLayout(content.elementStyles, segmentId)
+                ? content.elementStyles?.[segmentId]
+                : undefined
+              const useResponsiveTitleSize =
+                isOversizedHeroTitleFontSize(segment.fontSize) ||
+                (savedSegmentStyle && typeof savedSegmentStyle === "object" &&
+                  isOversizedHeroTitleFontSize((savedSegmentStyle as Record<string, unknown>).fontSize))
               return (
                 <span
                   key={`${segmentId}-${segment.text}`}
@@ -526,6 +541,7 @@ export function HeroSection({ data }: { data: HeroData }) {
                           includeResponsiveTypography: true,
                         })
                       : {}),
+                    ...(useResponsiveTitleSize ? { fontSize: RESPONSIVE_HERO_TITLE_SIZE } : {}),
                   }}
                 >
                   {segment.text}
