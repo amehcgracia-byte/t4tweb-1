@@ -2273,12 +2273,14 @@ export function VisualEditorOverlay() {
                       ))}
                   </div>
                 ) : (
-                                  <label className="text-xs font-semibold">Card Text</label>
-                <textarea
-                  className="w-full rounded border p-1 text-xs"
-                  value={selectedNode.content.text || ""}
-                  onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { text: e.target.value } })}
-                />
+                  <>
+                    <label className="text-xs font-semibold">Card Text</label>
+                    <textarea
+                      className="w-full rounded border p-1 text-xs"
+                      value={selectedNode.content.text || ""}
+                      onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { text: e.target.value } })}
+                    />
+                  </>
                 )}
                 <label className="text-[10px]">Opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
                 <input
