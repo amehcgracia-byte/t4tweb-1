@@ -231,7 +231,50 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
       ref={sectionRef}
       data-editor-node-id="band-members-section"
       data-editor-node-type="section"
-      data-edito        <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)_minmax(0,0.9fr)] lg:gap-10 xl:gap-14">
+      data-editor-node-label="Sección Miembros de la Banda"
+      className="relative isolate min-h-screen w-full overflow-hidden bg-black"
+      style={buildInlineStyleFromOverride(overrides["band-members-section"], allowGeometryOverrides)}
+    >
+      {/* Fondo full width */}
+      <div 
+        data-editor-node-id="band-members-bg"
+        data-editor-node-type="background"
+        data-editor-media-kind="image"
+        data-editor-node-label="Imagen de fondo banda"
+        className="absolute inset-0 z-0"
+        style={buildInlineStyleFromOverride(overrides["band-members-bg"], allowGeometryOverrides)}
+      >
+        <Image
+          src={resolvedBandBackgroundSrc}
+          alt="Band background"
+          fill
+          className="object-cover"
+        />
+      </div>
+
+      {/* Gradiente superior */}
+      <div className="section-photo-fade-top z-10" />
+
+      {/* Gradiente inferior */}
+      <div className="section-photo-fade-bottom z-10" />
+
+      <div className="section-photo-scrim z-10" />
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+          <motion.div
+            style={isEditing ? undefined : { opacity, y }}
+            className="mb-8 md:mb-12 lg:mb-16 text-center"
+          >
+          <SectionHeader
+            eyebrow="The Musicians"
+            title="Meet the Band"
+            description="Five musicians from diverse backgrounds, united by a passion for rhythm and groove."
+            dataEditId="band-members-header"
+            dataEditLabel="Encabezado Miembros"
+          />
+        </motion.div>
+
+        <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)_minmax(0,0.9fr)] lg:gap-10 xl:gap-14">
           {/* Collabs stay on the left; the original five members stay on the right. */}
           <div className="order-3 space-y-2.5 md:space-y-4 lg:order-1">
             <h3
@@ -288,45 +331,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
             {displayedMembers.slice(0, 5).map((member, index) => renderMemberCard(member, index))}
           </div>
         </div>
-900/80"
-                      : "border-white/10 hover:border-white/20 bg-black/40 hover:bg-zinc-950"
-                  }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <h4
-                    data-member-name-index={index}
-                    className={`text-base md:text-xl font-medium transition-colors truncate ${
-                      activeIndex === index ? "text-white" : "text-white/80 group-hover:text-white"
-                    }`}
-                  >
-                    {member.fullName}
-                  </h4>
-                  <p
-                    data-member-role-index={index}
-                    className={`text-xs md:text-sm mt-0.5 md:mt-1 transition-colors ${
-                      activeIndex === index ? "text-orange-400" : "text-white/50"
-                    }`}
-                  >
-                    {member.role}
-                  </p>
-                </div>
-
-                <div
-                  data-member-number-index={index}
-                  className={`w-7 h-7 md:w-8 md:h-8 shrink-0 ml-3 rounded-full flex items-center justify-center text-xs font-mono border transition-all ${
-                    activeIndex === index
-                      ? "border-orange-500 text-orange-400 bg-orange-950"
-                      : "border-white/20 text-white/40 group-hover:border-white/40"
-                  }`}
-                >
-                  {String(member.id).padStart(2, "0")}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* Mobile modal */}
       <AnimatePresence>
         {modalOpen && activeMember && (
