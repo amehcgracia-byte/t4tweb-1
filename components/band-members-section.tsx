@@ -138,7 +138,41 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
     const checkMobile = () => setIsMobile(window.innerWidth < 1024)
     checkMobile()
     window.addEventListener("resize", checkMobile)
-    return () => window.removeEventListener("resize", checkMobile)
+    const renderMemberCard = (member: (typeof displayedMembers)[number], index: number) => (
+              <motion.div
+                key={member.id}
+                initial={false}
+                animate={{
+                  opacity: activeIndex === index ? 1 : 0,
+                  scale: activeIndex === index ? 1 : 1.08,
+                }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
+                className="absolute inset-0"
+              >
+                <div className="absolute inset-0">
+                  <Image
+                    src={member.image}
+                    alt={member.fullName}
+                    fill
+                    data-member-photo-index={index}
+                    className="object-cover"
+                    priority={index === 0}
+                    style={buildInlineImageStyleFromOverride(overrides[`member-item-${index}-image`])}
+                  />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
+                  <h3 data-member-overlay-name-index={index} className="text-2xl md:text-3xl lg:text-4xl font-serif text-white mb-2 tracking-tight">
+                    {member.fullName}
+                  </h3>
+                  <p data-member-overlay-role-index={index} className="text-xl text-orange-400 font-medium">
+                    {member.role}
+                  </p>
+                </div>
+              </motion.div>
+  )
+
+  return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
   useEffect(() => {
@@ -197,50 +231,21 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
       ref={sectionRef}
       data-editor-node-id="band-members-section"
       data-editor-node-type="section"
-      data-editor-node-label="Sección Miembros de la Banda"
-      className="relative isolate min-h-screen w-full overflow-hidden bg-black"
-      style={buildInlineStyleFromOverride(overrides["band-members-section"], allowGeometryOverrides)}
-    >
-      {/* Fondo full width */}
-      <div 
-        data-editor-node-id="band-members-bg"
-        data-editor-node-type="background"
-        data-editor-media-kind="image"
-        data-editor-node-label="Imagen de fondo banda"
-        className="absolute inset-0 z-0"
-        style={buildInlineStyleFromOverride(overrides["band-members-bg"], allowGeometryOverrides)}
-      >
-        <Image
-          src={resolvedBandBackgroundSrc}
-          alt="Band background"
-          fill
-          className="object-cover"
-        />
-      </div>
+      data-edito        <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)_minmax(0,0.9fr)] lg:gap-10 xl:gap-14">
+          {/* Collabs stay on the left; the original five members stay on the right. */}
+          <div className="order-3 space-y-2.5 md:space-y-4 lg:order-1">
+            <h3
+              data-editor-node-id="band-members-collabs-title"
+              data-editor-node-type="text"
+              data-editor-node-label="Collabs title"
+              className="mb-6 text-center font-serif text-2xl text-foreground md:text-3xl"
+              style={buildInlineTextStyleFromOverride(overrides["band-members-collabs-title"], "#f4f4f5")}
+            >
+              {resolveTextOverride(overrides["band-members-collabs-title"], "Collabs")}
+            </h3>
+            {displayedMembers.slice(5).map((member, index) => renderMemberCard(member, index + 5))}
+          </div>
 
-      {/* Gradiente superior */}
-      <div className="section-photo-fade-top z-10" />
-
-      {/* Gradiente inferior */}
-      <div className="section-photo-fade-bottom z-10" />
-
-      <div className="section-photo-scrim z-10" />
-
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            style={isEditing ? undefined : { opacity, y }}
-            className="mb-8 md:mb-12 lg:mb-16 text-center"
-          >
-          <SectionHeader
-            eyebrow="The Musicians"
-            title="Meet the Band"
-            description="Five musicians from diverse backgrounds, united by a passion for rhythm and groove."
-            dataEditId="band-members-header"
-            dataEditLabel="Encabezado Miembros"
-          />
-        </motion.div>
-
-        <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-2 lg:gap-14">
           {/* Desktop photo - hidden on mobile */}
           <div className="order-2 relative hidden max-h-[78vh] min-h-[420px] overflow-hidden rounded-3xl bg-zinc-950 shadow-2xl lg:order-2 lg:block lg:aspect-[3/4]">
             {displayedMembers.map((member, index) => (
@@ -278,29 +283,12 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
             ))}
           </div>
 
-
-          <div className="order-1 space-y-2.5 md:space-y-4 lg:order-1">
-            {displayedMembers.map((member, index) => (
-              <motion.div
-                key={member.id}
-                onClick={() => handleMemberClick(index)}
-                onMouseEnter={() => (!isEditing && !isMobile) && setActiveIndex(index)}
-                whileHover={isEditing ? undefined : { scale: 1.02, x: 8 }}
-                transition={isEditing ? undefined : { type: "spring", stiffness: 400, damping: 25 }}
-                data-editor-node-id={`member-item-${index}`}
-                data-editor-node-type="card"
-                data-editor-node-label={member.fullName}
-                data-editor-grouped="true"
-                // Member cards stay in normal flow so stale desktop geometry cannot overlap
-                // adjacent cards in the editor after responsive/order changes.
-                style={buildInlineStyleFromOverride(overrides[`member-item-${index}`], false)}
-                role="button"
-                tabIndex={0}
-                aria-label={`${member.fullName} card`}
-                className={`group flex min-h-[62px] w-full touch-manipulation items-center justify-between rounded-xl border p-3.5 text-left transition-all duration-300 md:min-h-[88px] md:rounded-2xl md:p-6
-                  ${
-                    activeIndex === index
-                      ? "border-orange-500 bg-zinc-900/80"
+          {/* The five original band members stay on the right on desktop. */}
+          <div className="order-1 space-y-2.5 md:space-y-4 lg:order-3">
+            {displayedMembers.slice(0, 5).map((member, index) => renderMemberCard(member, index))}
+          </div>
+        </div>
+900/80"
                       : "border-white/10 hover:border-white/20 bg-black/40 hover:bg-zinc-950"
                   }`}
               >
