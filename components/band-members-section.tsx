@@ -131,7 +131,11 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing } = useVisualEditor()
   const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing, true)
-  const resolvedBandBackgroundSrc = useHomeEditorImageSrc("band-members-bg", "/images/t4t-2.jpg")
+  const persistedBandBackgroundSrc = useHomeEditorImageSrc("band-members-bg", "/images/DSC_4710.JPG")
+  // Replace the old low-resolution default while preserving any newer editor-selected image.
+  const resolvedBandBackgroundSrc = persistedBandBackgroundSrc.endsWith("/images/t4t-2.jpg")
+    ? "/images/DSC_4710.JPG"
+    : persistedBandBackgroundSrc
   const traceNodeId = getTraceNodeId()
 
   useEffect(() => {
@@ -280,7 +284,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
       {/* Gradiente inferior */}
       <div className="section-photo-fade-bottom z-10" />
 
-      <div className="section-photo-scrim z-10" />
+      <div className="section-photo-scrim z-10" style={{ backgroundColor: "rgba(0, 0, 0, 0.2)" }} />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -350,6 +354,15 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
 
           {/* The five original band members stay on the right on desktop. */}
           <div className="order-1 space-y-2.5 md:space-y-4 lg:order-3">
+            <h3
+              data-editor-node-id="band-members-members-title"
+              data-editor-node-type="text"
+              data-editor-node-label="Members title"
+              className="mb-6 text-center font-serif text-2xl text-foreground md:text-3xl"
+              style={buildInlineTextStyleFromOverride(overrides["band-members-members-title"], "#f4f4f5")}
+            >
+              {resolveTextOverride(overrides["band-members-members-title"], "Members")}
+            </h3>
             {displayedMembers.slice(0, 5).map((member, index) => renderMemberCard(member, index))}
           </div>
         </div>
