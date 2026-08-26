@@ -353,6 +353,8 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
             {displayedMembers.slice(0, 5).map((member, index) => renderMemberCard(member, index))}
           </div>
         </div>
+      </div>
+
       {/* Mobile modal */}
       <AnimatePresence>
         {modalOpen && activeMember && (
