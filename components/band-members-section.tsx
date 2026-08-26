@@ -138,41 +138,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
     const checkMobile = () => setIsMobile(window.innerWidth < 1024)
     checkMobile()
     window.addEventListener("resize", checkMobile)
-    const renderMemberCard = (member: (typeof displayedMembers)[number], index: number) => (
-              <motion.div
-                key={member.id}
-                initial={false}
-                animate={{
-                  opacity: activeIndex === index ? 1 : 0,
-                  scale: activeIndex === index ? 1 : 1.08,
-                }}
-                transition={{ duration: 0.6, ease: "easeInOut" }}
-                className="absolute inset-0"
-              >
-                <div className="absolute inset-0">
-                  <Image
-                    src={member.image}
-                    alt={member.fullName}
-                    fill
-                    data-member-photo-index={index}
-                    className="object-cover"
-                    priority={index === 0}
-                    style={buildInlineImageStyleFromOverride(overrides[`member-item-${index}-image`])}
-                  />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
-                  <h3 data-member-overlay-name-index={index} className="text-2xl md:text-3xl lg:text-4xl font-serif text-white mb-2 tracking-tight">
-                    {member.fullName}
-                  </h3>
-                  <p data-member-overlay-role-index={index} className="text-xl text-orange-400 font-medium">
-                    {member.role}
-                  </p>
-                </div>
-              </motion.div>
-  )
-
-  return () => window.removeEventListener("resize", checkMobile)
+    return () => window.removeEventListener("resize", checkMobile)
   }, [])
 
   useEffect(() => {
@@ -225,6 +191,40 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
         : null,
     })
   }, [traceNodeId, overrides, activeIndex, activeMember])
+  const renderMemberCard = (member: (typeof displayedMembers)[number], index: number) => (
+              <motion.div
+                key={member.id}
+                initial={false}
+                animate={{
+                  opacity: activeIndex === index ? 1 : 0,
+                  scale: activeIndex === index ? 1 : 1.08,
+                }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
+                className="absolute inset-0"
+              >
+                <div className="absolute inset-0">
+                  <Image
+                    src={member.image}
+                    alt={member.fullName}
+                    fill
+                    data-member-photo-index={index}
+                    className="object-cover"
+                    priority={index === 0}
+                    style={buildInlineImageStyleFromOverride(overrides[`member-item-${index}-image`])}
+                  />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10">
+                  <h3 data-member-overlay-name-index={index} className="text-2xl md:text-3xl lg:text-4xl font-serif text-white mb-2 tracking-tight">
+                    {member.fullName}
+                  </h3>
+                  <p data-member-overlay-role-index={index} className="text-xl text-orange-400 font-medium">
+                    {member.role}
+                  </p>
+                </div>
+              </motion.div>
+  )
+
 
   return (
     <section
