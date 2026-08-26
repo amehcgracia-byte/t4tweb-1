@@ -27,6 +27,13 @@ function isValidPersistedSrc(value: unknown): value is string {
   return true
 }
 
+function normalizePersistedSrc(nodeId: string, src: string): string {
+  if (nodeId === "about-bg-image" && src.endsWith("/images/about-bg-main.jpg")) {
+    return "/images/about-band-color.png"
+  }
+  return src
+}
+
 export function HomeEditorOverridesProvider({ nodes, children }: { nodes: HomeEditorNodeOverride[]; children: ReactNode }) {
   const traceNodeId = getTraceNodeId()
   const srcByNodeId = useMemo(() => {
@@ -34,7 +41,7 @@ export function HomeEditorOverridesProvider({ nodes, children }: { nodes: HomeEd
     nodes.forEach((node) => {
       if (DOC_DRIVEN_IMAGE_NODE_IDS.has(node.nodeId)) return
       if ((node.nodeType === "image" || node.nodeType === "background") && node.explicitContent && isValidPersistedSrc(node.content.src)) {
-        map.set(node.nodeId, node.content.src)
+        map.set(node.nodeId, normalizePersistedSrc(node.nodeId, node.content.src))
       }
     })
     return map

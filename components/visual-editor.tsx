@@ -109,6 +109,14 @@ interface AssetItem {
   filename: string
 }
 
+interface ContextMenuState {
+  x: number
+  y: number
+  nodeId: string
+  parentIds: string[]
+  childIds: string[]
+}
+
 type PrecheckLevel = "green" | "yellow" | "red"
 
 interface PrecheckFinding {
@@ -1188,6 +1196,7 @@ export function VisualEditorOverlay() {
   const [deployStatus, setDeployStatus] = useState<string | null>(null)
   const [deployDetails, setDeployDetails] = useState<string | null>(null)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [marqueeRect, setMarqueeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const selectedIdsRef = useRef<string[]>([])
@@ -1209,6 +1218,48 @@ export function VisualEditorOverlay() {
   const selectedBandMemberIndex = selectedNode?.id.startsWith("member-item-")
     ? Number(selectedNode.id.replace("member-item-", ""))
     : null
+
+  const getContextNodeIdsAtPosition = useCallback((x: number, y: number): string[] => {
+    const hit = getEditableAtPosition(x, y)
+    const entries = Array.from(registry.values())
+      .filter((entry) => entry.eligible && x >= entry.rect.left && x <= entry.rect.right && y >= entry.rect.top && y <= entry.rect.bottom)
+      .sort((a, b) => typePriority[a.type] - typePriority[b.type])
+    const ids = [hit?.id || "", ...entries.map((entry) => entry.id)]
+    return Array.from(new Set(ids.filter(Boolean)))
+  }, [getEditableAtPosition, registry])
+
+  const getContextParentIds = useCallback((nodeId: string): string[] => {
+    const entry = registry.get(nodeId)
+    if (!entry) return []
+    const parents: string[] = []
+    let current = entry.element.parentElement
+    while (current) {
+      const parentId = current.dataset.editorNodeId
+      if (parentId && parentId !== nodeId && registry.has(parentId)) parents.push(parentId)
+      current = current.parentElement
+    }
+    return Array.from(new Set(parents))
+  }, [registry])
+
+  const getContextChildIds = useCallback((nodeId: string): string[] => {
+    const entry = registry.get(nodeId)
+    if (!entry) return []
+    return Array.from(registry.values())
+      .filter((candidate) => candidate.id !== nodeId && entry.element.contains(candidate.element))
+      .filter((candidate) => {
+        const nearestParent = candidate.element.parentElement?.closest<HTMLElement>("[data-editor-node-id]")
+        return nearestParent?.dataset.editorNodeId === nodeId
+      })
+      .sort((a, b) => typePriority[a.type] - typePriority[b.type])
+      .map((candidate) => candidate.id)
+  }, [registry])
+
+  const selectContextNode = useCallback((nodeId: string) => {
+    dispatch({ type: "SELECT_NODE", nodeId })
+    setSelectedIds([nodeId])
+    setOpenPanel(true)
+    setContextMenu(null)
+  }, [dispatch, setOpenPanel])
   const selectedConcertCardId = extractConcertCardId(selectedNode?.id)
 
   const getBandMemberFieldValue = useCallback((index: number, field: "number" | "name" | "role" | "photo"): string => {
@@ -1410,6 +1461,7 @@ export function VisualEditorOverlay() {
     document.body.setAttribute("data-editor-mode", "true")
 
     const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return
       const target = e.target as HTMLElement
       const resizeHandleTarget = target.closest<HTMLElement>("[data-editor-resize-handle]")
       if (resizeHandleTarget instanceof HTMLElement) {
@@ -1492,6 +1544,23 @@ export function VisualEditorOverlay() {
       }
     }
 
+    const onContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]") || target.closest("[data-editor-deploy-modal]") || target.closest("[data-editor-context-menu]")) return
+      const nodeIds = getContextNodeIdsAtPosition(e.clientX, e.clientY)
+      if (nodeIds.length === 0) return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      const nodeId = nodeIds[0]
+      setContextMenu({
+        x: Math.min(e.clientX, Math.max(8, window.innerWidth - 292)),
+        y: Math.min(e.clientY, Math.max(8, window.innerHeight - 430)),
+        nodeId,
+        parentIds: getContextParentIds(nodeId),
+        childIds: getContextChildIds(nodeId),
+      })
+    }
+
     const onPointerMove = (e: PointerEvent) => {
       const state = pointerRef.current
       if (!state.mode || !state.origin || !state.nodeId) return
@@ -1561,6 +1630,7 @@ export function VisualEditorOverlay() {
     const shouldBlockPublicAction = (target: EventTarget | null): boolean => {
       if (!(target instanceof HTMLElement)) return false
       if (target.closest("[data-editor-toolbar]") || target.closest("[data-editor-panel]") || target.closest("[data-editor-overlay]") || target.closest("[data-editor-deploy-modal]")) return false
+      if (target.closest("[data-editor-context-menu]")) return false
       if (target.closest("[data-editor-node-id]")) return true
       if (target.closest("a,button,[role='button'],form")) return true
       return false
@@ -1620,6 +1690,7 @@ export function VisualEditorOverlay() {
     document.addEventListener("touchend", blockPublicAction, true)
     document.addEventListener("click", blockPublicAction, true)
     document.addEventListener("auxclick", blockPublicAction, true)
+    document.addEventListener("contextmenu", onContextMenu, true)
     document.addEventListener("contextmenu", blockPublicAction, true)
     document.addEventListener("dragstart", blockPublicAction, true)
     document.addEventListener("submit", blockPublicAction, true)
@@ -1641,6 +1712,7 @@ export function VisualEditorOverlay() {
       document.removeEventListener("touchend", blockPublicAction, true)
       document.removeEventListener("click", blockPublicAction, true)
       document.removeEventListener("auxclick", blockPublicAction, true)
+      document.removeEventListener("contextmenu", onContextMenu, true)
       document.removeEventListener("contextmenu", blockPublicAction, true)
       document.removeEventListener("dragstart", blockPublicAction, true)
       document.removeEventListener("submit", blockPublicAction, true)
@@ -1648,7 +1720,7 @@ export function VisualEditorOverlay() {
       window.removeEventListener("keyup", onKeyUp)
       document.body.removeAttribute("data-editor-mode")
     }
-  }, [isEditing, dispatch, selectedId, nodes, undo, redo, getEditableAtPosition])
+  }, [isEditing, dispatch, selectedId, nodes, undo, redo, getEditableAtPosition, getContextNodeIdsAtPosition, getContextParentIds, getContextChildIds])
 
   if (!isEditing) {
     return null
@@ -1716,6 +1788,65 @@ export function VisualEditorOverlay() {
           </div>
         </div>
       )}
+
+      {contextMenu && (() => {
+        const contextNode = nodes.get(contextMenu.nodeId)
+        if (!contextNode) return null
+        const labelFor = (id: string) => nodes.get(id)?.label || id
+        return (
+          <div
+            data-editor-context-menu
+            className="fixed z-[10001] w-72 overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onContextMenu={(event) => event.preventDefault()}
+          >
+            <div className="bg-slate-900 px-3 py-2 text-white">
+              <div className="text-[10px] uppercase tracking-wide text-slate-300">Elemento seleccionado</div>
+              <div className="truncate text-sm font-semibold">{contextNode.label}</div>
+              <div className="text-[10px] capitalize text-slate-300">{contextNode.type} · {contextNode.id}</div>
+            </div>
+            <div className="max-h-[min(70vh,390px)] space-y-1 overflow-y-auto p-2 text-xs">
+              <button type="button" className="w-full rounded px-2 py-1.5 text-left font-medium hover:bg-orange-50" onClick={() => selectContextNode(contextMenu.nodeId)}>
+                Editar este elemento
+              </button>
+              {contextMenu.parentIds.length > 0 && (
+                <div className="mt-2 border-t border-slate-100 pt-2">
+                  <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Elementos contenedores</div>
+                  {contextMenu.parentIds.slice(0, 4).map((id) => (
+                    <button key={id} type="button" className="w-full rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => selectContextNode(id)}>
+                      Seleccionar {labelFor(id)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {contextMenu.childIds.length > 0 && (
+                <div className="mt-2 border-t border-slate-100 pt-2">
+                  <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Elementos dentro</div>
+                  {contextMenu.childIds.slice(0, 8).map((id) => (
+                    <button key={id} type="button" className="w-full rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => selectContextNode(id)}>
+                      Seleccionar {labelFor(id)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="mt-2 border-t border-slate-100 pt-2">
+                <button type="button" className="w-full rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { dispatch({ type: "COPY_NODE", nodeId: contextMenu.nodeId }); setContextMenu(null) }}>
+                  Copiar elemento
+                </button>
+                <button type="button" className="w-full rounded px-2 py-1.5 text-left hover:bg-slate-100" onClick={() => { dispatch({ type: "COPY_NODE", nodeId: contextMenu.nodeId }); dispatch({ type: "PASTE_NODE" }); setContextMenu(null) }}>
+                  Duplicar elemento
+                </button>
+                <button type="button" className="w-full rounded px-2 py-1.5 text-left text-red-600 hover:bg-red-50" onClick={() => { dispatch({ type: "DELETE_NODE", nodeId: contextMenu.nodeId }); setContextMenu(null) }}>
+                  Eliminar elemento
+                </button>
+              </div>
+              <div className="mt-2 rounded bg-slate-50 px-2 py-2 text-[10px] leading-relaxed text-slate-500">
+                Añadir texto, botones o secciones nuevas requiere conectar un modelo persistente; no lo muestro como acción activa hasta que también pueda publicarse correctamente.
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {selectedEntry && <SelectionOverlay entry={selectedEntry} />}
 
