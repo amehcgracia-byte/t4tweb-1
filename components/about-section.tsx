@@ -6,6 +6,7 @@ import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
+import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
 
 export function AboutSection({ className = "" }: { className?: string }) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
@@ -20,6 +21,10 @@ export function AboutSection({ className = "" }: { className?: string }) {
 
   const { opacity, y } = useScrollAnimation(sectionRef)
   const [copied, setCopied] = useState(false)
+  const persistedAboutBackgroundSrc = useHomeEditorImageSrc("about-bg-image", "/images/about-band-color.png")
+  const resolvedAboutBackgroundSrc = persistedAboutBackgroundSrc.endsWith("/images/about-bg-main.jpg")
+    ? "/images/about-band-color.png"
+    : persistedAboutBackgroundSrc
 
   // Register editable elements - only on isEditing change, not on callback changes
   useEffect(() => {
@@ -188,7 +193,7 @@ Their performances balance musical depth with danceable power, bringing together
         className="absolute inset-0 z-0"
       >
         <Image
-          src="/images/about-bg-main.jpg"
+          src={resolvedAboutBackgroundSrc}
           alt="Band members background"
           fill
           className="object-cover"

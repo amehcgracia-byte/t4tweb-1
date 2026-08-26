@@ -214,7 +214,12 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
             return
           }
           const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
-          if (img && node.content.src) img.src = node.content.src
+          if (img && node.content.src) {
+            const normalizedSrc = node.nodeId === "about-bg-image" && node.content.src.endsWith("/images/about-bg-main.jpg")
+              ? "/images/about-band-color.png"
+              : node.content.src
+            img.src = normalizedSrc
+          }
           if (img && node.content.alt !== undefined) img.alt = node.content.alt
         }
 
