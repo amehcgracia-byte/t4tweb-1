@@ -96,6 +96,10 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
   const getOverrideStyle = (override: HomeEditorNodeOverride | undefined): CSSProperties | undefined =>
     buildInlineStyleFromOverride(override, allowGeometryOverrides)
 
+  // History cards stay in normal flow so stale desktop geometry cannot make one card wider or taller than the others.
+  const getHistoryCardStyle = (override: HomeEditorNodeOverride | undefined): CSSProperties | undefined =>
+    buildInlineStyleFromOverride(override, false)
+
   useEffect(() => {
     if (!isEditing) return
     if (sectionRef.current) {
@@ -477,7 +481,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                       data-editor-node-label={`History Event ${index + 1}`}
                       data-editor-grouped="true"
                       className="min-h-[80px] p-5 bg-secondary/30 rounded-xl border border-border/50 hover:border-primary/20 transition-all duration-300 group shadow-lg hover:shadow-xl flex items-center"
-                       style={getOverrideStyle(overrides[`live-history-event-${index}`])}
+                       style={getHistoryCardStyle(overrides[`live-history-event-${index}`])}
                      >
                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 w-full">
                          <div data-editor-node-id={`live-history-event-${index}-date`} data-editor-node-type="text" data-editor-node-label={`History Event ${index + 1} Date`} data-concert-field="date" className="shrink-0 text-muted-foreground font-medium min-w-[100px]" style={getOverrideStyle(overrides[`live-history-event-${index}-date`])}>{resolveConcertDateText(`live-history-event-${index}`, concert.date)}</div>
