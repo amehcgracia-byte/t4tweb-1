@@ -97,7 +97,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
       const resetHistoryCard = isResetHistoryCard(node.nodeId)
       const scale = typeof node.style.scale === "number" ? Math.max(0.1, node.style.scale) : 1
 
-      const applyNodeGeometry = allowGeometryOverrides && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId) && !resetHistoryCard
+      const applyNodeGeometry = allowGeometryOverrides && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId)
 
       if (applyNodeGeometry && (node.explicitPosition || (node.explicitStyle && scale !== 1))) {
         el.style.transform = scale !== 1
@@ -216,7 +216,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
 
           const dateEl = el.querySelector<HTMLElement>('[data-concert-field="date"]')
           const venueEl = el.querySelector<HTMLElement>('[data-concert-field="venue"]')
-          const locationEl = el.querySelector<HTMLElement>('[data-concert-field="location"]')
+          const locationEl = el.querySelector<HTMLElement>('[data-concert-field="city"]')
           const genreEl = el.querySelector<HTMLElement>('[data-concert-field="genre"]')
           const priceEl = el.querySelector<HTMLElement>('[data-concert-field="price"]')
           const timeEl = el.querySelector<HTMLElement>('[data-concert-field="time"]')
