@@ -289,7 +289,7 @@ export function PressKitSection({ overrides = {} }: PressKitSectionProps) {
           <motion.div 
             ref={headerRef}
             style={isEditing ? undefined : { opacity, y }} 
-            className="mb-10 md:mb-12"
+            className="mb-6 hidden min-[1025px]:mb-12 min-[1025px]:block"
           >
             <SectionHeader
               eyebrow="Media Resources"

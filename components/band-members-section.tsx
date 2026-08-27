@@ -301,8 +301,8 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
         </motion.div>
 
         <div className="grid items-start gap-5 md:gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)_minmax(0,0.9fr)] lg:gap-10 xl:gap-14">
-          {/* Collabs stay on the left; the original five members stay on the right. */}
-          <div className="order-3 space-y-2.5 md:space-y-4 lg:order-1">
+          {/* Collabs stay on the right on desktop; the original five members stay on the left. */}
+          <div className="order-3 space-y-2.5 md:space-y-4 lg:order-3">
             <h3
               data-editor-node-id="band-members-collabs-title"
               data-editor-node-type="text"
@@ -352,8 +352,8 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
             ))}
           </div>
 
-          {/* The five original band members stay on the right on desktop. */}
-          <div className="order-1 space-y-2.5 md:space-y-4 lg:order-3">
+          {/* The five original band members stay on the left on desktop. */}
+          <div className="order-1 space-y-2.5 md:space-y-4 lg:order-1">
             <h3
               data-editor-node-id="band-members-members-title"
               data-editor-node-type="text"
