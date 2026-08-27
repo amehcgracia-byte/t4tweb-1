@@ -96,15 +96,20 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
   const getOverrideStyle = (override: HomeEditorNodeOverride | undefined): CSSProperties | undefined =>
     buildInlineStyleFromOverride(override, allowGeometryOverrides)
 
-  // History cards stay in normal flow so stale desktop geometry cannot make one card wider or taller than the others.
   const getHistoryCardStyle = (override: HomeEditorNodeOverride | undefined, concert: Concert): CSSProperties | undefined => {
-    // This legacy override was accidentally applied to the 06 Jun 2025
-    // Kulturelle Landpartie card. Keep the event data, but restore the shared
-    // History card appearance.
+    const style = buildInlineStyleFromOverride(override, allowGeometryOverrides)
     if (concert.date === "2025-06-06" && concert.venue.trim().toLowerCase() === "kulturelle landpartie") {
-      return undefined
+      // Ignore only the stale visual values from this legacy entry. Keep
+      // position and size editable so History can still be moved normally.
+      if (!style) return undefined
+      return {
+        transform: style.transform,
+        transformOrigin: style.transformOrigin,
+        width: style.width,
+        height: style.height,
+      }
     }
-    return buildInlineStyleFromOverride(override, false)
+    return style
   }
 
   useEffect(() => {
@@ -370,6 +375,10 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
               whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
               transition={isEditing ? undefined : { duration: 0.6, delay: 0.3 }}
               className="mb-12 min-h-[440px]"
+              data-editor-node-id="live-upcoming-section"
+              data-editor-node-type="card"
+              data-editor-node-label="Upcoming Shows Section"
+              style={getOverrideStyle(overrides["live-upcoming-section"])}
             >
               <h3
                 data-editor-node-id="live-upcoming-title"
@@ -457,6 +466,10 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
               whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
               transition={isEditing ? undefined : { duration: 0.6, delay: 0.35 }}
               className="mb-12"
+              data-editor-node-id="live-history-section"
+              data-editor-node-type="card"
+              data-editor-node-label="History Shows Section"
+              style={getOverrideStyle(overrides["live-history-section"])}
             >
               <h3
                 data-editor-node-id="live-history-title"
@@ -474,7 +487,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                   data-editor-node-label="Live History List"
                   data-editor-grouped="true"
                   className="space-y-3"
-                  // History is a normal-flow list: typography and color overrides are safe,\n                  // but saved desktop geometry must not pull it above its heading.\n                  style={buildInlineStyleFromOverride(overrides["live-history-list"], false)}
+                  style={getOverrideStyle(overrides["live-history-list"])}
                 >
                   {historyConcerts.map((concert, index) => (
                     <motion.div
