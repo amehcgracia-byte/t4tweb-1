@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
+import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 import {
   buildHeroScrollIndicatorLayoutStyle,
@@ -206,6 +207,10 @@ export function HeroSection({ data }: { data: HeroData }) {
 
   const { isEditing, registerEditable, unregisterEditable, getElementById } =
     useVisualEditor()
+  // Editor geometry is measured in desktop pixels. Keep the public mobile hero
+  // on its responsive layout so desktop transforms cannot clip the title or
+  // move the dedicated phone background out of view.
+  const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing, true)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -456,7 +461,7 @@ export function HeroSection({ data }: { data: HeroData }) {
       className="relative flex min-h-screen min-h-[100dvh] w-full items-stretch overflow-hidden bg-black"
       style={getElementStyle(content.elementStyles, "hero-section", {
         includeGeometry: false,
-        includeResponsiveTypography: true,
+        includeResponsiveTypography: allowGeometryOverrides,
       })}
     >
       <div className="absolute inset-0 z-0">
@@ -472,8 +477,9 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-node-label="Hero Background"
             className="absolute inset-0"
             style={getElementStyle(content.elementStyles, "hero-bg-image", {
-              includeGeometry: hasResponsiveHeroLayout(content.elementStyles, "hero-bg-image"),
-              includeResponsiveTypography: true,
+              includeGeometry:
+                allowGeometryOverrides && hasResponsiveHeroLayout(content.elementStyles, "hero-bg-image"),
+              includeResponsiveTypography: allowGeometryOverrides,
             })}
           >
             <Image
@@ -535,8 +541,8 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-grouped="true"
             className="mb-5 w-full max-w-[min(94vw,1120px)] text-balance break-words text-[clamp(2.25rem,4.7vw,5.5rem)] font-semibold leading-[0.94] tracking-[-0.035em] text-white sm:mb-7"
             style={getElementStyle(content.elementStyles, "hero-title", {
-              includeGeometry: true,
-              includeResponsiveTypography: true,
+              includeGeometry: allowGeometryOverrides,
+              includeResponsiveTypography: allowGeometryOverrides,
             })}
           >
             {titleSegmentsForRender.map((segment, index) => {
@@ -546,7 +552,7 @@ export function HeroSection({ data }: { data: HeroData }) {
                 segment,
                 isAccent ? "#FF8C21" : "#ffffff",
                 isAccent,
-                true
+                allowGeometryOverrides
               )
               const segmentId = index === 0
                 ? "hero-title-main"
@@ -572,10 +578,10 @@ export function HeroSection({ data }: { data: HeroData }) {
                     : "mr-[0.25em]"}
                   style={{
                     ...segmentStyle,
-                    ...(hasResponsiveHeroLayout(content.elementStyles, segmentId)
+                    ...(allowGeometryOverrides && hasResponsiveHeroLayout(content.elementStyles, segmentId)
                       ? getElementStyle(content.elementStyles, segmentId, {
                           includeGeometry: true,
-                          includeResponsiveTypography: true,
+                          includeResponsiveTypography: allowGeometryOverrides,
                         })
                       : {}),
                     ...(useResponsiveTitleSize ? { fontSize: RESPONSIVE_HERO_TITLE_SIZE } : {}),
@@ -597,10 +603,10 @@ export function HeroSection({ data }: { data: HeroData }) {
               style={{
                 width: "clamp(3.5rem, 6vw, 5.5rem)",
                 height: "clamp(3.5rem, 6vw, 5.5rem)",
-                ...(hasResponsiveHeroLayout(content.elementStyles, "hero-logo")
+                ...(allowGeometryOverrides && hasResponsiveHeroLayout(content.elementStyles, "hero-logo")
                   ? getElementStyle(content.elementStyles, "hero-logo", {
                       includeGeometry: true,
-                      includeResponsiveTypography: true,
+                      includeResponsiveTypography: allowGeometryOverrides,
                     })
                   : {}),
               }}
@@ -621,10 +627,10 @@ export function HeroSection({ data }: { data: HeroData }) {
               data-editor-node-type="text"
               data-editor-node-label="Subtítulo"
               className="mt-1.5 px-2 text-[8px] font-semibold uppercase tracking-[0.14em] text-[#ffd3a3] sm:text-[10px] sm:tracking-[0.24em]"
-              style={hasResponsiveHeroLayout(content.elementStyles, "hero-subtitle")
+              style={allowGeometryOverrides && hasResponsiveHeroLayout(content.elementStyles, "hero-subtitle")
                 ? getElementStyle(content.elementStyles, "hero-subtitle", {
                     includeGeometry: true,
-                    includeResponsiveTypography: true,
+                    includeResponsiveTypography: allowGeometryOverrides,
                   })
                 : undefined}
             >
