@@ -58,6 +58,7 @@ interface EditorNode {
     fontWeight?: string
     fontStyle?: string
     textDecoration?: string
+    textAlign?: "left" | "center" | "right"
     scale?: number
     minHeight?: string
     paddingTop?: string
@@ -607,6 +608,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       fontWeight: cs.fontWeight,
       fontStyle: cs.fontStyle,
       textDecoration: cs.textDecorationLine,
+      textAlign: cs.textAlign as EditorNode["style"]["textAlign"],
       opacity: Number(cs.opacity || "1"),
       scale: savedTransform.scale,
       minHeight: cs.minHeight,
@@ -768,6 +770,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         if (node.style.fontWeight) el.style.fontWeight = node.style.fontWeight
         if (node.style.fontStyle) el.style.fontStyle = node.style.fontStyle
         if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
+        if (node.style.textAlign) el.style.textAlign = node.style.textAlign
       }
     }
     if (node.type === "button") {
@@ -907,7 +910,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             let isContentEdit = !!n.explicitContent
             let isStyleEdit = !!n.explicitStyle
             Object.entries(command.patch).forEach(([k, v]) => {
-              if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl"].includes(k)) {
+              if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl", "mediaKind"].includes(k)) {
                 isContentEdit = true;
                 (content as Record<string, unknown>)[k] = v
               }
@@ -1206,6 +1209,7 @@ export function VisualEditorOverlay() {
   const [deployStatus, setDeployStatus] = useState<string | null>(null)
   const [deployDetails, setDeployDetails] = useState<string | null>(null)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
+  const [assetUploadStatus, setAssetUploadStatus] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -1226,9 +1230,10 @@ export function VisualEditorOverlay() {
   const heroTitleSegments = selectedNode?.id === "hero-title"
     ? (selectedNode.content.textSegments || [])
     : []
-  const selectedBandMemberIndex = selectedNode?.id.startsWith("member-item-")
-    ? Number(selectedNode.id.replace("member-item-", ""))
-    : null
+  const selectedBandMemberIndex = (() => {
+    const match = selectedNode?.id.match(/^member-item-(\d+)$/)
+    return match ? Number(match[1]) : null
+  })()
 
   const getContextNodeIdsAtPosition = useCallback((x: number, y: number): string[] => {
     const hit = getEditableAtPosition(x, y)
@@ -1281,29 +1286,54 @@ export function VisualEditorOverlay() {
     return document.querySelector<HTMLImageElement>(`[data-member-photo-index="${index}"]`)?.src || ""
   }, [])
 
+  const uploadImageAsset = useCallback(async (file: File, nodeId: string, commandType: "UPDATE_IMAGE" | "UPDATE_BACKGROUND") => {
+    setAssetUploadStatus("Uploading image…")
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const response = await fetch("/api/editor-upload-asset", { method: "POST", body: formData })
+      const data = (await response.json()) as { url?: string; message?: string }
+      if (!response.ok || !data.url || !isPersistableImageSrc(data.url)) {
+        throw new Error(data.message || "Image upload failed")
+      }
+      dispatch({
+        type: commandType,
+        nodeId,
+        patch: { src: data.url, mediaKind: "image" },
+      })
+      setAssetUploadStatus("Image uploaded")
+    } catch (error) {
+      setAssetUploadStatus(error instanceof Error ? error.message : "Image upload failed")
+    }
+  }, [dispatch])
+
   const updateBandMemberField = useCallback((index: number, field: "number" | "name" | "role" | "photo", value: string) => {
     if (typeof document === "undefined") return
     if (field === "number") {
       const el = document.querySelector<HTMLElement>(`[data-member-number-index="${index}"]`)
       if (el) el.textContent = value
+      dispatch({ type: "UPDATE_TEXT", nodeId: `member-item-${index}-number`, patch: { text: value } })
       return
     }
     if (field === "name") {
       document.querySelectorAll<HTMLElement>(`[data-member-name-index="${index}"],[data-member-overlay-name-index="${index}"]`).forEach((el) => {
         el.textContent = value
       })
+      dispatch({ type: "UPDATE_TEXT", nodeId: `member-item-${index}-name`, patch: { text: value } })
       return
     }
     if (field === "role") {
       document.querySelectorAll<HTMLElement>(`[data-member-role-index="${index}"],[data-member-overlay-role-index="${index}"]`).forEach((el) => {
         el.textContent = value
       })
+      dispatch({ type: "UPDATE_TEXT", nodeId: `member-item-${index}-role`, patch: { text: value } })
       return
     }
     document.querySelectorAll<HTMLImageElement>(`[data-member-photo-index="${index}"]`).forEach((img) => {
       img.src = value
     })
-  }, [])
+    dispatch({ type: "UPDATE_IMAGE", nodeId: `member-item-${index}-image`, patch: { src: value } })
+  }, [dispatch])
   const exitEditor = () => {
     setIsEditing(false)
     window.location.reload()
@@ -1924,10 +1954,10 @@ export function VisualEditorOverlay() {
                   onChange={(e) => {
                     const file = e.target.files?.[0]
                     if (!file) return
-                    const url = URL.createObjectURL(file)
-                    updateBandMemberField(selectedBandMemberIndex, "photo", url)
+                    uploadImageAsset(file, `member-item-${selectedBandMemberIndex}-image`, "UPDATE_IMAGE")
                   }}
                 />
+                {assetUploadStatus && <div className="text-[10px] text-slate-500">{assetUploadStatus}</div>}
               </div>
             )}
 
@@ -2154,6 +2184,25 @@ export function VisualEditorOverlay() {
                     />
                   </div>
                 </div>
+                <div>
+                  <label className="text-[10px]">Text alignment</label>
+                  <div className="mt-1 grid grid-cols-3 gap-1">
+                    {(["left", "center", "right"] as const).map((alignment) => (
+                      <button
+                        key={alignment}
+                        type="button"
+                        className={`rounded border px-2 py-1 text-xs ${selectedNode.style.textAlign === alignment ? "bg-slate-900 text-white" : ""}`}
+                        onClick={() => dispatch({
+                          type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON",
+                          nodeId: selectedNode.id,
+                          patch: { textAlign: alignment },
+                        })}
+                      >
+                        {alignment === "left" ? "Left" : alignment === "center" ? "Center" : "Right"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {selectedNode.type === "text" && (
                   <div>
                     <label className="text-[10px]">Text opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
@@ -2248,14 +2297,10 @@ export function VisualEditorOverlay() {
                   onChange={(e) => {
                     const file = e.target.files?.[0]
                     if (!file) return
-                    const url = URL.createObjectURL(file)
-                    dispatch({
-                      type: selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND",
-                      nodeId: selectedNode.id,
-                      patch: { src: url, mediaKind: "image" },
-                    })
+                    uploadImageAsset(file, selectedNode.id, selectedNode.type === "image" ? "UPDATE_IMAGE" : "UPDATE_BACKGROUND")
                   }}
                 />
+                {assetUploadStatus && <div className="text-[10px] text-slate-500">{assetUploadStatus}</div>}
                 <div>
                   <label className="text-[10px]">Contrast ({Math.round(selectedNode.style.contrast ?? 100)}%)</label>
                   <input
