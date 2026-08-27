@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 import { getTraceNodeId } from "@/lib/sanity/env"
 import { formatDisplayDate } from "@/lib/format-date"
+import { getYouTubeVideoId, toYouTubeEmbedUrl } from "@/lib/youtube"
 
 const DOC_DRIVEN_IMAGE_NODE_IDS = new Set<string>([
   "hero-bg-image",
@@ -171,11 +172,11 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
           if (node.content.videoUrl) {
             el.dataset.editorVideoUrl = node.content.videoUrl
             if (iframe) {
-              iframe.setAttribute("src", node.content.videoUrl)
+              iframe.setAttribute("src", toYouTubeEmbedUrl(node.content.videoUrl))
             } else {
               const poster = el.querySelector<HTMLImageElement>("[data-editor-video-poster]")
-              const match = node.content.videoUrl.match(/(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i)
-              if (poster && match) poster.src = `https://i.ytimg.com/vi/${match[1]}/maxresdefault.jpg`
+              const videoId = getYouTubeVideoId(node.content.videoUrl)
+              if (poster && videoId) poster.src = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`
             }
           }
         } else if (node.nodeType === "image" || node.nodeType === "background") {
