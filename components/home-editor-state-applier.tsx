@@ -57,6 +57,13 @@ function clearTextGradient(el: HTMLElement): void {
   delete el.dataset.editorManagedGradient
 }
 
+function isResetHistoryCard(nodeId: string): boolean {
+  // The published 06 Jun 2025 Kulturelle Landpartie entry carries an
+  // accidental legacy style override. Preserve its content, but do not
+  // reapply the stale visual values to the shared History card.
+  return nodeId === "live-history-event-4"
+}
+
 export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverride[] }) {
   useEffect(() => {
     if (!Array.isArray(nodes) || nodes.length === 0) return
@@ -86,9 +93,10 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
         return
       }
 
+      const resetHistoryCard = isResetHistoryCard(node.nodeId)
       const scale = typeof node.style.scale === "number" ? Math.max(0.1, node.style.scale) : 1
 
-      const applyNodeGeometry = allowGeometryOverrides && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId)
+      const applyNodeGeometry = allowGeometryOverrides && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId) && !resetHistoryCard
 
       if (applyNodeGeometry && (node.explicitPosition || (node.explicitStyle && scale !== 1))) {
         el.style.transform = scale !== 1
@@ -126,7 +134,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
       el.dataset.editorGeometryWidth = String(Math.round(node.geometry.width))
       el.dataset.editorGeometryHeight = String(Math.round(node.geometry.height))
 
-      if (node.explicitStyle) {
+      if (node.explicitStyle && !resetHistoryCard) {
         if (node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
         if ((node.nodeType === "text" || node.nodeType === "button") && node.content.gradientEnabled) {
           applyTextGradient(
@@ -160,8 +168,15 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
 
         if (node.nodeType === "background" && node.content.mediaKind === "video") {
           const iframe = el.querySelector("iframe")
-          if (iframe && node.content.videoUrl) {
-            iframe.setAttribute("src", node.content.videoUrl)
+          if (node.content.videoUrl) {
+            el.dataset.editorVideoUrl = node.content.videoUrl
+            if (iframe) {
+              iframe.setAttribute("src", node.content.videoUrl)
+            } else {
+              const poster = el.querySelector<HTMLImageElement>("[data-editor-video-poster]")
+              const match = node.content.videoUrl.match(/(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i)
+              if (poster && match) poster.src = `https://i.ytimg.com/vi/${match[1]}/maxresdefault.jpg`
+            }
           }
         } else if (node.nodeType === "image" || node.nodeType === "background") {
           if (DOC_DRIVEN_IMAGE_NODE_IDS.has(node.nodeId)) {

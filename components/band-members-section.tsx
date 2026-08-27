@@ -274,8 +274,24 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
           src={resolvedBandBackgroundSrc}
           alt="Band background"
           fill
-          className="object-cover"
+          className="hidden object-cover lg:block"
         />
+        <div className="absolute inset-0 lg:hidden" aria-hidden="true">
+          <Image
+            src={resolvedBandBackgroundSrc}
+            alt=""
+            fill
+            className="object-cover opacity-20 blur-[3px]"
+            style={{ objectPosition: "center center", transform: "scale(1.06)" }}
+          />
+          <Image
+            src={resolvedBandBackgroundSrc}
+            alt=""
+            fill
+            className="object-contain opacity-50"
+            style={{ objectPosition: "center center" }}
+          />
+        </div>
       </div>
 
       {/* Gradiente superior */}
