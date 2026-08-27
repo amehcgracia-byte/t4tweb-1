@@ -14,6 +14,11 @@ import {
 
 const getElementStyle = getElementLayoutStyle
 
+// This portrait composition was prepared specifically for phone screens.
+// Keep it separate from the editable desktop/Sanity background so a saved
+// desktop image can never be stretched into the mobile layout.
+const HERO_MOBILE_BG_URL = "/images/sections/Hero bombe Phone version 2.png"
+
 const FALLBACK: HeroData = {
   title: "",
   titleHighlight: "",
@@ -478,9 +483,35 @@ export function HeroSection({ data }: { data: HeroData }) {
               priority
               unoptimized
               sizes="100vw"
-              className="object-cover"
+              className="hidden object-cover min-[1025px]:block"
               style={{ objectPosition: "center top" }}
             />
+
+            <div
+              className="absolute inset-0 min-[1025px]:hidden"
+              aria-hidden="true"
+            >
+              <Image
+                src={HERO_MOBILE_BG_URL}
+                alt=""
+                fill
+                priority
+                unoptimized
+                sizes="100vw"
+                className="object-cover opacity-30 blur-[3px]"
+                style={{ objectPosition: "center top", transform: "scale(1.08)" }}
+              />
+              <Image
+                src={HERO_MOBILE_BG_URL}
+                alt=""
+                fill
+                priority
+                unoptimized
+                sizes="100vw"
+                className="object-contain"
+                style={{ objectPosition: "center top" }}
+              />
+            </div>
           </div>
         </motion.div>
       </div>
@@ -495,7 +526,7 @@ export function HeroSection({ data }: { data: HeroData }) {
         className="absolute inset-0 z-[1] bg-gradient-to-r from-transparent via-[#FF8C21]/21 to-transparent"
       />
 
-      <div className="relative z-10 flex min-h-screen min-h-[100dvh] w-full flex-col justify-end px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 flex min-h-[100svh] w-full flex-col justify-end px-4 sm:px-6 lg:px-8 xl:min-h-screen xl:min-h-[100dvh]">
         <div className="flex flex-col items-center pb-24 pt-16 text-center sm:pb-28 sm:pt-20">
           <h1
             data-editor-node-id="hero-title"
