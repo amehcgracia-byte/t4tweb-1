@@ -607,6 +607,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       fontWeight: cs.fontWeight,
       fontStyle: cs.fontStyle,
       textDecoration: cs.textDecorationLine,
+      opacity: Number(cs.opacity || "1"),
       scale: savedTransform.scale,
       minHeight: cs.minHeight,
       paddingTop: cs.paddingTop,
@@ -2144,18 +2145,20 @@ export function VisualEditorOverlay() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="text-[10px]">Opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    className="w-full"
-                    value={selectedNode.style.opacity ?? 1}
-                    onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
-                  />
-                </div>
+                {selectedNode.type === "text" && (
+                  <div>
+                    <label className="text-[10px]">Opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      className="w-full"
+                      value={selectedNode.style.opacity ?? 1}
+                      onChange={(e) => dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
+                    />
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <button
                     type="button"

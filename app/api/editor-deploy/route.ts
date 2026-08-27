@@ -450,7 +450,7 @@ export async function POST(request: Request) {
       apiVersion: "2024-01-01",
       useCdn: false,
       token: sanityToken,
-      perspective: "drafts",
+      perspective: "published",
     })
 
     const existingHero = await writeClient.fetch<{
