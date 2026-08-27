@@ -234,12 +234,14 @@ export function LatestReleaseSection({ overrides = {} }: LatestReleaseSectionPro
         data-editor-node-id="latest-release-bg"
         data-editor-node-type="background"
         data-editor-media-kind="video"
+        data-editor-video-url="https://www.youtube.com/embed/xofflmVqYGs?autoplay=1&mute=1&loop=1&playlist=xofflmVqYGs&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
         data-editor-node-label="Fondo Video YouTube"
         className="absolute left-0 top-0 z-0 h-full w-full"
         style={buildInlineStyleFromOverride(bgOverride, allowGeometryOverrides)}
       >
-        {isIosMobile ? (
+        {isEditing || isIosMobile ? (
           <img
+            data-editor-video-poster="true"
             src="https://i.ytimg.com/vi/xofflmVqYGs/maxresdefault.jpg"
             alt=""
             aria-hidden="true"
