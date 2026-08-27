@@ -17,46 +17,10 @@ const DOC_DRIVEN_TEXT_NODE_IDS = new Set<string>([
   "hero-title-accent",
 ])
 
-const COMPONENT_DRIVEN_NODE_IDS = new Set<string>([
-  "latest-release-section",
-  "latest-release-bg",
-  "latest-release-card",
-  "latest-release-title",
-  "latest-release-subtitle",
-  "latest-release-watch-button",
-  "latest-release-shows-button",
-])
-
 const RESPONSIVE_CONTAINER_NODE_IDS = new Set<string>([
   "hero-section",
   "intro-section",
 ])
-
-function isComponentDrivenNode(nodeId: string): boolean {
-  if (COMPONENT_DRIVEN_NODE_IDS.has(nodeId)) return true
-  if (nodeId === "band-members-section") return true
-  if (nodeId === "band-members-bg") return true
-  if (/^member-item-\d+$/.test(nodeId)) return true
-  if (nodeId === "live-section") return true
-  if (nodeId === "live-section-bg-image") return true
-  if (nodeId === "live-section-see-shows-button") return true
-  if (nodeId === "live-stream-platforms-group") return true
-  if (nodeId === "live-stream-platforms-title") return true
-  if (nodeId.startsWith("live-streaming-")) return true
-  if (nodeId === "live-social-platforms-group") return true
-  if (nodeId === "live-social-platforms-title") return true
-  if (nodeId.startsWith("live-social-")) return true
-  if (nodeId === "live-upcoming-title") return true
-  if (nodeId === "live-upcoming-list") return true
-  if (nodeId === "live-upcoming-empty") return true
-  if (nodeId === "live-upcoming-empty-text") return true
-  if (nodeId === "live-history-title") return true
-  if (nodeId === "live-history-list") return true
-  if (nodeId === "live-history-empty") return true
-  if (nodeId === "live-history-empty-text") return true
-  if (/^live-(upcoming|history)-event-\d+(-(?:date|venue|city|country|genre|price|time))?$/.test(nodeId)) return true
-  return false
-}
 
 function isDocDrivenNode(nodeId: string): boolean {
   if (DOC_DRIVEN_IMAGE_NODE_IDS.has(nodeId)) return true
@@ -119,10 +83,6 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
       if (!el) return
 
       if (isDocDrivenNode(node.nodeId)) {
-        return
-      }
-
-      if (isComponentDrivenNode(node.nodeId)) {
         return
       }
 
