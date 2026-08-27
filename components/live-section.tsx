@@ -92,12 +92,17 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing, true)
+  // The state applier writes persisted geometry after hydration. Keep the
+  // React-owned style prop in sync as well, otherwise a later Live rerender
+  // can clear the transform that was already applied to the public DOM.
+  const isDesktopViewport = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
+  const includeGeometryOverrides = allowGeometryOverrides || isDesktopViewport
   const resolvedLiveBackgroundSrc = useHomeEditorImageSrc("live-section-bg-image", "/images/sections/live-bg.jpg")
   const getOverrideStyle = (override: HomeEditorNodeOverride | undefined): CSSProperties | undefined =>
-    buildInlineStyleFromOverride(override, allowGeometryOverrides)
+    buildInlineStyleFromOverride(override, includeGeometryOverrides)
 
   const getHistoryCardStyle = (override: HomeEditorNodeOverride | undefined, concert: Concert): CSSProperties | undefined => {
-    const style = buildInlineStyleFromOverride(override, allowGeometryOverrides)
+    const style = buildInlineStyleFromOverride(override, includeGeometryOverrides)
     if (concert.date === "2025-06-06" && concert.venue.trim().toLowerCase() === "kulturelle landpartie") {
       // Ignore only the stale visual values from this legacy entry. Keep
       // position and size editable so History can still be moved normally.
