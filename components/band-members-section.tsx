@@ -129,7 +129,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
   const [isMobile, setIsMobile] = useState(false)
   const [members] = useState<BandMemberData[]>(initialMembers)
   const { opacity, y } = useScrollAnimation(sectionRef)
-  const { isEditing } = useVisualEditor()
+  const { isEditing, nodes } = useVisualEditor()
   const allowGeometryOverrides = useDesktopLayoutOverridesEnabled(isEditing, true)
   const persistedBandBackgroundSrc = useHomeEditorImageSrc("band-members-bg", "/images/DSC_4710.JPG")
   // Replace the old low-resolution default while preserving any newer editor-selected image.
@@ -166,17 +166,38 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
     }
   }
 
+  const resolveEditorMemberText = (nodeId: string, fallback: string): string => {
+    const node = isEditing ? nodes.get(nodeId) : undefined
+    return node?.explicitContent && node.content.text?.trim() ? node.content.text.trim() : fallback
+  }
+  const resolveEditorMemberImage = (nodeId: string, fallback: string): string => {
+    const node = isEditing ? nodes.get(nodeId) : undefined
+    return node?.explicitContent && node.content.src ? node.content.src : fallback
+  }
+
   const displayedMembers = members.map((member, index) => ({
     ...member,
-    number: resolveMemberNumberOverride(overrides[`member-item-${index}-number`], String(member.id).padStart(2, "0")),
-    fullName: resolveMemberNameOverride(
-      overrides[`member-item-${index}-name`] ?? overrides[`member-item-${index}`],
-      member.fullName
+    number: resolveEditorMemberText(
+      `member-item-${index}-number`,
+      resolveMemberNumberOverride(overrides[`member-item-${index}-number`], String(member.id).padStart(2, "0"))
     ),
-    role: resolveMemberRoleOverride(overrides[`member-item-${index}-role`], member.role),
-    image: overrides[`member-item-${index}-image`]?.explicitContent && overrides[`member-item-${index}-image`]?.content.src
-      ? (overrides[`member-item-${index}-image`]?.content.src as string)
-      : member.image,
+    fullName: resolveEditorMemberText(
+      `member-item-${index}-name`,
+      resolveMemberNameOverride(
+        overrides[`member-item-${index}-name`] ?? overrides[`member-item-${index}`],
+        member.fullName
+      )
+    ),
+    role: resolveEditorMemberText(
+      `member-item-${index}-role`,
+      resolveMemberRoleOverride(overrides[`member-item-${index}-role`], member.role)
+    ),
+    image: resolveEditorMemberImage(
+      `member-item-${index}-image`,
+      overrides[`member-item-${index}-image`]?.explicitContent && overrides[`member-item-${index}-image`]?.content.src
+        ? (overrides[`member-item-${index}-image`]?.content.src as string)
+        : member.image
+    ),
   }))
   const activeMember = displayedMembers[activeIndex]
   const activeImage = activeMember?.image || initialMembers[0]?.image || ""
@@ -221,6 +242,9 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
               >
                 <div className="min-w-0 flex-1">
                   <h4
+                    data-editor-node-id={`member-item-${index}-name`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`${member.fullName} name`}
                     data-member-name-index={index}
                     className={`text-base md:text-xl font-medium transition-colors truncate ${
                       activeIndex === index ? "text-white" : "text-white/80 group-hover:text-white"
@@ -229,6 +253,9 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                     {member.fullName}
                   </h4>
                   <p
+                    data-editor-node-id={`member-item-${index}-role`}
+                    data-editor-node-type="text"
+                    data-editor-node-label={`${member.fullName} role`}
                     data-member-role-index={index}
                     className={`text-xs md:text-sm mt-0.5 md:mt-1 transition-colors ${
                       activeIndex === index ? "text-orange-400" : "text-white/50"
@@ -239,6 +266,9 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                 </div>
 
                 <div
+                  data-editor-node-id={`member-item-${index}-number`}
+                  data-editor-node-type="text"
+                  data-editor-node-label={`${member.fullName} number`}
                   data-member-number-index={index}
                   className={`w-7 h-7 md:w-8 md:h-8 shrink-0 ml-3 rounded-full flex items-center justify-center text-xs font-mono border transition-all ${
                     activeIndex === index
@@ -246,7 +276,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                       : "border-white/20 text-white/40 group-hover:border-white/40"
                   }`}
                 >
-                  {String(member.id).padStart(2, "0")}
+                  {member.number}
                 </div>
               </motion.div>
   )
@@ -349,6 +379,9 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                     src={member.image}
                     alt={member.fullName}
                     fill
+                    data-editor-node-id={`member-item-${index}-image`}
+                    data-editor-node-type="image"
+                    data-editor-node-label={`${member.fullName} photo`}
                     data-member-photo-index={index}
                     className="object-cover"
                     priority={index === 0}
