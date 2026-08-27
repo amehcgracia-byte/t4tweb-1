@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, type CSSProperties } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
@@ -100,6 +100,31 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
   const resolvedLiveBackgroundSrc = useHomeEditorImageSrc("live-section-bg-image", "/images/sections/live-bg.jpg")
   const getOverrideStyle = (override: HomeEditorNodeOverride | undefined): CSSProperties | undefined =>
     buildInlineStyleFromOverride(override, includeGeometryOverrides)
+
+  // Live contains animated/client-rendered descendants. Re-assert only the
+  // persisted geometry after each render so motion or a late hydration pass
+  // cannot remove a saved position or size from the public DOM.
+  useLayoutEffect(() => {
+    if (!includeGeometryOverrides || typeof document === "undefined") return
+    Object.entries(overrides).forEach(([nodeId, override]) => {
+      if (!nodeId.startsWith("live-")) return
+      const element = Array.from(document.querySelectorAll<HTMLElement>("[data-editor-node-id]"))
+        .find((candidate) => candidate.dataset.editorNodeId === nodeId)
+      if (!element) return
+
+      const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
+      if (override.explicitPosition || (override.explicitStyle && scale !== 1)) {
+        element.style.transform = scale !== 1
+          ? `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px) scale(${scale})`
+          : `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px)`
+        element.style.transformOrigin = "top left"
+      }
+      if (override.explicitSize) {
+        element.style.width = `${Math.max(8, Math.round(override.geometry.width))}px`
+        element.style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
+      }
+    })
+  })
 
   const getHistoryCardStyle = (override: HomeEditorNodeOverride | undefined, concert: Concert): CSSProperties | undefined => {
     const style = buildInlineStyleFromOverride(override, includeGeometryOverrides)
