@@ -97,15 +97,16 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
   // can clear the transform that was already applied to the public DOM.
   const isDesktopViewport = typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
   const includeGeometryOverrides = allowGeometryOverrides || isDesktopViewport
+  const includePersistedGeometry = includeGeometryOverrides && !isEditing
   const resolvedLiveBackgroundSrc = useHomeEditorImageSrc("live-section-bg-image", "/images/sections/live-bg.jpg")
   const getOverrideStyle = (override: HomeEditorNodeOverride | undefined): CSSProperties | undefined =>
-    buildInlineStyleFromOverride(override, includeGeometryOverrides)
+    buildInlineStyleFromOverride(override, includePersistedGeometry)
 
   // Live contains animated/client-rendered descendants. Re-assert only the
   // persisted geometry after each render so motion or a late hydration pass
   // cannot remove a saved position or size from the public DOM.
   useLayoutEffect(() => {
-    if (!includeGeometryOverrides || typeof document === "undefined") return
+    if (!includePersistedGeometry || typeof document === "undefined") return
     Object.entries(overrides).forEach(([nodeId, override]) => {
       if (!nodeId.startsWith("live-")) return
       const element = Array.from(document.querySelectorAll<HTMLElement>("[data-editor-node-id]"))
@@ -124,10 +125,10 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
         element.style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
       }
     })
-  })
+  }, [includePersistedGeometry, overrides])
 
   const getHistoryCardStyle = (override: HomeEditorNodeOverride | undefined, concert: Concert): CSSProperties | undefined => {
-    const style = buildInlineStyleFromOverride(override, includeGeometryOverrides)
+    const style = buildInlineStyleFromOverride(override, includePersistedGeometry)
     if (concert.date === "2025-06-06" && concert.venue.trim().toLowerCase() === "kulturelle landpartie") {
       // Ignore only the stale visual values from this legacy entry. Keep
       // position and size editable so History can still be moved normally.
