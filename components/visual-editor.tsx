@@ -581,7 +581,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       } else {
         content.mediaKind = "image"
       }
-      content.videoUrl = iframe?.getAttribute("src") || ""
+      content.videoUrl = iframe?.getAttribute("src") || el.dataset.editorVideoUrl || ""
     }
   }
   const cs = getComputedStyle(el)
@@ -786,7 +786,16 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       const iframe = node.type === "background" ? el.querySelector("iframe") : null
       if (node.explicitContent) {
         if (node.type === "background" && node.content.mediaKind === "video") {
-          if (iframe && node.content.videoUrl) iframe.setAttribute("src", node.content.videoUrl)
+          if (node.content.videoUrl) {
+            el.dataset.editorVideoUrl = node.content.videoUrl
+            if (iframe) {
+              iframe.setAttribute("src", node.content.videoUrl)
+            } else {
+              const poster = el.querySelector<HTMLImageElement>("[data-editor-video-poster]")
+              const match = node.content.videoUrl.match(/(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i)
+              if (poster && match) poster.src = `https://i.ytimg.com/vi/${match[1]}/maxresdefault.jpg`
+            }
+          }
         } else {
           if (img && node.content.src) img.src = node.content.src
           if (img && node.content.alt !== undefined) img.alt = node.content.alt
@@ -2147,7 +2156,7 @@ export function VisualEditorOverlay() {
                 </div>
                 {selectedNode.type === "text" && (
                   <div>
-                    <label className="text-[10px]">Opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
+                    <label className="text-[10px]">Text opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
                     <input
                       type="range"
                       min={0}
@@ -2380,6 +2389,34 @@ export function VisualEditorOverlay() {
 
             {selectedNode.type === "section" && (
               <>
+                {selectedNode.id === "intro-section" && (
+                  <div className="space-y-2 rounded border border-orange-200 bg-orange-50 p-2">
+                    <div className="text-[10px] font-semibold text-orange-900">Independent text and button opacity</div>
+                    {(["intro-banner-text", "intro-book-button"] as const).map((childId) => {
+                      const child = nodes.get(childId)
+                      if (!child) return null
+                      const isText = child.type === "text"
+                      return (
+                        <label key={childId} className="block text-[10px] font-semibold">
+                          {isText ? "Banner text" : "Book button"} ({(child.style.opacity ?? 1).toFixed(2)})
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            className="mt-1 w-full"
+                            value={child.style.opacity ?? 1}
+                            onChange={(e) => dispatch({
+                              type: isText ? "UPDATE_TEXT" : "UPDATE_BUTTON",
+                              nodeId: childId,
+                              patch: { opacity: Number(e.target.value) },
+                            })}
+                          />
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
                 {selectedNode.id === "navigation" && (
                   <>
                     <label className="text-xs font-semibold">Scrolled background opacity ({(selectedNode.style.opacity ?? 0.8).toFixed(2)})</label>
