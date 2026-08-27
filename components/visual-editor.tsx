@@ -1025,6 +1025,16 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (!candidates.find((c) => c.id === entry.id)) candidates.push(entry)
     }
 
+    // Photo backgrounds are often covered by non-editable scrims/fade layers.
+    // Include the background whose bounds contain the pointer so those layers
+    // do not make an otherwise empty area select the section instead.
+    registry.forEach((entry) => {
+      if (entry.type !== "background" || !entry.eligible) return
+      const rect = entry.element.getBoundingClientRect()
+      const containsPoint = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+      if (containsPoint && !candidates.find((c) => c.id === entry.id)) candidates.push(entry)
+    })
+
     if (candidates.length === 0) return null
 
     const navigationEntry = candidates.find((c) => c.id === "navigation")
@@ -1539,7 +1549,7 @@ export function VisualEditorOverlay() {
         : undefined
       // Prefer the actual element receiving the pointer. Coordinate hit-testing
       // can select a neighbouring card after responsive/order changes.
-      const hit = directEntry?.eligible
+      const hit = directEntry?.eligible && directEntry.type !== "section"
         ? directEntry
         : getEditableAtPosition(e.clientX, e.clientY)
       if (hit) {
