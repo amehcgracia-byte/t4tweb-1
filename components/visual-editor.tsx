@@ -9,6 +9,7 @@ import {
   applyScrollIndicatorLayoutToElement,
   clearScrollIndicatorLayoutFromElement,
 } from "@/lib/hero-layout-styles"
+import { getYouTubeVideoId, toYouTubeEmbedUrl } from "@/lib/youtube"
 
 type NodeType = "section" | "background" | "card" | "text" | "button" | "image"
 
@@ -792,11 +793,11 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           if (node.content.videoUrl) {
             el.dataset.editorVideoUrl = node.content.videoUrl
             if (iframe) {
-              iframe.setAttribute("src", node.content.videoUrl)
+              iframe.setAttribute("src", toYouTubeEmbedUrl(node.content.videoUrl))
             } else {
               const poster = el.querySelector<HTMLImageElement>("[data-editor-video-poster]")
-              const match = node.content.videoUrl.match(/(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i)
-              if (poster && match) poster.src = `https://i.ytimg.com/vi/${match[1]}/maxresdefault.jpg`
+              const videoId = getYouTubeVideoId(node.content.videoUrl)
+              if (poster && videoId) poster.src = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`
             }
           }
         } else {
@@ -1024,6 +1025,16 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       if (!entry || !entry.eligible) continue
       if (!candidates.find((c) => c.id === entry.id)) candidates.push(entry)
     }
+
+    // Photo backgrounds are often covered by non-editable scrims/fade layers.
+    // Include the background whose bounds contain the pointer so those layers
+    // do not make an otherwise empty area select the section instead.
+    registry.forEach((entry) => {
+      if (entry.type !== "background" || !entry.eligible) return
+      const rect = entry.element.getBoundingClientRect()
+      const containsPoint = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+      if (containsPoint && !candidates.find((c) => c.id === entry.id)) candidates.push(entry)
+    })
 
     if (candidates.length === 0) return null
 
@@ -1539,7 +1550,7 @@ export function VisualEditorOverlay() {
         : undefined
       // Prefer the actual element receiving the pointer. Coordinate hit-testing
       // can select a neighbouring card after responsive/order changes.
-      const hit = directEntry?.eligible
+      const hit = directEntry?.eligible && directEntry.type !== "section"
         ? directEntry
         : getEditableAtPosition(e.clientX, e.clientY)
       if (hit) {
