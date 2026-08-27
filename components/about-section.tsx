@@ -196,9 +196,25 @@ Their performances balance musical depth with danceable power, bringing together
           src={resolvedAboutBackgroundSrc}
           alt="Band members background"
           fill
-          className="object-cover"
+          className="hidden object-cover md:block"
           style={{ objectPosition: "center top" }}
         />
+        <div className="absolute inset-0 md:hidden" aria-hidden="true">
+          <Image
+            src={resolvedAboutBackgroundSrc}
+            alt=""
+            fill
+            className="object-cover opacity-25 blur-[3px]"
+            style={{ objectPosition: "center center", transform: "scale(1.06)" }}
+          />
+          <Image
+            src={resolvedAboutBackgroundSrc}
+            alt=""
+            fill
+            className="object-contain"
+            style={{ objectPosition: "center center" }}
+          />
+        </div>
       </div>
 
       <div className="section-photo-scrim z-10" />
