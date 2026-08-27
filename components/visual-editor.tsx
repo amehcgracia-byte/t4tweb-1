@@ -1197,6 +1197,7 @@ export function VisualEditorOverlay() {
   const [deployDetails, setDeployDetails] = useState<string | null>(null)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [marqueeRect, setMarqueeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const selectedIdsRef = useRef<string[]>([])
@@ -1463,6 +1464,12 @@ export function VisualEditorOverlay() {
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0) return
       const target = e.target as HTMLElement
+      // Keep menu controls clickable, but dismiss the menu before handling any
+      // click elsewhere in the editor (including selecting another section).
+      if (target.closest("[data-editor-context-menu]")) return
+      if (contextMenuRef.current && !contextMenuRef.current.contains(target)) {
+        setContextMenu(null)
+      }
       const resizeHandleTarget = target.closest<HTMLElement>("[data-editor-resize-handle]")
       if (resizeHandleTarget instanceof HTMLElement) {
         e.preventDefault()
@@ -1678,6 +1685,7 @@ export function VisualEditorOverlay() {
         e.preventDefault()
         dispatch({ type: "DELETE_NODE", nodeId: selectedId })
       } else if (e.key === "Escape") {
+        setContextMenu(null)
         dispatch({ type: "DESELECT_NODE" })
       }
     }
@@ -1796,14 +1804,26 @@ export function VisualEditorOverlay() {
         return (
           <div
             data-editor-context-menu
+            ref={contextMenuRef}
             className="fixed z-[10001] w-72 overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl"
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onContextMenu={(event) => event.preventDefault()}
           >
-            <div className="bg-slate-900 px-3 py-2 text-white">
-              <div className="text-[10px] uppercase tracking-wide text-slate-300">Elemento seleccionado</div>
-              <div className="truncate text-sm font-semibold">{contextNode.label}</div>
-              <div className="text-[10px] capitalize text-slate-300">{contextNode.type} · {contextNode.id}</div>
+            <div className="flex items-start justify-between gap-2 bg-slate-900 px-3 py-2 text-white">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-wide text-slate-300">Elemento seleccionado</div>
+                <div className="truncate text-sm font-semibold">{contextNode.label}</div>
+                <div className="text-[10px] capitalize text-slate-300">{contextNode.type} · {contextNode.id}</div>
+              </div>
+              <button
+                type="button"
+                aria-label="Cerrar menú de selección"
+                title="Cerrar"
+                className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg leading-none text-slate-300 transition-colors hover:bg-white/15 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/70"
+                onClick={() => setContextMenu(null)}
+              >
+                ×
+              </button>
             </div>
             <div className="max-h-[min(70vh,390px)] space-y-1 overflow-y-auto p-2 text-xs">
               <button type="button" className="w-full rounded px-2 py-1.5 text-left font-medium hover:bg-orange-50" onClick={() => selectContextNode(contextMenu.nodeId)}>
