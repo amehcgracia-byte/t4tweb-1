@@ -14,6 +14,7 @@ export function Footer() {
   const socialGroupRef = useRef<HTMLDivElement>(null)
   const dividerRef = useRef<HTMLDivElement>(null)
   const copyrightRef = useRef<HTMLParagraphElement>(null)
+  const developedByRef = useRef<HTMLParagraphElement>(null)
   const resolvedFooterLogoSrc = useHomeEditorImageSrc("footer-logo", "/images/t4tPics/logo-white.png")
 
   useEffect(() => {
@@ -111,6 +112,19 @@ export function Footer() {
           dimensions: { width: copyrightRef.current.offsetWidth, height: copyrightRef.current.offsetHeight },
         })
       }
+
+      if (developedByRef.current) {
+        registerEditable({
+          id: 'footer-developed-by',
+          type: 'text',
+          label: 'Footer Developed By',
+          parentId: null,
+          element: developedByRef.current,
+          originalRect: developedByRef.current.getBoundingClientRect(),
+          transform: { x: 0, y: 0 },
+          dimensions: { width: developedByRef.current.offsetWidth, height: developedByRef.current.offsetHeight },
+        })
+      }
     }, 100)
 
     return () => {
@@ -122,6 +136,7 @@ export function Footer() {
       unregisterEditable('footer-social-group')
       unregisterEditable('footer-divider')
       unregisterEditable('footer-copyright')
+      unregisterEditable('footer-developed-by')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing])
@@ -282,6 +297,15 @@ export function Footer() {
             className="text-white/40 text-sm text-center"
           >
             &copy; {currentYear} Tales for the Tillerman
+          </p>
+          <p
+            ref={developedByRef}
+            data-editor-node-id="footer-developed-by"
+            data-editor-node-type="text"
+            data-editor-node-label="Footer Developed By"
+            className="mt-2 text-xs text-white/30"
+          >
+            Developed by JM.G Jose Manuel Garcia
           </p>
         </div>
       </div>
