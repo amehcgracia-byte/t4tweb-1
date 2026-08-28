@@ -145,6 +145,8 @@ interface VisualEditorContextType {
   editableElements: Map<string, LegacyEditable>
   registry: Map<string, RuntimeEntry>
   dispatch: (command: Command) => void
+  getDirtyNodeIds: () => string[]
+  clearDirtyNodeIds: (nodeIds: string[]) => void
   undo: () => void
   redo: () => void
   canUndo: boolean
@@ -624,6 +626,8 @@ const VisualEditorContext = createContext<VisualEditorContextType>({
   editableElements: new Map(),
   registry: new Map(),
   dispatch: () => {},
+  getDirtyNodeIds: () => [],
+  clearDirtyNodeIds: () => {},
   undo: () => {},
   redo: () => {},
   canUndo: false,
@@ -842,6 +846,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const historyIndexRef = useRef(-1)
   const transactionRef = useRef<{ active: boolean; baseline: Map<string, EditorNode> | null }>({ active: false, baseline: null })
   const deletedIdsRef = useRef<Set<string>>(new Set())
+  // Keep deployment scoped to commands issued in this editor session. The
+  // initial DOM scan is a read-only baseline and must never cause unrelated
+  // runtime values to be written back to Sanity.
+  const dirtyNodeIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     document.documentElement.toggleAttribute("data-editor-active", isEditing)
@@ -1056,6 +1064,24 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
   }, [nodes, registry, isEditing, applyNodeToDom])
 
   const dispatch = useCallback((command: Command) => {
+    const mutatingCommandTypes = new Set([
+      "MOVE_NODE",
+      "RESIZE_NODE",
+      "SET_NODE_GEOMETRY",
+      "SET_NODE_SCALE",
+      "UPDATE_TEXT",
+      "UPDATE_BUTTON",
+      "UPDATE_IMAGE",
+      "UPDATE_CARD",
+      "UPDATE_BACKGROUND",
+      "UPDATE_SECTION",
+      "DELETE_NODE",
+      "CUT_NODE",
+    ])
+    if ("nodeId" in command && mutatingCommandTypes.has(command.type)) {
+      dirtyNodeIdsRef.current.add(command.nodeId)
+    }
+
     setNodes((prev) => {
       const next = new Map(prev)
       const patchNode = (nodeId: string, updater: (node: EditorNode) => EditorNode) => {
@@ -1197,6 +1223,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             }
           }
           next.set(id, { ...structuredClone(clip), id, geometry: { ...clip.geometry, x: clip.geometry.x + 24, y: clip.geometry.y + 24 }, explicitPosition: true })
+          dirtyNodeIdsRef.current.add(id)
           setSelectedId(id)
           setOpenPanel(true)
           break
@@ -1333,6 +1360,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     })),
     registry,
     dispatch,
+    getDirtyNodeIds: () => Array.from(dirtyNodeIdsRef.current),
+    clearDirtyNodeIds: (nodeIds: string[]) => {
+      nodeIds.forEach((nodeId) => dirtyNodeIdsRef.current.delete(nodeId))
+    },
     undo,
     redo,
     canUndo: historyIndex > 0,
@@ -1432,7 +1463,7 @@ function SelectionOverlay({ entry }: { entry: RuntimeEntry }) {
 }
 
 export function VisualEditorOverlay() {
-  const { isEditing, setIsEditing, selectedId, nodes, registry, dispatch, openPanel, setOpenPanel, undo, redo, canUndo, canRedo, assets, getEditableAtPosition } = useVisualEditor()
+  const { isEditing, setIsEditing, selectedId, nodes, registry, dispatch, getDirtyNodeIds, clearDirtyNodeIds, openPanel, setOpenPanel, undo, redo, canUndo, canRedo, assets, getEditableAtPosition } = useVisualEditor()
   const [deployStatus, setDeployStatus] = useState<string | null>(null)
   const [deployDetails, setDeployDetails] = useState<string | null>(null)
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
@@ -1569,9 +1600,11 @@ export function VisualEditorOverlay() {
   const onDeploy = async () => {
     setDeployStatus("connecting")
     try {
+      const deployChangedNodeIds = getDirtyNodeIds()
       const payload = {
         level: "green" as const,
         findings: [],
+        changedNodeIds: deployChangedNodeIds,
         nodes: Array.from(nodes.values()).map((node) => ({
           id: node.id,
           type: node.type,
@@ -1665,6 +1698,7 @@ export function VisualEditorOverlay() {
       }
 
       if (data.status === "ok" && data.step === "done" && data.verification?.ok !== false) {
+        clearDirtyNodeIds(deployChangedNodeIds)
         setDeployStatus("success")
         if (!lines.includes("done")) lines.push("done")
         lines.push("success: saved and published")

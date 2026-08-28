@@ -20,6 +20,7 @@ interface DeployRequestPayload {
   level: "green" | "yellow" | "red"
   diagnosticMode?: boolean
   findings: Array<{ element: string; issue: string; severity: "green" | "yellow" | "red"; blocks: boolean }>
+  changedNodeIds?: string[]
   nodes: DeployNodePayload[]
 }
 
@@ -61,7 +62,7 @@ interface DeployVerification {
   message: string
 }
 
-const ROUTE_VERSION = "sanity-editor-v6-save-verified"
+const ROUTE_VERSION = "sanity-editor-v7-scoped-persistence"
 const TARGET_SECTION = "hero"
 const SANITY_DOC_TYPE = "heroSection"
 const REVALIDATED_PATH = "/"
@@ -397,6 +398,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ routeVersion: ROUTE_VERSION, message: "Invalid deploy payload: nodes array is empty.", publishedDocumentId: "resolved-at-deploy", publishedDocumentType: SANITY_DOC_TYPE, targetSection: TARGET_SECTION, heroTitleMode: "unknown", revalidatedPath: REVALIDATED_PATH, persistedNodes: [], skippedNodes: [], failedNodes: ["payload.nodes"], persistedFields: [], skippedFields: [], failedFields: ["payload.nodes"], diagnostics, envDiagnostics }, { status: 400 })
     }
 
+    // New editor clients send the exact nodes changed during this session.
+    // Keep the old all-nodes behavior only for older clients that do not send
+    // the field at all; an explicit empty list means "publish without saving".
+    const trackedNodeIds = Array.isArray(payload.changedNodeIds)
+      ? new Set(payload.changedNodeIds.filter((nodeId): nodeId is string => typeof nodeId === "string" && nodeId.trim().length > 0))
+      : null
+    const nodesToPersist = trackedNodeIds
+      ? payload.nodes.filter((node) => trackedNodeIds.has(node.id))
+      : payload.nodes
+
     if (!projectId) {
       return NextResponse.json(
         {
@@ -549,10 +560,10 @@ export async function POST(request: Request) {
       message: "",
     }
 
-    const heroTitleNode = payload.nodes.find((node) => node.id === "hero-title" && node.type === "text")
-    const heroTitleMainNode = payload.nodes.find((node) => node.id === "hero-title-main" && node.type === "text")
-    const heroTitleAccentNode = payload.nodes.find((node) => node.id === "hero-title-accent" && node.type === "text")
-    const heroSubtitleNode = payload.nodes.find((node) => node.id === "hero-subtitle" && node.type === "text")
+    const heroTitleNode = nodesToPersist.find((node) => node.id === "hero-title" && node.type === "text")
+    const heroTitleMainNode = nodesToPersist.find((node) => node.id === "hero-title-main" && node.type === "text")
+    const heroTitleAccentNode = nodesToPersist.find((node) => node.id === "hero-title-accent" && node.type === "text")
+    const heroSubtitleNode = nodesToPersist.find((node) => node.id === "hero-subtitle" && node.type === "text")
 
     const failedFields: string[] = []
 
@@ -654,10 +665,13 @@ export async function POST(request: Request) {
     const nextElementStyles: Record<string, PersistedElementStyle> = {
       ...(existingHero.elementStyles || {}),
     }
-    payload.nodes.forEach((node) => {
+    nodesToPersist.forEach((node) => {
       if (!HERO_LAYOUT_NODE_IDS.has(node.id)) return
       const style = buildPersistedElementStyle(node)
-      if (!style) return
+      if (!style) {
+        delete nextElementStyles[node.id]
+        return
+      }
       const previous = nextElementStyles[node.id]
       const previousWasResponsive = previous?.responsiveLayout === true
       const baseStyle = previousWasResponsive ? previous : (() => {
@@ -677,7 +691,7 @@ export async function POST(request: Request) {
       persistedNodes.push(node.id)
       persistedFields.push(`elementStyles.${node.id}`)
     })
-    if (Object.keys(nextElementStyles).length > 0 && payload.nodes.some((node) => HERO_LAYOUT_NODE_IDS.has(node.id) && buildPersistedElementStyle(node))) {
+    if (nodesToPersist.some((node) => HERO_LAYOUT_NODE_IDS.has(node.id))) {
       heroPatch.elementStyles = nextElementStyles
     }
 
@@ -688,7 +702,7 @@ export async function POST(request: Request) {
       steps.push({ step: "saving", ok: true, message: "No persistible Hero content changes detected; no patch applied." })
     }
 
-    const navigationNodes = payload.nodes.filter((node) => NAV_LAYOUT_NODE_IDS.has(node.id) && hasExplicitEditorChange(node))
+    const navigationNodes = nodesToPersist.filter((node) => NAV_LAYOUT_NODE_IDS.has(node.id))
     if (navigationNodes.length > 0) {
       if (!existingNavigation?._id) {
         navigationNodes.forEach((node) => {
@@ -704,9 +718,11 @@ export async function POST(request: Request) {
             nextNavigationStyles[node.id] = { ...(nextNavigationStyles[node.id] || {}), ...style }
             persistedNodes.push(node.id)
             persistedFields.push(`navigation.elementStyles.${node.id}`)
+          } else {
+            delete nextNavigationStyles[node.id]
           }
         })
-        if (Object.keys(nextNavigationStyles).length > 0) navigationPatch.elementStyles = nextNavigationStyles
+        navigationPatch.elementStyles = nextNavigationStyles
 
         const nextLinks = Array.isArray(existingNavigation.links)
           ? existingNavigation.links.map((link) => ({ label: link.label || "", href: link.href || "" }))
@@ -747,7 +763,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const introNodes = payload.nodes.filter((node) => INTRO_LAYOUT_NODE_IDS.has(node.id) && hasExplicitEditorChange(node))
+    const introNodes = nodesToPersist.filter((node) => INTRO_LAYOUT_NODE_IDS.has(node.id))
     if (introNodes.length > 0) {
       if (!existingIntro?._id) {
         introNodes.forEach((node) => {
@@ -763,6 +779,8 @@ export async function POST(request: Request) {
             nextIntroStyles[node.id] = { ...(nextIntroStyles[node.id] || {}), ...style }
             persistedNodes.push(node.id)
             persistedFields.push(`introBanner.elementStyles.${node.id}`)
+          } else {
+            delete nextIntroStyles[node.id]
           }
           if (!node.explicitContent) return
           if (node.id === "intro-banner-text" && typeof node.content?.text === "string" && node.content.text.trim()) {
@@ -779,7 +797,7 @@ export async function POST(request: Request) {
             persistedFields.push(`introBanner.content.${node.id}`)
           }
         })
-        if (Object.keys(nextIntroStyles).length > 0) introPatch.elementStyles = nextIntroStyles
+        introPatch.elementStyles = nextIntroStyles
         introPatch.updatedAt = new Date().toISOString()
         if (Object.keys(introPatch).length > 1) {
           await writeClient.patch(existingIntro._id).set(introPatch).commit()
@@ -788,15 +806,19 @@ export async function POST(request: Request) {
       }
     }
 
-    const homeEditorNodes = payload.nodes
+    const homeEditorChangedIds = new Set(
+      nodesToPersist
+        .filter((node) => !DOCUMENT_LAYOUT_NODE_IDS.has(node.id))
+        .map((node) => node.id),
+    )
+    const homeEditorNodes = nodesToPersist
       .filter((node) => !DOCUMENT_LAYOUT_NODE_IDS.has(node.id))
       .map(buildHomeEditorNode)
       .filter((node): node is Record<string, unknown> => Boolean(node))
-    if (homeEditorNodes.length > 0) {
+    if (homeEditorChangedIds.size > 0) {
       const existingNodes = Array.isArray(existingHomeEditorState?.nodes) ? existingHomeEditorState.nodes : []
-      const changedIds = new Set(homeEditorNodes.map((node) => String(node.nodeId)))
       const mergedNodes = [
-        ...existingNodes.filter((node) => !changedIds.has(String(node.nodeId))),
+        ...existingNodes.filter((node) => !homeEditorChangedIds.has(String(node.nodeId))),
         ...homeEditorNodes,
       ]
       await writeClient.createIfNotExists({ _id: "homeEditorState", _type: "homeEditorState", nodes: [] })
@@ -806,7 +828,13 @@ export async function POST(request: Request) {
         persistedNodes.push(nodeId)
         persistedFields.push(`homeEditorState.nodes.${nodeId}`)
       })
-      steps.push({ step: "saving", ok: true, message: `Home editor state patched: ${homeEditorNodes.length} node(s).` })
+      homeEditorChangedIds.forEach((nodeId) => {
+        if (!homeEditorNodes.some((node) => String(node.nodeId) === nodeId)) {
+          persistedNodes.push(nodeId)
+          persistedFields.push(`homeEditorState.nodes.${nodeId}`)
+        }
+      })
+      steps.push({ step: "saving", ok: true, message: `Home editor state patched: ${homeEditorNodes.length} node(s), removed ${homeEditorChangedIds.size - homeEditorNodes.length} reset node(s).` })
     }
 
     // The write response alone is not enough: the public loaders use the
@@ -850,7 +878,7 @@ export async function POST(request: Request) {
       ),
     ])
 
-    payload.nodes.forEach((node) => {
+    nodesToPersist.forEach((node) => {
       if (!hasExplicitEditorChange(node)) return
       if (HERO_LAYOUT_NODE_IDS.has(node.id)) {
         verifyPersistedStyle(node, publishedHero?.elementStyles, "hero.elementStyles", verification)
@@ -892,8 +920,8 @@ export async function POST(request: Request) {
       }
     }
     comparePublishedText(heroSubtitleNode || ({} as DeployNodePayload), publishedHero?.subtitle, "hero.subtitle")
-    const mainTextNode = payload.nodes.find((node) => node.id === "hero-title-main")
-    const accentTextNode = payload.nodes.find((node) => node.id === "hero-title-accent")
+    const mainTextNode = nodesToPersist.find((node) => node.id === "hero-title-main")
+    const accentTextNode = nodesToPersist.find((node) => node.id === "hero-title-accent")
     comparePublishedText(mainTextNode || ({} as DeployNodePayload), publishedHero?.title, "hero.title")
     comparePublishedText(accentTextNode || ({} as DeployNodePayload), publishedHero?.titleHighlight, "hero.titleHighlight")
 
@@ -911,7 +939,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const navigationNodesForVerification = payload.nodes.filter((node) => NAV_LAYOUT_NODE_IDS.has(node.id) && node.explicitContent)
+    const navigationNodesForVerification = nodesToPersist.filter((node) => NAV_LAYOUT_NODE_IDS.has(node.id) && node.explicitContent)
     navigationNodesForVerification.forEach((node) => {
       if (node.id === "nav-brand-name" && typeof node.content?.text === "string" && node.content.text.trim()) {
         verification.checkedNodes.push(node.id)
@@ -957,7 +985,7 @@ export async function POST(request: Request) {
       }
     })
 
-    const introNodesForVerification = payload.nodes.filter((node) => INTRO_LAYOUT_NODE_IDS.has(node.id) && node.explicitContent)
+    const introNodesForVerification = nodesToPersist.filter((node) => INTRO_LAYOUT_NODE_IDS.has(node.id) && node.explicitContent)
     introNodesForVerification.forEach((node) => {
       const checks: Array<[string, unknown, unknown]> = []
       if (node.id === "intro-banner-text") checks.push(["introBanner.bannerText", node.content?.text, publishedIntro?.bannerText])
