@@ -21,6 +21,9 @@ export interface HomeEditorNodeStyle {
   fontStyle?: string
   textDecoration?: string
   textAlign?: "left" | "center" | "right"
+  letterSpacing?: string
+  lineHeight?: string
+  maxWidth?: string
   scale?: number
   minHeight?: string
   paddingTop?: string

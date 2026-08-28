@@ -126,6 +126,15 @@ function asCssLength(value: unknown): string | undefined {
     : undefined
 }
 
+function asCssNumberOrLength(value: unknown): string | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value)
+  if (typeof value !== "string") return undefined
+  const length = value.trim()
+  return /^(?:-?\d+(?:\.\d+)?)(?:px|rem|em|%|vw|vh|clamp\([^)]*\))?$/i.test(length)
+    ? length
+    : undefined
+}
+
 function sanitizeTitleSegment(value: unknown, fallbackColor: string): HeroTitleSegment | null {
   if (!value || typeof value !== "object") return null
   const raw = value as Record<string, unknown>
@@ -245,11 +254,13 @@ function buildHomeEditorNode(node: DeployNodePayload): Record<string, unknown> |
     const value = asCssColor(node.style?.[key])
     if (value) style[key] = value
   })
-  const lengthKeys = ["fontSize", "minHeight", "paddingTop", "paddingBottom"]
+  const lengthKeys = ["fontSize", "letterSpacing", "maxWidth", "minHeight", "paddingTop", "paddingBottom"]
   lengthKeys.forEach((key) => {
     const value = asCssLength(node.style?.[key])
     if (value) style[key] = value
   })
+  const lineHeight = asCssNumberOrLength(node.style?.lineHeight)
+  if (lineHeight) style.lineHeight = lineHeight
   const stringStyleKeys = ["fontFamily", "fontWeight", "fontStyle", "textDecoration", "textAlign"]
   stringStyleKeys.forEach((key) => {
     const value = node.style?.[key]

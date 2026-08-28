@@ -60,6 +60,9 @@ interface EditorNode {
     fontStyle?: string
     textDecoration?: string
     textAlign?: "left" | "center" | "right"
+    letterSpacing?: string
+    lineHeight?: string
+    maxWidth?: string
     scale?: number
     minHeight?: string
     paddingTop?: string
@@ -73,6 +76,9 @@ interface EditorNode {
     alt?: string
     videoUrl?: string
     mediaKind?: "image" | "video"
+    gradientEnabled?: boolean
+    gradientStart?: string
+    gradientEnd?: string
   }
   explicitContent: boolean
   explicitStyle: boolean
@@ -376,6 +382,24 @@ function withColorOpacity(input: string, opacity: number): string {
   return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${alpha.toFixed(3)})`
 }
 
+function applyTextGradient(el: HTMLElement, start: string, end: string): void {
+  el.style.backgroundImage = `linear-gradient(90deg, ${start}, ${end})`
+  el.style.backgroundClip = "text"
+  el.style.webkitBackgroundClip = "text"
+  el.style.webkitTextFillColor = "transparent"
+  el.style.color = "transparent"
+  el.dataset.editorManagedGradient = "true"
+}
+
+function clearTextGradient(el: HTMLElement): void {
+  if (el.dataset.editorManagedGradient !== "true") return
+  el.style.removeProperty("background-image")
+  el.style.removeProperty("background-clip")
+  el.style.removeProperty("-webkit-background-clip")
+  el.style.removeProperty("-webkit-text-fill-color")
+  delete el.dataset.editorManagedGradient
+}
+
 function colorInputValue(value: string | undefined, fallback: string): string {
   const parsed = parseCssColor(value)
   if (!parsed || parsed.a <= 0) return rgbToHex(fallback)
@@ -404,6 +428,180 @@ function EditorColorInput({ value, fallback, className, onValueChange }: EditorC
         if (/^#[0-9a-f]{6}$/i.test(next)) onValueChange(next)
       }}
     />
+  )
+}
+
+type TextEditorPatch = Partial<EditorNode["content"] & EditorNode["style"]>
+
+interface TextToolControlsProps {
+  node: EditorNode
+  onPatch: (patch: TextEditorPatch) => void
+  includeContent?: boolean
+  includeOpacity?: boolean
+}
+
+function TextToolControls({ node, onPatch, includeContent = true, includeOpacity = true }: TextToolControlsProps) {
+  const lineHeight = node.style.lineHeight === "normal" ? "" : node.style.lineHeight || ""
+  const maxWidth = node.style.maxWidth === "none" ? "" : node.style.maxWidth || ""
+  const gradientEnabled = node.content.gradientEnabled === true
+
+  return (
+    <div className="space-y-2 rounded border border-slate-200 p-2">
+      <div className="text-xs font-semibold">Text tools</div>
+      {includeContent && (
+        <>
+          <label className="text-[10px]">Content</label>
+          <textarea
+            className="w-full rounded border p-1 text-xs"
+            value={node.content.text || ""}
+            onChange={(e) => onPatch({ text: e.target.value })}
+          />
+        </>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px]">Text color</label>
+          <EditorColorInput
+            className="h-8 w-full rounded border p-1"
+            value={node.style.color}
+            fallback="#ffffff"
+            onValueChange={(value) => onPatch({ color: value })}
+          />
+        </div>
+        <div>
+          <label className="text-[10px]">Font size</label>
+          <input
+            className="w-full rounded border p-1 text-xs"
+            value={node.style.fontSize || ""}
+            onChange={(e) => onPatch({ fontSize: e.target.value })}
+            placeholder="e.g. 24px"
+          />
+        </div>
+        <div>
+          <label className="text-[10px]">Font family</label>
+          <input
+            className="w-full rounded border p-1 text-xs"
+            value={node.style.fontFamily || ""}
+            onChange={(e) => onPatch({ fontFamily: e.target.value })}
+            placeholder="e.g. Inter, sans-serif"
+          />
+        </div>
+        <div>
+          <label className="text-[10px]">Letter spacing</label>
+          <input
+            className="w-full rounded border p-1 text-xs"
+            value={node.style.letterSpacing || ""}
+            onChange={(e) => onPatch({ letterSpacing: e.target.value })}
+            placeholder="e.g. 0.02em"
+          />
+        </div>
+        <div>
+          <label className="text-[10px]">Line height</label>
+          <input
+            className="w-full rounded border p-1 text-xs"
+            value={lineHeight}
+            onChange={(e) => onPatch({ lineHeight: e.target.value })}
+            placeholder="e.g. 1.2"
+          />
+        </div>
+        <div>
+          <label className="text-[10px]">Max width</label>
+          <input
+            className="w-full rounded border p-1 text-xs"
+            value={maxWidth}
+            onChange={(e) => onPatch({ maxWidth: e.target.value })}
+            placeholder="e.g. 42rem"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="text-[10px]">Text alignment</label>
+        <div className="mt-1 grid grid-cols-3 gap-1">
+          {(["left", "center", "right"] as const).map((alignment) => (
+            <button
+              key={alignment}
+              type="button"
+              className={`rounded border px-2 py-1 text-xs ${node.style.textAlign === alignment ? "bg-slate-900 text-white" : ""}`}
+              onClick={() => onPatch({ textAlign: alignment })}
+            >
+              {alignment === "left" ? "Left" : alignment === "center" ? "Center" : "Right"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {includeOpacity && (
+        <div>
+          <label className="text-[10px]">Text opacity ({(node.style.opacity ?? 1).toFixed(2)})</label>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            className="w-full"
+            value={node.style.opacity ?? 1}
+            onChange={(e) => onPatch({ opacity: Number(e.target.value) })}
+          />
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={`rounded border px-2 py-1 text-xs ${node.style.fontWeight === "700" ? "bg-slate-900 text-white" : ""}`}
+          onClick={() => onPatch({ fontWeight: node.style.fontWeight === "700" ? "400" : "700" })}
+        >
+          B
+        </button>
+        <button
+          type="button"
+          className={`rounded border px-2 py-1 text-xs italic ${node.style.fontStyle === "italic" ? "bg-slate-900 text-white" : ""}`}
+          onClick={() => onPatch({ fontStyle: node.style.fontStyle === "italic" ? "normal" : "italic" })}
+        >
+          I
+        </button>
+        <button
+          type="button"
+          className={`rounded border px-2 py-1 text-xs underline ${node.style.textDecoration === "underline" ? "bg-slate-900 text-white" : ""}`}
+          onClick={() => onPatch({ textDecoration: node.style.textDecoration === "underline" ? "none" : "underline" })}
+        >
+          U
+        </button>
+      </div>
+      <label className="flex items-center gap-2 text-[11px]">
+        <input
+          type="checkbox"
+          checked={gradientEnabled}
+          onChange={(e) => onPatch({
+            gradientEnabled: e.target.checked,
+            gradientStart: node.content.gradientStart || "#FFB15A",
+            gradientEnd: node.content.gradientEnd || "#FF6C00",
+            ...(!e.target.checked && { color: node.style.color || "#ffffff" }),
+          })}
+        />
+        Use gradient
+      </label>
+      {gradientEnabled && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-[10px]">
+            Gradient start
+            <EditorColorInput
+              className="h-8 w-full rounded border p-1"
+              value={node.content.gradientStart}
+              fallback="#FFB15A"
+              onValueChange={(value) => onPatch({ gradientStart: value })}
+            />
+          </label>
+          <label className="text-[10px]">
+            Gradient end
+            <EditorColorInput
+              className="h-8 w-full rounded border p-1"
+              value={node.content.gradientEnd}
+              fallback="#FF6C00"
+              onValueChange={(value) => onPatch({ gradientEnd: value })}
+            />
+          </label>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -518,6 +716,9 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     entry.type === "card" && (el.dataset.concertCard === "true" || Boolean(el.querySelector("[data-concert-field]")))
   if (entry.type === "text" || entry.type === "button" || entry.type === "card") {
     content.text = el.textContent?.trim() || ""
+    if (entry.type === "text" || entry.type === "button") {
+      Object.assign(content, readGradientStyle(getComputedStyle(el)))
+    }
     if (entry.id === "hero-title") {
       const baseStyle = getComputedStyle(el)
       const baseSegment: TextSegment = {
@@ -610,6 +811,9 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       fontStyle: cs.fontStyle,
       textDecoration: cs.textDecorationLine,
       textAlign: cs.textAlign as EditorNode["style"]["textAlign"],
+      letterSpacing: cs.letterSpacing,
+      lineHeight: cs.lineHeight,
+      maxWidth: cs.maxWidth,
       opacity: Number(cs.opacity || "1"),
       scale: savedTransform.scale,
       minHeight: cs.minHeight,
@@ -764,14 +968,26 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           el.textContent = node.content.text
         }
       }
+      if ((node.explicitContent || node.explicitStyle) && node.content.gradientEnabled) {
+        applyTextGradient(
+          el,
+          node.content.gradientStart || "#FFB15A",
+          node.content.gradientEnd || "#FF6C00"
+        )
+      } else if ((node.explicitContent || node.explicitStyle) && !node.content.gradientEnabled) {
+        clearTextGradient(el)
+      }
       if (node.explicitStyle) {
-        if (node.style.color) el.style.color = node.style.color
+        if (!node.content.gradientEnabled && node.style.color) el.style.color = node.style.color
         if (node.style.fontSize) el.style.fontSize = node.style.fontSize
         if (node.style.fontFamily) el.style.fontFamily = node.style.fontFamily
         if (node.style.fontWeight) el.style.fontWeight = node.style.fontWeight
         if (node.style.fontStyle) el.style.fontStyle = node.style.fontStyle
         if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
         if (node.style.textAlign) el.style.textAlign = node.style.textAlign
+        if (node.style.letterSpacing) el.style.letterSpacing = node.style.letterSpacing
+        if (node.style.lineHeight) el.style.lineHeight = node.style.lineHeight
+        if (node.style.maxWidth) el.style.maxWidth = node.style.maxWidth
       }
     }
     if (node.type === "button") {
@@ -911,7 +1127,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             let isContentEdit = !!n.explicitContent
             let isStyleEdit = !!n.explicitStyle
             Object.entries(command.patch).forEach(([k, v]) => {
-              if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl", "mediaKind"].includes(k)) {
+              if (["text", "textSegments", "titleSegments", "href", "src", "alt", "videoUrl", "mediaKind", "gradientEnabled", "gradientStart", "gradientEnd"].includes(k)) {
                 isContentEdit = true;
                 (content as Record<string, unknown>)[k] = v
               }
@@ -2167,120 +2383,47 @@ export function VisualEditorOverlay() {
               </>
             )}
 
-            {(selectedNode.type === "text" || selectedNode.type === "button") && !(selectedNode.type === "text" && selectedNode.id === "hero-title" && Array.isArray(selectedNode.content.textSegments)) && (
-              <>
-                <label className="text-xs font-semibold">Content</label>
-                <textarea
-                  className="w-full rounded border p-1 text-xs"
-                  value={selectedNode.content.text || ""}
-                  onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { text: e.target.value } })}
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px]">Text Color</label>
-                    <EditorColorInput
-                      className="h-8 w-full rounded border p-1"
-                      value={selectedNode.style.color}
-                      fallback="#ffffff"
-                      onValueChange={(value) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { color: value } })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px]">Font Size</label>
-                    <input
-                      className="w-full rounded border p-1 text-xs"
-                      value={selectedNode.style.fontSize || ""}
-                      onChange={(e) => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { fontSize: e.target.value } })}
-                      placeholder="e.g. 24px"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-[10px]">Text alignment</label>
-                  <div className="mt-1 grid grid-cols-3 gap-1">
-                    {(["left", "center", "right"] as const).map((alignment) => (
-                      <button
-                        key={alignment}
-                        type="button"
-                        className={`rounded border px-2 py-1 text-xs ${selectedNode.style.textAlign === alignment ? "bg-slate-900 text-white" : ""}`}
-                        onClick={() => dispatch({
-                          type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON",
-                          nodeId: selectedNode.id,
-                          patch: { textAlign: alignment },
-                        })}
-                      >
-                        {alignment === "left" ? "Left" : alignment === "center" ? "Center" : "Right"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {selectedNode.type === "text" && (
-                  <div>
-                    <label className="text-[10px]">Text opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      className="w-full"
-                      value={selectedNode.style.opacity ?? 1}
-                      onChange={(e) => dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
-                    />
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className={`rounded border px-2 py-1 text-xs ${selectedNode.style.fontWeight === "700" ? "bg-slate-900 text-white" : ""}`}
-                    onClick={() => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { fontWeight: selectedNode.style.fontWeight === "700" ? "400" : "700" } })}
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    className={`rounded border px-2 py-1 text-xs italic ${selectedNode.style.fontStyle === "italic" ? "bg-slate-900 text-white" : ""}`}
-                    onClick={() => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { fontStyle: selectedNode.style.fontStyle === "italic" ? "normal" : "italic" } })}
-                  >
-                    I
-                  </button>
-                  <button
-                    type="button"
-                    className={`rounded border px-2 py-1 text-xs underline ${selectedNode.style.textDecoration === "underline" ? "bg-slate-900 text-white" : ""}`}
-                    onClick={() => dispatch({ type: selectedNode.type === "text" ? "UPDATE_TEXT" : "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { textDecoration: selectedNode.style.textDecoration === "underline" ? "none" : "underline" } })}
-                  >
-                    U
-                  </button>
-                </div>
-              </>
+            {selectedNode.type === "text" && (
+              <TextToolControls
+                node={selectedNode}
+                includeContent={!(selectedNode.id === "hero-title" && Array.isArray(selectedNode.content.textSegments))}
+                onPatch={(patch) => dispatch({ type: "UPDATE_TEXT", nodeId: selectedNode.id, patch })}
+              />
             )}
 
             {selectedNode.type === "button" && (
               <>
-                <label className="text-[10px]">Button opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  className="w-full"
-                  value={selectedNode.style.opacity ?? 1}
-                  onChange={(e) => {
-                    dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })
-                  }}
+                <TextToolControls
+                  node={selectedNode}
+                  includeOpacity={false}
+                  onPatch={(patch) => dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch })}
                 />
-                <label className="text-[10px]">Button background color</label>
-                <EditorColorInput
-                  className="h-8 w-full rounded border p-1"
-                  value={selectedNode.style.backgroundColor}
-                  fallback="#FF8C21"
-                  onValueChange={(value) => dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { backgroundColor: value } })}
-                />
-                <label className="text-xs font-semibold">Link</label>
-                <input
-                  className="w-full rounded border p-1 text-xs"
-                  value={selectedNode.content.href || ""}
-                  onChange={(e) => dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { href: e.target.value } })}
-                />
+                <div className="space-y-2 rounded border border-orange-200 bg-orange-50 p-2">
+                  <div className="text-xs font-semibold text-orange-900">Button tools</div>
+                  <label className="text-[10px]">Button opacity ({(selectedNode.style.opacity ?? 1).toFixed(2)})</label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    className="w-full"
+                    value={selectedNode.style.opacity ?? 1}
+                    onChange={(e) => dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { opacity: Number(e.target.value) } })}
+                  />
+                  <label className="text-[10px]">Button background color</label>
+                  <EditorColorInput
+                    className="h-8 w-full rounded border p-1"
+                    value={selectedNode.style.backgroundColor}
+                    fallback="#FF8C21"
+                    onValueChange={(value) => dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { backgroundColor: value } })}
+                  />
+                  <label className="text-xs font-semibold">Link</label>
+                  <input
+                    className="w-full rounded border p-1 text-xs"
+                    value={selectedNode.content.href || ""}
+                    onChange={(e) => dispatch({ type: "UPDATE_BUTTON", nodeId: selectedNode.id, patch: { href: e.target.value } })}
+                  />
+                </div>
               </>
             )}
 

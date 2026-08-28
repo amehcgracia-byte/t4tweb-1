@@ -135,9 +135,8 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
       el.dataset.editorGeometryWidth = String(Math.round(node.geometry.width))
       el.dataset.editorGeometryHeight = String(Math.round(node.geometry.height))
 
-      if (node.explicitStyle && !resetHistoryCard) {
-        if (node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
-        if ((node.nodeType === "text" || node.nodeType === "button") && node.content.gradientEnabled) {
+      if (!resetHistoryCard && (node.explicitContent || node.explicitStyle) && (node.nodeType === "text" || node.nodeType === "button")) {
+        if (node.content.gradientEnabled) {
           applyTextGradient(
             el,
             node.content.gradientStart || "#FFB15A",
@@ -145,8 +144,12 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
           )
         } else {
           clearTextGradient(el)
-          if (node.style.color) el.style.color = node.style.color
         }
+      }
+
+      if (node.explicitStyle && !resetHistoryCard) {
+        if (node.style.opacity !== undefined) el.style.opacity = String(node.style.opacity)
+        if (!node.content.gradientEnabled && node.style.color) el.style.color = node.style.color
         if (node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
         if (allowResponsiveTypography && node.style.fontSize) el.style.fontSize = node.style.fontSize
         if (node.style.fontFamily) el.style.fontFamily = node.style.fontFamily
@@ -154,6 +157,9 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
         if (node.style.fontStyle) el.style.fontStyle = node.style.fontStyle
         if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
         if (node.style.textAlign) el.style.textAlign = node.style.textAlign
+        if (allowResponsiveTypography && node.style.letterSpacing) el.style.letterSpacing = node.style.letterSpacing
+        if (allowResponsiveTypography && node.style.lineHeight) el.style.lineHeight = node.style.lineHeight
+        if (allowResponsiveTypography && node.style.maxWidth) el.style.maxWidth = node.style.maxWidth
         if (allowResponsiveTypography && node.style.minHeight) el.style.minHeight = node.style.minHeight
         if (allowResponsiveTypography && node.style.paddingTop) el.style.paddingTop = node.style.paddingTop
         if (allowResponsiveTypography && node.style.paddingBottom) el.style.paddingBottom = node.style.paddingBottom
