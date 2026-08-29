@@ -2716,7 +2716,7 @@ export function VisualEditorOverlay() {
                   <div className="space-y-2 rounded border border-orange-200 bg-orange-50 p-2">
                     <div className="text-xs font-semibold text-orange-900">Concert fields</div>
                     <div className="text-[10px] text-orange-800">These values are saved as public concert overrides.</div>
-                    {(["date", "venue", "city", "genre", "price", "time"] as ConcertField[])
+                    {(["date", "venue", "city", "genre", "price", "time", "locationUrl"] as ConcertField[])
                       .filter((field) => nodes.has(`${selectedConcertCardId}-${field}`))
                       .map((field) => (
                         <label key={field} className="block text-[10px] font-semibold">

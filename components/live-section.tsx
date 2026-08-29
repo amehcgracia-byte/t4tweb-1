@@ -89,6 +89,14 @@ function formatDate(dateStr: string): string {
   return formatDisplayDate(dateStr)
 }
 
+function formatPrice(price: string): string {
+  const value = price.trim()
+  if (!value) return "Price TBA"
+  if (/^free$/i.test(value)) return "Free"
+  if (/^[€$£]/.test(value)) return value
+  return `€${value}`
+}
+
 function getBerlinTodayIso(): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Berlin",
@@ -127,6 +135,7 @@ interface LiveSectionProps {
 export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const [concerts, setConcerts] = useState<Concert[]>(initialConcerts)
+  const [activeConcert, setActiveConcert] = useState<Concert | null>(null)
   const loading = false
   const error = false
   const { opacity, y } = useScrollAnimation(sectionRef)
@@ -305,6 +314,21 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
       if (typeof fromCard === "string" && fromCard.trim()) return fromCard.trim()
     }
     return fallback
+  }
+
+  const resolveConcertLocationUrl = (cardId: string, fallback: string): string => {
+    const locationNode = overrides[`${cardId}-locationUrl`]
+    if (locationNode?.explicitContent && locationNode.content.text?.trim()) return locationNode.content.text.trim()
+    const cardNode = overrides[cardId]
+    if (cardNode?.explicitContent && cardNode.content.locationUrl?.trim()) return cardNode.content.locationUrl.trim()
+    return fallback
+  }
+
+  const openConcertDetails = (concert: Concert, cardId: string) => {
+    setActiveConcert({
+      ...concert,
+      locationUrl: resolveConcertLocationUrl(cardId, concert.locationUrl),
+    })
   }
 
   return (
@@ -486,6 +510,17 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                       data-editor-node-type="card"
                       data-editor-node-label={`Upcoming Event ${index + 1}`}
                       data-editor-grouped="true"
+                      data-concert-card="true"
+                      data-concert-id={getConcertStableKey(concert)}
+                      role={isEditing ? undefined : "button"}
+                      tabIndex={isEditing ? undefined : 0}
+                      onClick={isEditing ? undefined : () => openConcertDetails(concert, cardId)}
+                      onKeyDown={isEditing ? undefined : (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault()
+                          openConcertDetails(concert, cardId)
+                        }
+                      }}
                       className="min-h-[80px] p-5 bg-secondary/50 rounded-xl border border-border hover:border-primary/30 transition-all duration-300 group shadow-lg hover:shadow-xl flex items-center"
                       style={getOverrideStyle(overrides[cardId])}
                      >
@@ -499,6 +534,21 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                           <span data-editor-node-id={`${cardId}-genre`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Genre`} data-concert-field="genre" className="px-3 py-1 bg-primary/10 rounded-full text-primary text-xs" style={getOverrideStyle(overrides[`${cardId}-genre`])}>{resolveConcertSimpleField(cardId, "genre", concert.genre)}</span>
                           <span data-editor-node-id={`${cardId}-price`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Price`} data-concert-field="price" style={getOverrideStyle(overrides[`${cardId}-price`])}>{(() => { const price = resolveConcertSimpleField(cardId, "price", concert.price || "Free"); return price === "Free" ? "Free" : `€${price}` })()}</span>
                           <span data-editor-node-id={`${cardId}-time`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Time`} data-concert-field="time" className="text-xs" style={getOverrideStyle(overrides[`${cardId}-time`])}>{resolveConcertSimpleField(cardId, "time", concert.time)}</span>
+                          <button
+                            type="button"
+                            data-editor-node-id={`${cardId}-locationUrl`}
+                            data-editor-node-type="button"
+                            data-editor-node-label={`Upcoming Event ${index + 1} Google Maps`}
+                            data-concert-field="locationUrl"
+                            className="rounded-full border border-primary/40 px-3 py-1 text-xs text-primary hover:bg-primary/10"
+                            style={getOverrideStyle(overrides[`${cardId}-locationUrl`])}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              openConcertDetails(concert, cardId)
+                            }}
+                          >
+                            Map
+                          </button>
                         </div>
                       </div>
                     </motion.div>
@@ -570,6 +620,17 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                       data-editor-node-type="card"
                       data-editor-node-label={`History Event ${index + 1}`}
                       data-editor-grouped="true"
+                      data-concert-card="true"
+                      data-concert-id={getConcertStableKey(concert)}
+                      role={isEditing ? undefined : "button"}
+                      tabIndex={isEditing ? undefined : 0}
+                      onClick={isEditing ? undefined : () => openConcertDetails(concert, cardId)}
+                      onKeyDown={isEditing ? undefined : (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault()
+                          openConcertDetails(concert, cardId)
+                        }
+                      }}
                       className="min-h-[80px] p-5 bg-secondary/30 rounded-xl border border-border/50 hover:border-primary/20 transition-all duration-300 group shadow-lg hover:shadow-xl flex items-center"
                        style={getHistoryCardStyle(overrides[cardId], concert)}
                      >
@@ -609,6 +670,21 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                            >
                              {resolveConcertSimpleField(cardId, "time", concert.time)}
                            </span>
+                           <button
+                             type="button"
+                             data-editor-node-id={`${cardId}-locationUrl`}
+                             data-editor-node-type="button"
+                             data-editor-node-label={`History Event ${index + 1} Google Maps`}
+                             data-concert-field="locationUrl"
+                             className="rounded-full border border-primary/30 px-3 py-1 text-xs text-primary hover:bg-primary/10"
+                             style={getOverrideStyle(overrides[`${cardId}-locationUrl`])}
+                             onClick={(event) => {
+                               event.stopPropagation()
+                               openConcertDetails(concert, cardId)
+                             }}
+                           >
+                             Map
+                           </button>
                         </div>
                       </div>
                     </motion.div>
@@ -642,6 +718,51 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
       </div>
 
       <div className="section-photo-fade-bottom" />
+      {activeConcert && !isEditing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => setActiveConcert(null)}>
+          <div
+            className="w-full max-w-md rounded-2xl border border-border bg-background p-6 text-foreground shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${activeConcert.venue || "Concert"} details`}
+          >
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">Live date</p>
+                <h3 className="mt-2 font-serif text-2xl">{activeConcert.venue || "Location TBA"}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{[activeConcert.city, activeConcert.country].filter(Boolean).join(", ") || "Location TBA"}</p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full border border-border px-3 py-1 text-sm text-muted-foreground hover:text-foreground"
+                onClick={() => setActiveConcert(null)}
+                aria-label="Close concert details"
+              >
+                Close
+              </button>
+            </div>
+            <dl className="space-y-3 text-sm">
+              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Date</dt><dd className="text-right font-medium">{formatDate(activeConcert.date)}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Time</dt><dd className="text-right font-medium">{activeConcert.time || "Time TBA"}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Genre</dt><dd className="text-right font-medium">{activeConcert.genre || "World Music"}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Price</dt><dd className="text-right font-medium">{formatPrice(activeConcert.price)}</dd></div>
+            </dl>
+            {activeConcert.locationUrl ? (
+              <a
+                href={activeConcert.locationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Open in Google Maps
+              </a>
+            ) : (
+              <p className="mt-6 rounded-lg border border-border px-4 py-3 text-center text-sm text-muted-foreground">Google Maps link TBA</p>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   )
 }
