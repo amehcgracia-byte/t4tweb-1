@@ -32,6 +32,40 @@ export function buildHeroStandardLayoutStyle(opts: {
 }
 
 /**
+ * Replays the editor's Hero background framing without translating the
+ * viewport-sized wrapper itself. Moving that wrapper can expose its black
+ * parent on the public page; object-position keeps the image clipped to the
+ * full Hero while preserving the saved vertical crop.
+ */
+export function buildHeroBackgroundImageLayoutStyle(opts: {
+  x: number
+  y: number
+  scale?: number
+}): CSSProperties {
+  const tx = roundLayoutPx(opts.x)
+  const ty = roundLayoutPx(opts.y)
+  const scaleVal = typeof opts.scale === "number" ? Math.max(1, opts.scale) : 1
+
+  const result: CSSProperties = {
+    // Keep the full-bleed image from creating a horizontal black strip when
+    // the editor was measured on a different desktop width. Vertical crop is
+    // safe because the square Hero asset has extra cover height on desktop.
+    objectPosition: `center ${ty}px`,
+  }
+
+  if (scaleVal !== 1) {
+    result.transform = `scale(${scaleVal})`
+    result.transformOrigin = "center center"
+  }
+
+  // Keep x in the helper's contract for callers that need to inspect the
+  // saved geometry, while deliberately not translating the public full-bleed
+  // image horizontally and risking an empty edge.
+  void tx
+  return result
+}
+
+/**
  * Scroll block: centered with `left: 50%` + `translate(calc(-50% + x), y)` so x/y match
  * what you see after save (must match `applyScrollIndicatorLayoutToElement` in the editor).
  */
