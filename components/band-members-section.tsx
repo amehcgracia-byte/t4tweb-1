@@ -24,13 +24,16 @@ function buildInlineStyleFromOverride(
   if (!override) return undefined
   const style: CSSProperties = {}
   const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
-  if (includeGeometry && (override.explicitPosition || (override.explicitStyle && scale !== 1))) {
+  const applyMediaGeometry = override.nodeType !== "image" && override.nodeType !== "background"
+    ? true
+    : override.explicitContent
+  if (includeGeometry && applyMediaGeometry && (override.explicitPosition || (override.explicitStyle && scale !== 1))) {
     style.transform = scale !== 1
       ? `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px) scale(${scale})`
       : `translate(${Math.round(override.geometry.x)}px, ${Math.round(override.geometry.y)}px)`
     style.transformOrigin = "top left"
   }
-  if (includeGeometry && override.explicitSize) {
+  if (includeGeometry && applyMediaGeometry && override.explicitSize) {
     style.width = `${Math.max(8, Math.round(override.geometry.width))}px`
     style.height = `${Math.max(8, Math.round(override.geometry.height))}px`
   }
@@ -172,7 +175,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
   }
   const resolveEditorMemberImage = (nodeId: string, fallback: string): string => {
     const node = isEditing ? nodes.get(nodeId) : undefined
-    return node?.explicitContent && node.content.src ? node.content.src : fallback
+    return node?.content.src ? node.content.src : fallback
   }
 
   const displayedMembers = members.map((member, index) => ({
@@ -194,7 +197,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
     ),
     image: resolveEditorMemberImage(
       `member-item-${index}-image`,
-      overrides[`member-item-${index}-image`]?.explicitContent && overrides[`member-item-${index}-image`]?.content.src
+      overrides[`member-item-${index}-image`]?.content.src
         ? (overrides[`member-item-${index}-image`]?.content.src as string)
         : member.image
     ),

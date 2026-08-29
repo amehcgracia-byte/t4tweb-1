@@ -832,6 +832,10 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   }
 }
 
+function isMediaNode(node: EditorNode): boolean {
+  return node.type === "image" || node.type === "background"
+}
+
 export function VisualEditorProvider({ children }: { children: ReactNode }) {
   const [isEditing, setIsEditing] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -906,7 +910,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     if (node.id === "hero-scroll-indicator" && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1))) {
       applyScrollIndicatorLayoutToElement(el, g, nodeScale)
       el.dataset.editorManagedTransform = "true"
-    } else if (!isViewportContainer && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1))) {
+    } else if (!isViewportContainer && (!isMediaNode(node) || node.explicitContent) && (node.explicitPosition || (node.explicitStyle && nodeScale !== 1))) {
       el.style.transform = nodeScale !== 1
         ? `translate(${g.x}px, ${g.y}px) scale(${nodeScale})`
         : `translate(${g.x}px, ${g.y}px)`
@@ -923,7 +927,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         delete el.dataset.editorManagedTransform
       }
     }
-    if (!isViewportContainer && node.explicitSize) {
+    if (!isViewportContainer && (!isMediaNode(node) || node.explicitContent) && node.explicitSize) {
       el.style.width = `${Math.max(8, g.width)}px`
       el.style.height = `${Math.max(8, g.height)}px`
       el.dataset.editorManagedSize = "true"
@@ -1117,16 +1121,27 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
           return next
         }
         case "MOVE_NODE":
-          patchNode(command.nodeId, (n) => ({ ...n, explicitPosition: true, geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy } }))
+          patchNode(command.nodeId, (n) => ({
+            ...n,
+            explicitContent: isMediaNode(n) ? true : n.explicitContent,
+            explicitPosition: true,
+            geometry: { ...n.geometry, x: n.geometry.x + command.dx, y: n.geometry.y + command.dy },
+          }))
           shouldSnapshot = !command.transient && !transactionRef.current.active
           break
         case "RESIZE_NODE":
-          patchNode(command.nodeId, (n) => ({ ...n, explicitSize: true, geometry: { ...n.geometry, width: command.width, height: command.height } }))
+          patchNode(command.nodeId, (n) => ({
+            ...n,
+            explicitContent: isMediaNode(n) ? true : n.explicitContent,
+            explicitSize: true,
+            geometry: { ...n.geometry, width: command.width, height: command.height },
+          }))
           shouldSnapshot = !command.transient && !transactionRef.current.active
           break
         case "SET_NODE_GEOMETRY":
           patchNode(command.nodeId, (n) => ({
             ...n,
+            explicitContent: isMediaNode(n) ? true : n.explicitContent,
             explicitPosition: true,
             explicitSize: true,
             geometry: { ...n.geometry, x: command.x, y: command.y, width: command.width, height: command.height },
@@ -1136,6 +1151,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
         case "SET_NODE_SCALE":
           patchNode(command.nodeId, (n) => ({
             ...n,
+            explicitContent: isMediaNode(n) ? true : n.explicitContent,
             explicitStyle: true,
             style: { ...n.style, scale: Math.max(0.1, command.scale) },
           }))

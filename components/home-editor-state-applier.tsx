@@ -33,6 +33,15 @@ function isDocDrivenNode(nodeId: string): boolean {
   return false
 }
 
+function shouldApplyMediaGeometry(node: HomeEditorNodeOverride): boolean {
+  // Older media records contain fixed desktop geometry without marking the
+  // media content as an explicit edit. Ignore that legacy geometry so it
+  // cannot distort the public layout; a new media move/resize marks the node
+  // explicit and is then applied normally.
+  if (node.nodeType === "image" || node.nodeType === "background") return node.explicitContent
+  return true
+}
+
 function escapeEditorId(id: string): string {
   if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
     return CSS.escape(id)
@@ -97,7 +106,9 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
       const resetHistoryCard = isResetHistoryCard(node.nodeId)
       const scale = typeof node.style.scale === "number" ? Math.max(0.1, node.style.scale) : 1
 
-      const applyNodeGeometry = allowGeometryOverrides && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId)
+      const applyNodeGeometry = allowGeometryOverrides
+        && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId)
+        && shouldApplyMediaGeometry(node)
 
       if (applyNodeGeometry && (node.explicitPosition || (node.explicitStyle && scale !== 1))) {
         el.style.transform = scale !== 1
@@ -240,6 +251,19 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
             priceEl.textContent = raw === "Free" ? "Free" : raw ? `€${raw}` : ""
           }
           if (timeEl && node.content.time !== undefined) timeEl.textContent = node.content.time
+        }
+      }
+
+      // Some older image/background nodes have a valid persisted src but
+      // explicitContent=false. Apply that legacy value as long as the node
+      // is not driven by a Sanity document field.
+      if (!node.explicitContent && (node.nodeType === "image" || node.nodeType === "background") && !DOC_DRIVEN_IMAGE_NODE_IDS.has(node.nodeId) && node.content.src) {
+        const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
+        if (img) {
+          const normalizedSrc = node.nodeId === "about-bg-image" && node.content.src.endsWith("/images/about-bg-main.jpg")
+            ? "/images/about-band-color.png"
+            : node.content.src
+          img.src = normalizedSrc
         }
       }
 

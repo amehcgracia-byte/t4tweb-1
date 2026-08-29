@@ -40,7 +40,10 @@ export function HomeEditorOverridesProvider({ nodes, children }: { nodes: HomeEd
     const map = new Map<string, string>()
     nodes.forEach((node) => {
       if (DOC_DRIVEN_IMAGE_NODE_IDS.has(node.nodeId)) return
-      if ((node.nodeType === "image" || node.nodeType === "background") && node.explicitContent && isValidPersistedSrc(node.content.src)) {
+      // Image nodes historically saved their src separately from the
+      // explicitContent flag. Keep those valid legacy values visible while
+      // still excluding document-driven media above.
+      if ((node.nodeType === "image" || node.nodeType === "background") && isValidPersistedSrc(node.content.src)) {
         map.set(node.nodeId, normalizePersistedSrc(node.nodeId, node.content.src))
       }
     })
