@@ -66,6 +66,14 @@ function buildInlineStyleFromOverride(
     if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
     if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
     if (override.style.textDecoration) style.textDecoration = override.style.textDecoration as CSSProperties["textDecoration"]
+    if (override.style.textTransform) style.textTransform = override.style.textTransform
+    if (override.style.textShadow) style.textShadow = override.style.textShadow
+    if (override.style.borderColor) style.borderColor = override.style.borderColor
+    if (override.style.borderWidth) style.borderWidth = override.style.borderWidth
+    if (override.style.borderRadius) style.borderRadius = override.style.borderRadius
+    if (override.style.boxShadow) style.boxShadow = override.style.boxShadow
+    if (override.style.paddingLeft) style.paddingLeft = override.style.paddingLeft
+    if (override.style.paddingRight) style.paddingRight = override.style.paddingRight
     if (includeGeometry && override.style.minHeight) style.minHeight = override.style.minHeight
     if (includeGeometry && override.style.paddingTop) style.paddingTop = override.style.paddingTop
     if (includeGeometry && override.style.paddingBottom) style.paddingBottom = override.style.paddingBottom

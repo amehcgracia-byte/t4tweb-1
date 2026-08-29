@@ -109,32 +109,40 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
         const resetHistoryCard = isResetHistoryCard(node.nodeId)
         const scale = typeof node.style.scale === "number" ? Math.max(0.1, node.style.scale) : 1
 
-        const applyNodeGeometry = (allowGeometryOverrides || RESPONSIVE_MEDIA_NODE_IDS.has(node.nodeId))
+        const applyNodeGeometry = !node.nodeId.startsWith("custom-") && (allowGeometryOverrides || RESPONSIVE_MEDIA_NODE_IDS.has(node.nodeId))
           && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId)
           && shouldApplyMediaGeometry(node)
 
       if (applyNodeGeometry && (node.explicitPosition || (node.explicitStyle && scale !== 1))) {
-        el.style.transform = scale !== 1
+        const transformValue = scale !== 1
           ? `translate(${Math.round(node.geometry.x)}px, ${Math.round(node.geometry.y)}px) scale(${scale})`
           : `translate(${Math.round(node.geometry.x)}px, ${Math.round(node.geometry.y)}px)`
-        el.style.transformOrigin = "top left"
+        // Framer Motion can rewrite `transform` after this effect runs. Keep
+        // the persisted value in a CSS variable so the public safety rule can
+        // protect it without fighting the animation's inline style.
+        el.style.setProperty("--editor-managed-transform", transformValue)
+        el.style.setProperty("--editor-managed-transform-origin", "top left")
         el.dataset.editorManagedTransform = "true"
       } else {
         if (el.dataset.editorManagedTransform === "true") {
           el.style.removeProperty("transform")
           el.style.removeProperty("transform-origin")
+          el.style.removeProperty("--editor-managed-transform")
+          el.style.removeProperty("--editor-managed-transform-origin")
         }
         delete el.dataset.editorManagedTransform
       }
 
       if (applyNodeGeometry && node.explicitSize) {
-        el.style.width = `${Math.max(8, Math.round(node.geometry.width))}px`
-        el.style.height = `${Math.max(8, Math.round(node.geometry.height))}px`
+        el.style.setProperty("--editor-managed-width", `${Math.max(8, Math.round(node.geometry.width))}px`)
+        el.style.setProperty("--editor-managed-height", `${Math.max(8, Math.round(node.geometry.height))}px`)
         el.dataset.editorManagedSize = "true"
       } else {
         if (el.dataset.editorManagedSize === "true") {
           el.style.removeProperty("width")
           el.style.removeProperty("height")
+          el.style.removeProperty("--editor-managed-width")
+          el.style.removeProperty("--editor-managed-height")
         }
         delete el.dataset.editorManagedSize
       }
@@ -171,6 +179,14 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
         if (node.style.fontStyle) el.style.fontStyle = node.style.fontStyle
         if (node.style.textDecoration) el.style.textDecoration = node.style.textDecoration
         if (node.style.textAlign) el.style.textAlign = node.style.textAlign
+        if (node.style.textTransform) el.style.textTransform = node.style.textTransform
+        if (node.style.textShadow) el.style.textShadow = node.style.textShadow
+        if (node.style.borderColor) el.style.borderColor = node.style.borderColor
+        if (node.style.borderWidth) el.style.borderWidth = node.style.borderWidth
+        if (node.style.borderRadius) el.style.borderRadius = node.style.borderRadius
+        if (node.style.boxShadow) el.style.boxShadow = node.style.boxShadow
+        if (node.style.paddingLeft) el.style.paddingLeft = node.style.paddingLeft
+        if (node.style.paddingRight) el.style.paddingRight = node.style.paddingRight
         if (allowResponsiveTypography && node.style.letterSpacing) el.style.letterSpacing = node.style.letterSpacing
         if (allowResponsiveTypography && node.style.lineHeight) el.style.lineHeight = node.style.lineHeight
         if (allowResponsiveTypography && node.style.maxWidth) el.style.maxWidth = node.style.maxWidth
@@ -181,6 +197,9 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
 
       if (node.explicitContent) {
         if ((node.nodeType === "text" || node.nodeType === "button") && node.content.text !== undefined) {
+          el.textContent = node.content.text
+        }
+        if (node.nodeType === "card" && node.content.text !== undefined && !el.querySelector("[data-concert-field]")) {
           el.textContent = node.content.text
         }
         if ((node.nodeType === "button" || node.nodeType === "card") && node.content.href && (el.tagName === "A" || el.tagName === "BUTTON")) {
@@ -277,8 +296,13 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
         const negative = node.style.negative ?? false
         const filterValue = `contrast(${contrast}%) saturate(${saturation}%) brightness(${brightness}%)${negative ? " invert(1)" : ""}`
         const img = el.tagName === "IMG" ? (el as HTMLImageElement) : el.querySelector("img")
+        const iframe = el.querySelector("iframe")
         if (img) img.style.filter = filterValue
+        else if (iframe) iframe.style.filter = filterValue
         else el.style.filter = filterValue
+        const media = img || iframe
+        if (media && node.style.objectFit) media.style.objectFit = node.style.objectFit
+        if (media && node.style.objectPosition) media.style.objectPosition = node.style.objectPosition
       }
 
         if (process.env.NODE_ENV !== "production" && traceNodeId && traceNodeId === node.nodeId) {

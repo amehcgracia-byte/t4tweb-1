@@ -21,6 +21,7 @@ import { HomeEditorOverridesProvider } from "@/components/home-editor-overrides-
 import { loadHomeEditorState } from "@/lib/sanity/home-editor-state-loader"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
 import { getTraceNodeId } from "@/lib/sanity/env"
+import { HomeEditorCustomNodes } from "@/components/home-editor-custom-nodes"
 
 /** Always refetch hero from Sanity (editor deploy + revalidate); avoids stale static shell in dev). */
 export const dynamic = "force-dynamic"
@@ -123,6 +124,7 @@ export default async function Home() {
       <SectionDivider editorId="section-divider-contact-footer" />
 
         <Footer />
+        <HomeEditorCustomNodes persistedNodes={homeEditorNodes} />
       </HomeEditorOverridesProvider>
     </main>
   )

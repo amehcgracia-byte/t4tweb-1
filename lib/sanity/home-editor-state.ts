@@ -21,6 +21,16 @@ export interface HomeEditorNodeStyle {
   fontStyle?: string
   textDecoration?: string
   textAlign?: "left" | "center" | "right"
+  textTransform?: "none" | "uppercase" | "lowercase" | "capitalize"
+  textShadow?: string
+  borderColor?: string
+  borderWidth?: string
+  borderRadius?: string
+  boxShadow?: string
+  paddingLeft?: string
+  paddingRight?: string
+  objectFit?: "cover" | "contain" | "fill"
+  objectPosition?: string
   letterSpacing?: string
   lineHeight?: string
   maxWidth?: string
@@ -66,6 +76,7 @@ export interface HomeEditorNodeContent {
   gradientEnabled?: boolean
   gradientStart?: string
   gradientEnd?: string
+  customKind?: "text" | "button" | "section"
   date?: string
   venue?: string
   city?: string

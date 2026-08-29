@@ -199,6 +199,16 @@ export function getElementLayoutStyle(
   if (typeof styles.fontStyle === "string") result.fontStyle = styles.fontStyle as CSSProperties["fontStyle"]
   if (typeof styles.textDecoration === "string") result.textDecoration = styles.textDecoration
   if (typeof styles.textAlign === "string") result.textAlign = styles.textAlign as CSSProperties["textAlign"]
+  if (typeof styles.textTransform === "string") result.textTransform = styles.textTransform as CSSProperties["textTransform"]
+  if (typeof styles.textShadow === "string") result.textShadow = styles.textShadow
+  if (typeof styles.borderColor === "string") result.borderColor = styles.borderColor
+  if (typeof styles.borderWidth === "string") result.borderWidth = styles.borderWidth
+  if (typeof styles.borderRadius === "string") result.borderRadius = styles.borderRadius
+  if (typeof styles.boxShadow === "string") result.boxShadow = styles.boxShadow
+  if (typeof styles.paddingLeft === "string") result.paddingLeft = styles.paddingLeft
+  if (typeof styles.paddingRight === "string") result.paddingRight = styles.paddingRight
+  if (typeof styles.objectFit === "string") result.objectFit = styles.objectFit as CSSProperties["objectFit"]
+  if (typeof styles.objectPosition === "string") result.objectPosition = styles.objectPosition
   if (typeof styles.minHeight === "string") result.minHeight = styles.minHeight
   if (typeof styles.paddingTop === "string") result.paddingTop = styles.paddingTop
   if (typeof styles.paddingBottom === "string") result.paddingBottom = styles.paddingBottom

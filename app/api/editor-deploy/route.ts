@@ -21,6 +21,7 @@ interface DeployRequestPayload {
   diagnosticMode?: boolean
   findings: Array<{ element: string; issue: string; severity: "green" | "yellow" | "red"; blocks: boolean }>
   changedNodeIds?: string[]
+  deletedNodeIds?: string[]
   nodes: DeployNodePayload[]
 }
 
@@ -136,6 +137,18 @@ function asCssNumberOrLength(value: unknown): string | undefined {
     : undefined
 }
 
+function asCssToken(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const token = value.trim()
+  // Keep editor-authored CSS deliberately small and free of declarations,
+  // URLs, or browser-specific escape tricks.
+  return token && token.length <= 160 && !/[;{}<>]|url\s*\(|expression\s*\(/i.test(token) ? token : undefined
+}
+
+function asCssEnum<T extends string>(value: unknown, allowed: readonly T[]): T | undefined {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value) ? value as T : undefined
+}
+
 function sanitizeTitleSegment(value: unknown, fallbackColor: string): HeroTitleSegment | null {
   if (!value || typeof value !== "object") return null
   const raw = value as Record<string, unknown>
@@ -207,10 +220,16 @@ function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementSt
     if (color) style.color = color
     const backgroundColor = asCssColor(node.style.backgroundColor)
     if (backgroundColor) style.backgroundColor = backgroundColor
+    const borderColor = asCssColor(node.style.borderColor)
+    if (borderColor) style.borderColor = borderColor
     const lengthFields: Array<[string, unknown]> = [
       ["minHeight", node.style.minHeight],
       ["paddingTop", node.style.paddingTop],
       ["paddingBottom", node.style.paddingBottom],
+      ["borderWidth", node.style.borderWidth],
+      ["borderRadius", node.style.borderRadius],
+      ["paddingLeft", node.style.paddingLeft],
+      ["paddingRight", node.style.paddingRight],
     ]
     lengthFields.forEach(([key, value]) => {
       const parsed = asCssLength(value)
@@ -221,6 +240,11 @@ function buildPersistedElementStyle(node: DeployNodePayload): PersistedElementSt
       ["fontStyle", node.style.fontStyle],
       ["textDecoration", node.style.textDecoration],
       ["textAlign", node.style.textAlign],
+      ["textTransform", asCssEnum(node.style.textTransform, ["none", "uppercase", "lowercase", "capitalize"] as const)],
+      ["textShadow", asCssToken(node.style.textShadow)],
+      ["boxShadow", asCssToken(node.style.boxShadow)],
+      ["objectFit", asCssEnum(node.style.objectFit, ["cover", "contain", "fill"] as const)],
+      ["objectPosition", asCssToken(node.style.objectPosition)],
     ]
     stringFields.forEach(([key, value]) => {
       if (typeof value === "string" && value.trim()) style[key] = value.trim()
@@ -250,12 +274,12 @@ function buildHomeEditorNode(node: DeployNodePayload): Record<string, unknown> |
       style[key] = key === "scale" ? Math.max(0.1, value) : value
     }
   })
-  const colorKeys = ["color", "backgroundColor"]
+  const colorKeys = ["color", "backgroundColor", "borderColor"]
   colorKeys.forEach((key) => {
     const value = asCssColor(node.style?.[key])
     if (value) style[key] = value
   })
-  const lengthKeys = ["fontSize", "letterSpacing", "maxWidth", "minHeight", "paddingTop", "paddingBottom"]
+  const lengthKeys = ["fontSize", "letterSpacing", "maxWidth", "minHeight", "paddingTop", "paddingBottom", "borderWidth", "borderRadius", "paddingLeft", "paddingRight"]
   lengthKeys.forEach((key) => {
     const value = asCssLength(node.style?.[key])
     if (value) style[key] = value
@@ -267,12 +291,24 @@ function buildHomeEditorNode(node: DeployNodePayload): Record<string, unknown> |
     const value = node.style?.[key]
     if (typeof value === "string" && value.trim()) style[key] = value.trim()
   })
+  const enumStyleKeys: Array<[string, readonly string[]]> = [
+    ["textTransform", ["none", "uppercase", "lowercase", "capitalize"]],
+    ["objectFit", ["cover", "contain", "fill"]],
+  ]
+  enumStyleKeys.forEach(([key, allowed]) => {
+    const value = asCssEnum(node.style?.[key], allowed)
+    if (value) style[key] = value
+  })
+  ;["textShadow", "boxShadow", "objectPosition"].forEach((key) => {
+    const value = asCssToken(node.style?.[key])
+    if (value) style[key] = value
+  })
   if (node.style?.negative === true) style.negative = true
 
   const content: Record<string, unknown> = {}
   const stringContentKeys = [
     "text", "href", "src", "alt", "videoUrl", "mediaKind", "date", "venue", "city", "country",
-    "genre", "price", "status", "time", "capacity", "locationUrl",
+    "genre", "price", "status", "time", "capacity", "locationUrl", "customKind",
   ]
   stringContentKeys.forEach((key) => {
     const value = node.content?.[key]
@@ -481,10 +517,9 @@ export async function POST(request: Request) {
       titleHighlight?: string
       titleSegments?: HeroTitleSegment[]
       backgroundImageUrl?: string
-      mediaGeometryDisabled?: boolean
       elementStyles?: Record<string, PersistedElementStyle>
     } | null>(
-      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments, backgroundImageUrl, mediaGeometryDisabled, elementStyles }`,
+      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments, backgroundImageUrl, elementStyles }`,
       { type: SANITY_DOC_TYPE }
     )
     const [existingNavigation, existingIntro, existingHomeEditorState] = await Promise.all([
@@ -506,10 +541,9 @@ export async function POST(request: Request) {
         pressLabel?: string
         pressHref?: string
         gifUrl?: string
-        mediaGeometryDisabled?: boolean
         elementStyles?: Record<string, PersistedElementStyle>
       } | null>(
-        `*[_type == "introBanner"][0]{ _id, bannerText, bookLabel, bookHref, pressLabel, pressHref, gifUrl, mediaGeometryDisabled, elementStyles }`,
+        `*[_type == "introBanner"][0]{ _id, bannerText, bookLabel, bookHref, pressLabel, pressHref, gifUrl, elementStyles }`,
       ),
       writeClient.fetch<{
         _id: string
@@ -672,10 +706,6 @@ export async function POST(request: Request) {
       persistedFields.push("backgroundImageUrl")
       persistedNodes.push("hero-bg-image")
     }
-    if (heroBackgroundNode && (heroBackgroundNode.explicitPosition || heroBackgroundNode.explicitSize)) {
-      heroPatch.mediaGeometryDisabled = false
-      persistedFields.push("mediaGeometryDisabled")
-    }
 
     const nextElementStyles: Record<string, PersistedElementStyle> = {
       ...(existingHero.elementStyles || {}),
@@ -797,10 +827,6 @@ export async function POST(request: Request) {
           } else {
             delete nextIntroStyles[node.id]
           }
-          if (node.id === "intro-banner-gif" && (node.explicitPosition || node.explicitSize)) {
-            introPatch.mediaGeometryDisabled = false
-            persistedFields.push("introBanner.mediaGeometryDisabled")
-          }
           if (!node.explicitContent) return
           if (node.id === "intro-banner-text" && typeof node.content?.text === "string" && node.content.text.trim()) {
             introPatch.bannerText = node.content.text.trim()
@@ -833,6 +859,11 @@ export async function POST(request: Request) {
         .filter((node) => !DOCUMENT_LAYOUT_NODE_IDS.has(node.id))
         .map((node) => node.id),
     )
+    ;(payload.deletedNodeIds || []).forEach((nodeId) => {
+      if (typeof nodeId === "string" && nodeId.trim() && !DOCUMENT_LAYOUT_NODE_IDS.has(nodeId)) {
+        homeEditorChangedIds.add(nodeId)
+      }
+    })
     const homeEditorNodes = nodesToPersist
       .filter((node) => !DOCUMENT_LAYOUT_NODE_IDS.has(node.id))
       .map(buildHomeEditorNode)
@@ -877,10 +908,9 @@ export async function POST(request: Request) {
         titleSegments?: HeroTitleSegment[]
         subtitle?: string
         backgroundImageUrl?: string
-        mediaGeometryDisabled?: boolean
         elementStyles?: Record<string, PersistedElementStyle>
       } | null>(
-        `*[_type == "${SANITY_DOC_TYPE}"][0]{ title, titleHighlight, titleSegments, subtitle, backgroundImageUrl, mediaGeometryDisabled, elementStyles }`,
+        `*[_type == "${SANITY_DOC_TYPE}"][0]{ title, titleHighlight, titleSegments, subtitle, backgroundImageUrl, elementStyles }`,
       ),
       publishedReadClient.fetch<{
         brandName?: string
@@ -896,9 +926,8 @@ export async function POST(request: Request) {
         pressLabel?: string
         pressHref?: string
         gifUrl?: string
-        mediaGeometryDisabled?: boolean
         elementStyles?: Record<string, PersistedElementStyle>
-      } | null>(`*[_type == "introBanner"][0]{ bannerText, bookLabel, bookHref, pressLabel, pressHref, gifUrl, mediaGeometryDisabled, elementStyles }`),
+      } | null>(`*[_type == "introBanner"][0]{ bannerText, bookLabel, bookHref, pressLabel, pressHref, gifUrl, elementStyles }`),
       publishedReadClient.fetch<{ nodes?: Array<Record<string, unknown>> } | null>(
         `*[_type == "homeEditorState" && _id == "homeEditorState"][0]{ nodes }`,
       ),
