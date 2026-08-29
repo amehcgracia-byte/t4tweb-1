@@ -228,11 +228,15 @@ function readHydratedNodeOverride(nodeId: string): HomeEditorNodeOverride | null
 
 function extractConcertCardId(nodeId: string | null | undefined): string | null {
   if (!nodeId) return null
-  const direct = nodeId.match(/^live-(upcoming|history)-event-(\d+)$/)
+  const nested = nodeId.match(/^live-event-(.+)-(date|venue|city|country|genre|price|status|time|capacity|locationUrl)$/)
+  if (nested) return `live-event-${nested[1]}`
+  const direct = nodeId.match(/^live-event-(.+)$/)
   if (direct) return nodeId
-  const nested = nodeId.match(/^live-(upcoming|history)-event-(\d+)-/)
-  if (!nested) return null
-  return `live-${nested[1]}-event-${nested[2]}`
+  const legacyDirect = nodeId.match(/^live-(upcoming|history)-event-(\d+)$/)
+  if (legacyDirect) return nodeId
+  const legacyNested = nodeId.match(/^live-(upcoming|history)-event-(\d+)-/)
+  if (!legacyNested) return null
+  return `live-${legacyNested[1]}-event-${legacyNested[2]}`
 }
 
 function extractBandMemberIndex(nodeId: string | null | undefined): number | null {
@@ -657,7 +661,7 @@ function scanRegistry(): Map<string, RuntimeEntry> {
     const sectionId = el.dataset.editorSectionId || "root"
     const label = el.dataset.editorNodeLabel || id
     const isGrouped = parseGrouped(el.dataset.editorGrouped || null)
-    map.set(id, {
+    const entry: RuntimeEntry = {
       id,
       type,
       sectionId,
@@ -669,7 +673,12 @@ function scanRegistry(): Map<string, RuntimeEntry> {
       eligible: visible,
       transform: readElementTransform(el, id === "hero-scroll-indicator"),
       dimensions: { width: rect.width, height: rect.height },
-    })
+    }
+    const existing = map.get(id)
+    // Desktop and mobile render variants can share an editor ID. Keep the
+    // visible variant as the canonical editor target instead of whichever
+    // duplicate happened to be scanned last.
+    if (!existing || (!existing.visible && entry.visible)) map.set(id, entry)
   })
   return map
 }

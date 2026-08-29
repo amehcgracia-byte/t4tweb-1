@@ -24,6 +24,14 @@ function isDocDrivenNodeId(nodeId: string): boolean {
   return false
 }
 
+// Event geometry used to be keyed by list position. Once an event moved from
+// Upcoming to History, those overrides landed on a different concert. Stable
+// `live-event-*` IDs replace that legacy format; ignore the old records during
+// the migration so they cannot distort the public page.
+function isLegacyIndexedConcertNodeId(nodeId: string): boolean {
+  return /^live-(upcoming|history)-event-\d+(?:-|$)/.test(nodeId)
+}
+
 export async function loadHomeEditorState(): Promise<HomeEditorNodeOverride[]> {
   try {
     const projectId = resolveSanityProjectId()
@@ -48,7 +56,7 @@ export async function loadHomeEditorState(): Promise<HomeEditorNodeOverride[]> {
     }
 
     const nodes = fetched.nodes.filter((node) => Boolean(node?.nodeId))
-    const filteredNodes = nodes.filter((node) => !isDocDrivenNodeId(node.nodeId))
+    const filteredNodes = nodes.filter((node) => !isDocDrivenNodeId(node.nodeId) && !isLegacyIndexedConcertNodeId(node.nodeId))
     if (process.env.NODE_ENV !== "production" && traceNodeId) {
       const tracedNode = filteredNodes.find((node) => node.nodeId === traceNodeId)
       console.info("[home-editor-state-loader][trace]", {

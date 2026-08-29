@@ -384,6 +384,7 @@ export function HeroSection({ data }: { data: HeroData }) {
   const backgroundY = useTransform(scrollYProgress, [0, 1], [0, 0])
 
   const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
+  const resolvedHeroMobileBgSrc = useHomeEditorImageSrc("hero-mobile-bg-image", HERO_MOBILE_BG_URL)
   const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
   const scrollLayoutSaved =
     scrollIndicatorHasLayout(content.elementStyles)
@@ -510,12 +511,16 @@ export function HeroSection({ data }: { data: HeroData }) {
                 style={{ objectPosition: "center top", transform: "scale(1.08)" }}
               />
               <Image
-                src={HERO_MOBILE_BG_URL}
+                src={resolvedHeroMobileBgSrc}
                 alt=""
                 fill
                 priority
                 unoptimized
                 sizes="100vw"
+                data-editor-node-id="hero-mobile-bg-image"
+                data-editor-node-type="image"
+                data-editor-media-kind="image"
+                data-editor-node-label="Hero Mobile Background"
                 className="object-contain"
                 style={{ objectPosition: "center top" }}
               />

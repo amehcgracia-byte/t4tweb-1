@@ -23,6 +23,10 @@ const RESPONSIVE_CONTAINER_NODE_IDS = new Set<string>([
   "intro-section",
 ])
 
+const RESPONSIVE_MEDIA_NODE_IDS = new Set<string>([
+  "hero-mobile-bg-image",
+])
+
 function isDocDrivenNode(nodeId: string): boolean {
   if (DOC_DRIVEN_IMAGE_NODE_IDS.has(nodeId)) return true
   if (DOC_DRIVEN_TEXT_NODE_IDS.has(nodeId)) return true
@@ -96,19 +100,18 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
       const allowResponsiveTypography = allowGeometryOverrides
       nodes.forEach((node) => {
       const selector = `[data-editor-node-id="${escapeEditorId(node.nodeId)}"]`
-      const el = document.querySelector<HTMLElement>(selector)
-      if (!el) return
+      const elements = Array.from(document.querySelectorAll<HTMLElement>(selector))
+      if (elements.length === 0) return
 
-      if (isDocDrivenNode(node.nodeId)) {
-        return
-      }
+      elements.forEach((el) => {
+        if (isDocDrivenNode(node.nodeId)) return
 
-      const resetHistoryCard = isResetHistoryCard(node.nodeId)
-      const scale = typeof node.style.scale === "number" ? Math.max(0.1, node.style.scale) : 1
+        const resetHistoryCard = isResetHistoryCard(node.nodeId)
+        const scale = typeof node.style.scale === "number" ? Math.max(0.1, node.style.scale) : 1
 
-      const applyNodeGeometry = allowGeometryOverrides
-        && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId)
-        && shouldApplyMediaGeometry(node)
+        const applyNodeGeometry = (allowGeometryOverrides || RESPONSIVE_MEDIA_NODE_IDS.has(node.nodeId))
+          && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId)
+          && shouldApplyMediaGeometry(node)
 
       if (applyNodeGeometry && (node.explicitPosition || (node.explicitStyle && scale !== 1))) {
         el.style.transform = scale !== 1
@@ -278,17 +281,18 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
         else el.style.filter = filterValue
       }
 
-      if (process.env.NODE_ENV !== "production" && traceNodeId && traceNodeId === node.nodeId) {
-        console.info("[home-editor-state-applier][trace][after]", {
-          nodeId: node.nodeId,
-          domStyle: {
-            transform: el.style.transform || null,
-            opacity: el.style.opacity || null,
-            width: el.style.width || null,
-            height: el.style.height || null,
-          },
-        })
-      }
+        if (process.env.NODE_ENV !== "production" && traceNodeId && traceNodeId === node.nodeId) {
+          console.info("[home-editor-state-applier][trace][after]", {
+            nodeId: node.nodeId,
+            domStyle: {
+              transform: el.style.transform || null,
+              opacity: el.style.opacity || null,
+              width: el.style.width || null,
+              height: el.style.height || null,
+            },
+          })
+        }
+      })
       })
     }
 
@@ -305,12 +309,25 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
     const desktopQuery = window.matchMedia("(min-width: 1024px)")
     const editorModeObserver = new MutationObserver(() => applyOverrides())
     editorModeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-editor-active"] })
+    const domObserver = new MutationObserver((mutations) => {
+      const addedEditorNode = mutations.some((mutation) =>
+        Array.from(mutation.addedNodes).some((addedNode) =>
+          addedNode instanceof HTMLElement && (
+            addedNode.hasAttribute("data-editor-node-id") ||
+            Boolean(addedNode.querySelector("[data-editor-node-id]"))
+          )
+        )
+      )
+      if (addedEditorNode) applyOverrides()
+    })
+    if (document.body) domObserver.observe(document.body, { childList: true, subtree: true })
     window.addEventListener("resize", handleViewportChange)
     desktopQuery.addEventListener?.("change", handleViewportChange)
 
     return () => {
       retryTimers.forEach((id) => window.clearTimeout(id))
       editorModeObserver.disconnect()
+      domObserver.disconnect()
       window.removeEventListener("resize", handleViewportChange)
       desktopQuery.removeEventListener?.("change", handleViewportChange)
     }
