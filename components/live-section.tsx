@@ -96,6 +96,11 @@ function isUpcomingConcert(concert: Concert, todayIso: string): boolean {
   return concert.date >= todayIso
 }
 
+function compareConcertDates(a: Concert, b: Concert, descending = false): number {
+  const difference = new Date(a.date).getTime() - new Date(b.date).getTime()
+  return descending ? -difference : difference
+}
+
 interface LiveSectionProps {
   overrides?: Record<string, HomeEditorNodeOverride>
 }
@@ -197,7 +202,9 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
       if (Number.isNaN(listIndex)) return
 
       setConcerts((prev) => {
-        const sorted = [...prev].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        const sorted = [...prev].sort((a, b) =>
+          compareConcertDates(a, b, listType === "history")
+        )
         const todayIso = getBerlinTodayIso()
         const filteredIndices: number[] = []
         sorted.forEach((item, i) => {
@@ -222,8 +229,12 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
   }, [])
 
   const todayIso = getBerlinTodayIso()
-  const upcomingConcerts = concerts.filter((concert) => isUpcomingConcert(concert, todayIso))
-  const historyConcerts = concerts.filter((concert) => concert.status !== "Cancelled" && !isUpcomingConcert(concert, todayIso))
+  const upcomingConcerts = concerts
+    .filter((concert) => isUpcomingConcert(concert, todayIso))
+    .sort((a, b) => compareConcertDates(a, b))
+  const historyConcerts = concerts
+    .filter((concert) => concert.status !== "Cancelled" && !isUpcomingConcert(concert, todayIso))
+    .sort((a, b) => compareConcertDates(a, b, true))
 
   const traceNodeId = getTraceNodeId()
   useEffect(() => {

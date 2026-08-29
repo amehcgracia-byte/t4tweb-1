@@ -379,7 +379,9 @@ export function HeroSection({ data }: { data: HeroData }) {
   })
 
   const backgroundScale = useTransform(scrollYProgress, [0, 1], [1, 1.06])
-  const backgroundY = useTransform(scrollYProgress, [0, 1], [0, 35])
+  // Keep the saved editor framing stable on the public page. A parallax
+  // offset here made the background drift away from the editor preview.
+  const backgroundY = useTransform(scrollYProgress, [0, 1], [0, 0])
 
   const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
   const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
