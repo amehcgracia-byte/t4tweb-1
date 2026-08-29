@@ -478,7 +478,7 @@ export function HeroSection({ data }: { data: HeroData }) {
             className="absolute inset-0"
             style={getElementStyle(content.elementStyles, "hero-bg-image", {
               includeGeometry:
-                allowGeometryOverrides && hasResponsiveHeroLayout(content.elementStyles, "hero-bg-image"),
+                allowGeometryOverrides && !content.mediaGeometryDisabled && hasResponsiveHeroLayout(content.elementStyles, "hero-bg-image"),
               includeResponsiveTypography: allowGeometryOverrides,
             })}
           >

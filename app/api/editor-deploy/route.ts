@@ -481,9 +481,10 @@ export async function POST(request: Request) {
       titleHighlight?: string
       titleSegments?: HeroTitleSegment[]
       backgroundImageUrl?: string
+      mediaGeometryDisabled?: boolean
       elementStyles?: Record<string, PersistedElementStyle>
     } | null>(
-      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments, backgroundImageUrl, elementStyles }`,
+      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments, backgroundImageUrl, mediaGeometryDisabled, elementStyles }`,
       { type: SANITY_DOC_TYPE }
     )
     const [existingNavigation, existingIntro, existingHomeEditorState] = await Promise.all([
@@ -505,9 +506,10 @@ export async function POST(request: Request) {
         pressLabel?: string
         pressHref?: string
         gifUrl?: string
+        mediaGeometryDisabled?: boolean
         elementStyles?: Record<string, PersistedElementStyle>
       } | null>(
-        `*[_type == "introBanner"][0]{ _id, bannerText, bookLabel, bookHref, pressLabel, pressHref, gifUrl, elementStyles }`,
+        `*[_type == "introBanner"][0]{ _id, bannerText, bookLabel, bookHref, pressLabel, pressHref, gifUrl, mediaGeometryDisabled, elementStyles }`,
       ),
       writeClient.fetch<{
         _id: string
@@ -670,6 +672,10 @@ export async function POST(request: Request) {
       persistedFields.push("backgroundImageUrl")
       persistedNodes.push("hero-bg-image")
     }
+    if (heroBackgroundNode && (heroBackgroundNode.explicitPosition || heroBackgroundNode.explicitSize)) {
+      heroPatch.mediaGeometryDisabled = false
+      persistedFields.push("mediaGeometryDisabled")
+    }
 
     const nextElementStyles: Record<string, PersistedElementStyle> = {
       ...(existingHero.elementStyles || {}),
@@ -791,6 +797,10 @@ export async function POST(request: Request) {
           } else {
             delete nextIntroStyles[node.id]
           }
+          if (node.id === "intro-banner-gif" && (node.explicitPosition || node.explicitSize)) {
+            introPatch.mediaGeometryDisabled = false
+            persistedFields.push("introBanner.mediaGeometryDisabled")
+          }
           if (!node.explicitContent) return
           if (node.id === "intro-banner-text" && typeof node.content?.text === "string" && node.content.text.trim()) {
             introPatch.bannerText = node.content.text.trim()
@@ -867,9 +877,10 @@ export async function POST(request: Request) {
         titleSegments?: HeroTitleSegment[]
         subtitle?: string
         backgroundImageUrl?: string
+        mediaGeometryDisabled?: boolean
         elementStyles?: Record<string, PersistedElementStyle>
       } | null>(
-        `*[_type == "${SANITY_DOC_TYPE}"][0]{ title, titleHighlight, titleSegments, subtitle, backgroundImageUrl, elementStyles }`,
+        `*[_type == "${SANITY_DOC_TYPE}"][0]{ title, titleHighlight, titleSegments, subtitle, backgroundImageUrl, mediaGeometryDisabled, elementStyles }`,
       ),
       publishedReadClient.fetch<{
         brandName?: string
@@ -885,8 +896,9 @@ export async function POST(request: Request) {
         pressLabel?: string
         pressHref?: string
         gifUrl?: string
+        mediaGeometryDisabled?: boolean
         elementStyles?: Record<string, PersistedElementStyle>
-      } | null>(`*[_type == "introBanner"][0]{ bannerText, bookLabel, bookHref, pressLabel, pressHref, gifUrl, elementStyles }`),
+      } | null>(`*[_type == "introBanner"][0]{ bannerText, bookLabel, bookHref, pressLabel, pressHref, gifUrl, mediaGeometryDisabled, elementStyles }`),
       publishedReadClient.fetch<{ nodes?: Array<Record<string, unknown>> } | null>(
         `*[_type == "homeEditorState" && _id == "homeEditorState"][0]{ nodes }`,
       ),

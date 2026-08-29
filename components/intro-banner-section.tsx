@@ -115,7 +115,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
         data-editor-node-type="image"
         data-editor-node-label="Banner GIF"
         style={getElementLayoutStyle(es, "intro-banner-gif", {
-          includeGeometry: allowGeometryOverrides,
+          includeGeometry: allowGeometryOverrides && !data.mediaGeometryDisabled,
           includeResponsiveTypography: allowGeometryOverrides,
         })}
         className="absolute left-0 top-0 z-0 h-full w-full overflow-hidden opacity-30"

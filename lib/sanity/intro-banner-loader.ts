@@ -9,6 +9,7 @@ export interface IntroBannerData {
   pressLabel: string
   pressHref: string
   elementStyles: Record<string, Record<string, unknown>>
+  mediaGeometryDisabled?: boolean
 }
 
 /** Default GIF path (matches previous hardcoded asset). */
@@ -42,6 +43,7 @@ export async function loadIntroBannerData(): Promise<IntroBannerData> {
       bookHref,
       pressLabel,
       pressHref,
+      mediaGeometryDisabled,
       elementStyles
     }`
 
@@ -85,6 +87,7 @@ export async function loadIntroBannerData(): Promise<IntroBannerData> {
       bookHref: fetched.bookHref?.trim() || FALLBACK.bookHref,
       pressLabel: fetched.pressLabel?.trim() || FALLBACK.pressLabel,
       pressHref: fetched.pressHref?.trim() || FALLBACK.pressHref,
+      mediaGeometryDisabled: fetched.mediaGeometryDisabled === true,
       elementStyles,
     }
   } catch (e) {

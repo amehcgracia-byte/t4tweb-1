@@ -28,6 +28,13 @@ export default defineType({
       type: 'string',
       description: 'Public URL or site path (e.g. /images/...). Set from the visual editor deploy.',
     }),
+    defineField({
+      name: 'mediaGeometryDisabled',
+      title: 'Ignore legacy media geometry',
+      type: 'boolean',
+      readOnly: true,
+      description: 'Prevents monitor-specific GIF positions from affecting responsive layouts until the image is moved again in the editor.',
+    }),
     defineField({ name: 'bookLabel', title: 'Primary button label', type: 'string' }),
     defineField({ name: 'bookHref', title: 'Primary button link', type: 'string' }),
     defineField({ name: 'pressLabel', title: 'Secondary button label', type: 'string' }),
