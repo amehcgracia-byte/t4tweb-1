@@ -29,6 +29,7 @@ export interface HeroData {
   description: string
   logoUrl: string
   bgUrl: string
+  backgroundImageUrl?: string
   elementStyles?: Record<string, Record<string, unknown>> // style overrides by targetId
 }
 
@@ -77,6 +78,7 @@ export async function loadHeroData(): Promise<HeroData> {
       description,
       "logoUrl": logo.asset->url,
       "bgUrl": backgroundImage.asset->url,
+      backgroundImageUrl,
       elementStyles
     }`
 
@@ -102,7 +104,8 @@ export async function loadHeroData(): Promise<HeroData> {
       subtitle: fetched.subtitle || FALLBACK.subtitle,
       description: fetched.description || FALLBACK.description,
       logoUrl: fetched.logoUrl || FALLBACK.logoUrl,
-      bgUrl: fetched.bgUrl || FALLBACK.bgUrl,
+      bgUrl: fetched.backgroundImageUrl || fetched.bgUrl || FALLBACK.bgUrl,
+      backgroundImageUrl: fetched.backgroundImageUrl,
       elementStyles: elementStyles ?? FALLBACK.elementStyles,
     }
   } catch (error) {

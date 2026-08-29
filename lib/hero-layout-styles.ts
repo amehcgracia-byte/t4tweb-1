@@ -149,7 +149,11 @@ export function getElementLayoutStyle(
     result.letterSpacing = `${styles.letterSpacing}px`
   }
   if (includeResponsiveTypography && typeof styles.lineHeight === "number") {
-    result.lineHeight = styles.lineHeight
+    // Persisted editor line-height values are measured in px. Passing a
+    // number to React/CSS makes it unitless (e.g. 27 => 27em-like scaling),
+    // which can turn a normal navigation button into a several-hundred-pixel
+    // block. Keep numeric values in the same px contract as fontSize.
+    result.lineHeight = `${styles.lineHeight}px`
   }
   if (typeof styles.color === "string") result.color = styles.color
   if (includeResponsiveTypography && typeof styles.maxWidth === "number") {

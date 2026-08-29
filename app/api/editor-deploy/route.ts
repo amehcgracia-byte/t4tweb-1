@@ -480,9 +480,10 @@ export async function POST(request: Request) {
       title?: string
       titleHighlight?: string
       titleSegments?: HeroTitleSegment[]
+      backgroundImageUrl?: string
       elementStyles?: Record<string, PersistedElementStyle>
     } | null>(
-      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments, elementStyles }`,
+      `*[_type == $type][0]{ _id, title, titleHighlight, titleSegments, backgroundImageUrl, elementStyles }`,
       { type: SANITY_DOC_TYPE }
     )
     const [existingNavigation, existingIntro, existingHomeEditorState] = await Promise.all([
@@ -503,9 +504,10 @@ export async function POST(request: Request) {
         bookHref?: string
         pressLabel?: string
         pressHref?: string
+        gifUrl?: string
         elementStyles?: Record<string, PersistedElementStyle>
       } | null>(
-        `*[_type == "introBanner"][0]{ _id, bannerText, bookLabel, bookHref, pressLabel, pressHref, elementStyles }`,
+        `*[_type == "introBanner"][0]{ _id, bannerText, bookLabel, bookHref, pressLabel, pressHref, gifUrl, elementStyles }`,
       ),
       writeClient.fetch<{
         _id: string
@@ -662,6 +664,13 @@ export async function POST(request: Request) {
       }
     }
 
+    const heroBackgroundNode = nodesToPersist.find((node) => node.id === "hero-bg-image")
+    if (heroBackgroundNode?.explicitContent && typeof heroBackgroundNode.content?.src === "string" && heroBackgroundNode.content.src.trim()) {
+      heroPatch.backgroundImageUrl = heroBackgroundNode.content.src.trim()
+      persistedFields.push("backgroundImageUrl")
+      persistedNodes.push("hero-bg-image")
+    }
+
     const nextElementStyles: Record<string, PersistedElementStyle> = {
       ...(existingHero.elementStyles || {}),
     }
@@ -792,6 +801,9 @@ export async function POST(request: Request) {
             if (typeof node.content?.text === "string" && node.content.text.trim()) introPatch.pressLabel = node.content.text.trim()
             if (typeof node.content?.href === "string" && node.content.href.trim()) introPatch.pressHref = node.content.href.trim()
           }
+          if (node.id === "intro-banner-gif" && typeof node.content?.src === "string" && node.content.src.trim()) {
+            introPatch.gifUrl = node.content.src.trim()
+          }
           if (node.explicitContent) {
             persistedNodes.push(node.id)
             persistedFields.push(`introBanner.content.${node.id}`)
@@ -854,9 +866,10 @@ export async function POST(request: Request) {
         titleHighlight?: string
         titleSegments?: HeroTitleSegment[]
         subtitle?: string
+        backgroundImageUrl?: string
         elementStyles?: Record<string, PersistedElementStyle>
       } | null>(
-        `*[_type == "${SANITY_DOC_TYPE}"][0]{ title, titleHighlight, titleSegments, subtitle, elementStyles }`,
+        `*[_type == "${SANITY_DOC_TYPE}"][0]{ title, titleHighlight, titleSegments, subtitle, backgroundImageUrl, elementStyles }`,
       ),
       publishedReadClient.fetch<{
         brandName?: string
@@ -871,8 +884,9 @@ export async function POST(request: Request) {
         bookHref?: string
         pressLabel?: string
         pressHref?: string
+        gifUrl?: string
         elementStyles?: Record<string, PersistedElementStyle>
-      } | null>(`*[_type == "introBanner"][0]{ bannerText, bookLabel, bookHref, pressLabel, pressHref, elementStyles }`),
+      } | null>(`*[_type == "introBanner"][0]{ bannerText, bookLabel, bookHref, pressLabel, pressHref, gifUrl, elementStyles }`),
       publishedReadClient.fetch<{ nodes?: Array<Record<string, unknown>> } | null>(
         `*[_type == "homeEditorState" && _id == "homeEditorState"][0]{ nodes }`,
       ),
@@ -924,6 +938,14 @@ export async function POST(request: Request) {
     const accentTextNode = nodesToPersist.find((node) => node.id === "hero-title-accent")
     comparePublishedText(mainTextNode || ({} as DeployNodePayload), publishedHero?.title, "hero.title")
     comparePublishedText(accentTextNode || ({} as DeployNodePayload), publishedHero?.titleHighlight, "hero.titleHighlight")
+
+    if (heroBackgroundNode?.explicitContent && typeof heroBackgroundNode.content?.src === "string" && heroBackgroundNode.content.src.trim()) {
+      verification.checkedNodes.push(heroBackgroundNode.id)
+      if (publishedHero?.backgroundImageUrl !== heroBackgroundNode.content.src.trim()) {
+        verification.failedNodes.push(heroBackgroundNode.id)
+        verification.failedFields.push("hero.backgroundImageUrl")
+      }
+    }
 
     if (Array.isArray(heroPatch.titleSegments)) {
       verification.checkedNodes.push("hero-title")
@@ -989,6 +1011,7 @@ export async function POST(request: Request) {
     introNodesForVerification.forEach((node) => {
       const checks: Array<[string, unknown, unknown]> = []
       if (node.id === "intro-banner-text") checks.push(["introBanner.bannerText", node.content?.text, publishedIntro?.bannerText])
+      if (node.id === "intro-banner-gif") checks.push(["introBanner.gifUrl", node.content?.src, publishedIntro?.gifUrl])
       if (node.id === "intro-book-button") {
         checks.push(["introBanner.bookLabel", node.content?.text, publishedIntro?.bookLabel])
         checks.push(["introBanner.bookHref", node.content?.href, publishedIntro?.bookHref])

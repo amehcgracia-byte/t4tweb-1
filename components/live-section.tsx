@@ -75,6 +75,27 @@ function formatDate(dateStr: string): string {
   return formatDisplayDate(dateStr)
 }
 
+function getBerlinTodayIso(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(
+    parts
+      .filter((part) => part.type === "year" || part.type === "month" || part.type === "day")
+      .map((part) => [part.type, part.value]),
+  )
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+function isUpcomingConcert(concert: Concert, todayIso: string): boolean {
+  if (concert.status === "Cancelled") return false
+  if (!concert.date) return concert.status === "Upcoming"
+  return concert.date >= todayIso
+}
+
 interface LiveSectionProps {
   overrides?: Record<string, HomeEditorNodeOverride>
 }
@@ -177,10 +198,11 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
 
       setConcerts((prev) => {
         const sorted = [...prev].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        const todayIso = getBerlinTodayIso()
         const filteredIndices: number[] = []
         sorted.forEach((item, i) => {
-          const isUpcoming = item.status === "Upcoming"
-          if ((listType === "upcoming" && isUpcoming) || (listType === "history" && !isUpcoming)) {
+          const isUpcoming = isUpcomingConcert(item, todayIso)
+          if ((listType === "upcoming" && isUpcoming) || (listType === "history" && item.status !== "Cancelled" && !isUpcoming)) {
             filteredIndices.push(i)
           }
         })
@@ -199,8 +221,9 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
     }
   }, [])
 
-  const upcomingConcerts = concerts.filter(c => c.status === "Upcoming")
-  const historyConcerts = concerts.filter(c => c.status === "Completed")
+  const todayIso = getBerlinTodayIso()
+  const upcomingConcerts = concerts.filter((concert) => isUpcomingConcert(concert, todayIso))
+  const historyConcerts = concerts.filter((concert) => concert.status !== "Cancelled" && !isUpcomingConcert(concert, todayIso))
 
   const traceNodeId = getTraceNodeId()
   useEffect(() => {

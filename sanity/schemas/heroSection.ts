@@ -51,6 +51,12 @@ export default defineType({
     defineField({ name: 'logo', title: 'Logo', type: 'image' }),
     defineField({ name: 'backgroundImage', title: 'Background Image', type: 'image' }),
     defineField({
+      name: 'backgroundImageUrl',
+      title: 'Background Image URL override',
+      type: 'string',
+      description: 'Set automatically when the visual editor changes the Hero background image.',
+    }),
+    defineField({
       name: 'ctaButtons',
       title: 'CTA Buttons',
       type: 'array',
