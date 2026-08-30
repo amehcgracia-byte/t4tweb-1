@@ -1009,7 +1009,6 @@ html:not([data-editor-active]) [data-editor-node-id="scene-section-live"],
 html:not([data-editor-active]) [data-editor-node-id="scene-section-contact"],
 html:not([data-editor-active]) [data-editor-node-id="about-section"],
 html:not([data-editor-active]) [data-editor-node-id="press-kit-section"],
-html:not([data-editor-active]) [data-editor-node-id="band-members-section"],
 html:not([data-editor-active]) [data-editor-node-id="live-section"] {
   box-sizing: border-box !important;
   width: 100% !important;
@@ -1021,7 +1020,6 @@ html:not([data-editor-active]) [data-editor-node-id="live-section"] {
 html:not([data-editor-active]) [data-editor-node-id="intro-banner-gif"],
 html:not([data-editor-active]) [data-editor-node-id="about-bg-image"],
 html:not([data-editor-active]) [data-editor-node-id="press-kit-bg"],
-html:not([data-editor-active]) [data-editor-node-id="band-members-bg"],
 html:not([data-editor-active]) [data-editor-node-id="live-section-bg-image"],
 html:not([data-editor-active]) [data-editor-node-id="contact-bg-image"],
 html:not([data-editor-active]) [data-editor-node-id="latest-release-bg"] {
