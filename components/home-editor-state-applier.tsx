@@ -27,6 +27,22 @@ const RESPONSIVE_MEDIA_NODE_IDS = new Set<string>([
   "hero-mobile-bg-image",
 ])
 
+const TABLET_LAYOUT_NODE_IDS = new Set<string>([
+  "section-divider-contact-footer",
+  "footer-section",
+  "footer-logo",
+  "footer-description",
+  "footer-cta",
+  "footer-social-group",
+  "footer-social-instagram",
+  "footer-social-youtube",
+  "footer-social-telegram",
+  "footer-social-linktree",
+  "footer-divider",
+  "footer-copyright",
+  "footer-developed-by",
+])
+
 function isDocDrivenNode(nodeId: string): boolean {
   if (DOC_DRIVEN_IMAGE_NODE_IDS.has(nodeId)) return true
   if (DOC_DRIVEN_TEXT_NODE_IDS.has(nodeId)) return true
@@ -96,8 +112,8 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
     }
 
     const applyOverrides = () => {
-      const allowGeometryOverrides = window.matchMedia("(min-width: 1024px)").matches
-      const allowResponsiveTypography = allowGeometryOverrides
+      const allowDesktopGeometryOverrides = window.matchMedia("(min-width: 1024px)").matches
+      const allowTabletGeometryOverrides = window.matchMedia("(min-width: 768px)").matches
       nodes.forEach((node) => {
       const selector = `[data-editor-node-id="${escapeEditorId(node.nodeId)}"]`
       const elements = Array.from(document.querySelectorAll<HTMLElement>(selector))
@@ -105,6 +121,16 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
 
       elements.forEach((el) => {
         if (isDocDrivenNode(node.nodeId)) return
+
+        // Footer is a normal-flow section, but editor users also arrange it
+        // on smaller laptop/tablet viewports. The old global 1024px gate
+        // silently discarded those saved moves on the public page. Keep
+        // mobile editing blocked while replaying the footer from tablet size
+        // upward, where its desktop layout is still meaningful.
+        const allowGeometryOverrides = TABLET_LAYOUT_NODE_IDS.has(node.nodeId)
+          ? allowTabletGeometryOverrides
+          : allowDesktopGeometryOverrides
+        const allowResponsiveTypography = allowGeometryOverrides
 
         const resetHistoryCard = isResetHistoryCard(node.nodeId)
         const scale = typeof node.style.scale === "number" ? Math.max(0.1, node.style.scale) : 1
