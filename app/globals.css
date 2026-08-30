@@ -919,6 +919,16 @@ html:not([data-editor-active]) [data-editor-managed-size="true"] {
   max-width: none !important;
 }
 
+/* Band is edited inside the viewport-sized section wrapper. Keep the saved
+ * height and transform on the public page, but apply the same effective
+ * horizontal constraint as the editor instead of widening the whole canvas. */
+@media (min-width: 1024px) {
+  html:not([data-editor-active]) [data-editor-node-id="band-members-section"][data-editor-managed-size="true"] {
+    width: min(var(--editor-managed-width), 100%) !important;
+    max-width: 100% !important;
+  }
+}
+
 /* Footer geometry is rendered from the saved editor state on the server as
  * well as replayed after hydration. This removes the visible base-layout
  * flash and keeps the footer in sync even when Framer Motion owns transform. */
