@@ -948,6 +948,42 @@ html:not([data-editor-active]) [data-editor-managed-size="true"] {
     height: var(--editor-managed-height) !important;
     max-width: none !important;
   }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-font-size="true"] {
+    font-size: var(--editor-desktop-font-size) !important;
+  }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-padding-left="true"] {
+    padding-left: var(--editor-desktop-padding-left) !important;
+  }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-padding-right="true"] {
+    padding-right: var(--editor-desktop-padding-right) !important;
+  }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-letter-spacing="true"] {
+    letter-spacing: var(--editor-desktop-letter-spacing) !important;
+  }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-line-height="true"] {
+    line-height: var(--editor-desktop-line-height) !important;
+  }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-max-width="true"] {
+    max-width: var(--editor-desktop-max-width) !important;
+  }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-min-height="true"] {
+    min-height: var(--editor-desktop-min-height) !important;
+  }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-padding-top="true"] {
+    padding-top: var(--editor-desktop-padding-top) !important;
+  }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-padding-bottom="true"] {
+    padding-bottom: var(--editor-desktop-padding-bottom) !important;
+  }
 }
 
 /* Contact is a viewport composition, not a fixed-height canvas. Older editor

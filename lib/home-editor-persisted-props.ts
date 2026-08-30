@@ -16,12 +16,33 @@ export interface HomeEditorPersistedProps {
   "data-editor-persisted-layout"?: "footer" | "desktop"
   "data-editor-persisted-transform"?: "true"
   "data-editor-persisted-size"?: "true"
+  "data-editor-persisted-font-size"?: "true"
+  "data-editor-persisted-padding-left"?: "true"
+  "data-editor-persisted-padding-right"?: "true"
+  "data-editor-persisted-letter-spacing"?: "true"
+  "data-editor-persisted-line-height"?: "true"
+  "data-editor-persisted-max-width"?: "true"
+  "data-editor-persisted-min-height"?: "true"
+  "data-editor-persisted-padding-top"?: "true"
+  "data-editor-persisted-padding-bottom"?: "true"
 }
 
 function addStyleValue(style: PersistedStyle, key: keyof CSSProperties, value: unknown): void {
   if (typeof value === "string" && value.trim()) {
     style[key] = value as never
   }
+}
+
+function addDesktopResponsiveStyle(
+  style: PersistedStyle,
+  attributes: Record<string, "true">,
+  cssName: string,
+  attributeName: string,
+  value: unknown,
+): void {
+  if (typeof value !== "string" || !value.trim()) return
+  style[`--editor-desktop-${cssName}`] = value
+  attributes[attributeName] = "true"
 }
 
 function getMediaFilter(override: HomeEditorNodeOverride): string | undefined {
@@ -63,6 +84,7 @@ export function getHomeEditorPersistedProps(
   if (!override) return {}
 
   const style: PersistedStyle = {}
+  const desktopResponsiveAttributes: Record<string, "true"> = {}
   const scale = typeof override.style.scale === "number" ? Math.max(0.1, override.style.scale) : 1
   const hasTransform = override.explicitPosition || (override.explicitStyle && scale !== 1)
   if (hasTransform) {
@@ -80,7 +102,14 @@ export function getHomeEditorPersistedProps(
     if (override.style.opacity !== undefined) style.opacity = override.style.opacity
     addStyleValue(style, "color", override.style.color)
     addStyleValue(style, "backgroundColor", override.style.backgroundColor)
-    addStyleValue(style, "fontSize", override.style.fontSize)
+    if (layout === "desktop") {
+      // Typography and spacing are measured in editor pixels. Keep them in
+      // custom properties so the public CSS can enable them only on desktop;
+      // mobile then falls back to the component's responsive classes.
+      addDesktopResponsiveStyle(style, desktopResponsiveAttributes, "font-size", "data-editor-persisted-font-size", override.style.fontSize)
+    } else {
+      addStyleValue(style, "fontSize", override.style.fontSize)
+    }
     addStyleValue(style, "fontFamily", override.style.fontFamily)
     addStyleValue(style, "fontWeight", override.style.fontWeight)
     addStyleValue(style, "fontStyle", override.style.fontStyle)
@@ -92,14 +121,25 @@ export function getHomeEditorPersistedProps(
     addStyleValue(style, "borderWidth", override.style.borderWidth)
     addStyleValue(style, "borderRadius", override.style.borderRadius)
     addStyleValue(style, "boxShadow", override.style.boxShadow)
-    addStyleValue(style, "paddingLeft", override.style.paddingLeft)
-    addStyleValue(style, "paddingRight", override.style.paddingRight)
-    addStyleValue(style, "letterSpacing", override.style.letterSpacing)
-    addStyleValue(style, "lineHeight", override.style.lineHeight)
-    addStyleValue(style, "maxWidth", override.style.maxWidth)
-    addStyleValue(style, "minHeight", override.style.minHeight)
-    addStyleValue(style, "paddingTop", override.style.paddingTop)
-    addStyleValue(style, "paddingBottom", override.style.paddingBottom)
+    if (layout === "desktop") {
+      addDesktopResponsiveStyle(style, desktopResponsiveAttributes, "padding-left", "data-editor-persisted-padding-left", override.style.paddingLeft)
+      addDesktopResponsiveStyle(style, desktopResponsiveAttributes, "padding-right", "data-editor-persisted-padding-right", override.style.paddingRight)
+      addDesktopResponsiveStyle(style, desktopResponsiveAttributes, "letter-spacing", "data-editor-persisted-letter-spacing", override.style.letterSpacing)
+      addDesktopResponsiveStyle(style, desktopResponsiveAttributes, "line-height", "data-editor-persisted-line-height", override.style.lineHeight)
+      addDesktopResponsiveStyle(style, desktopResponsiveAttributes, "max-width", "data-editor-persisted-max-width", override.style.maxWidth)
+      addDesktopResponsiveStyle(style, desktopResponsiveAttributes, "min-height", "data-editor-persisted-min-height", override.style.minHeight)
+      addDesktopResponsiveStyle(style, desktopResponsiveAttributes, "padding-top", "data-editor-persisted-padding-top", override.style.paddingTop)
+      addDesktopResponsiveStyle(style, desktopResponsiveAttributes, "padding-bottom", "data-editor-persisted-padding-bottom", override.style.paddingBottom)
+    } else {
+      addStyleValue(style, "paddingLeft", override.style.paddingLeft)
+      addStyleValue(style, "paddingRight", override.style.paddingRight)
+      addStyleValue(style, "letterSpacing", override.style.letterSpacing)
+      addStyleValue(style, "lineHeight", override.style.lineHeight)
+      addStyleValue(style, "maxWidth", override.style.maxWidth)
+      addStyleValue(style, "minHeight", override.style.minHeight)
+      addStyleValue(style, "paddingTop", override.style.paddingTop)
+      addStyleValue(style, "paddingBottom", override.style.paddingBottom)
+    }
     addStyleValue(style, "objectFit", override.style.objectFit)
     addStyleValue(style, "objectPosition", override.style.objectPosition)
     const filter = getMediaFilter(override)
@@ -123,5 +163,6 @@ export function getHomeEditorPersistedProps(
     ...(layout && override.explicitSize ? {
       "data-editor-persisted-size": "true" as const,
     } : {}),
+    ...desktopResponsiveAttributes,
   }
 }

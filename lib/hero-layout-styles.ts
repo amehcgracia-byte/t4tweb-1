@@ -205,13 +205,13 @@ export function getElementLayoutStyle(
   if (typeof styles.borderWidth === "string") result.borderWidth = styles.borderWidth
   if (typeof styles.borderRadius === "string") result.borderRadius = styles.borderRadius
   if (typeof styles.boxShadow === "string") result.boxShadow = styles.boxShadow
-  if (typeof styles.paddingLeft === "string") result.paddingLeft = styles.paddingLeft
-  if (typeof styles.paddingRight === "string") result.paddingRight = styles.paddingRight
+  if (includeResponsiveTypography && typeof styles.paddingLeft === "string") result.paddingLeft = styles.paddingLeft
+  if (includeResponsiveTypography && typeof styles.paddingRight === "string") result.paddingRight = styles.paddingRight
   if (typeof styles.objectFit === "string") result.objectFit = styles.objectFit as CSSProperties["objectFit"]
   if (typeof styles.objectPosition === "string") result.objectPosition = styles.objectPosition
-  if (typeof styles.minHeight === "string") result.minHeight = styles.minHeight
-  if (typeof styles.paddingTop === "string") result.paddingTop = styles.paddingTop
-  if (typeof styles.paddingBottom === "string") result.paddingBottom = styles.paddingBottom
+  if (includeResponsiveTypography && typeof styles.minHeight === "string") result.minHeight = styles.minHeight
+  if (includeResponsiveTypography && typeof styles.paddingTop === "string") result.paddingTop = styles.paddingTop
+  if (includeResponsiveTypography && typeof styles.paddingBottom === "string") result.paddingBottom = styles.paddingBottom
 
   return result
 }
