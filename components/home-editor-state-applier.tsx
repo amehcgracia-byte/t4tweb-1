@@ -44,7 +44,9 @@ const TABLET_LAYOUT_NODE_IDS = new Set<string>([
 ])
 
 function isDocDrivenNode(nodeId: string): boolean {
-  if (DOC_DRIVEN_IMAGE_NODE_IDS.has(nodeId)) return true
+  // The Hero source remains document-driven, but its saved desktop framing
+  // must still be replayed on the public page like it is in the editor.
+  if (DOC_DRIVEN_IMAGE_NODE_IDS.has(nodeId) && nodeId !== "hero-bg-image") return true
   if (DOC_DRIVEN_TEXT_NODE_IDS.has(nodeId)) return true
   if (nodeId === "hero-section" || nodeId === "hero-title" || nodeId === "hero-subtitle" || nodeId === "hero-scroll-indicator" || nodeId === "hero-buttons") return true
   if (nodeId === "navigation" || nodeId === "navigation-inner" || nodeId === "nav-brand-name" || nodeId === "nav-book-button" || nodeId === "nav-mobile-book-button") return true
@@ -54,6 +56,9 @@ function isDocDrivenNode(nodeId: string): boolean {
 }
 
 function shouldApplyMediaGeometry(node: HomeEditorNodeOverride): boolean {
+  if (node.nodeId === "hero-bg-image") {
+    return node.explicitPosition || node.explicitSize || node.explicitStyle
+  }
   // Older media records contain fixed desktop geometry without marking the
   // media content as an explicit edit. Ignore that legacy geometry so it
   // cannot distort the public layout; a new media move/resize marks the node
