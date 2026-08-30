@@ -300,7 +300,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
       className="relative isolate min-h-screen w-full overflow-hidden bg-black"
       style={buildInlineStyleFromOverride(
         overrides["band-members-section"],
-        isEditing && allowGeometryOverrides
+        allowGeometryOverrides
       )}
     >
       {/* Fondo full width */}
@@ -312,7 +312,7 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
         className="absolute inset-0 z-0"
         style={buildInlineStyleFromOverride(
           overrides["band-members-bg"],
-          isEditing && allowGeometryOverrides
+          allowGeometryOverrides
         )}
       >
         <Image
