@@ -8,7 +8,6 @@ import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provid
 import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import type { HeroData } from "@/lib/sanity/hero-loader"
 import {
-  buildHeroBackgroundImageLayoutStyle,
   buildHeroScrollIndicatorLayoutStyle,
   getElementLayoutStyle,
   roundLayoutPx,
@@ -387,19 +386,6 @@ export function HeroSection({ data }: { data: HeroData }) {
   const resolvedHeroBgSrc = useHomeEditorImageSrc("hero-bg-image", content.bgUrl)
   const resolvedHeroMobileBgSrc = useHomeEditorImageSrc("hero-mobile-bg-image", HERO_MOBILE_BG_URL)
   const resolvedHeroLogoSrc = useHomeEditorImageSrc("hero-logo", content.logoUrl)
-  const heroBackgroundImageLayoutStyle =
-    !isEditing && allowGeometryOverrides && hasResponsiveHeroLayout(content.elementStyles, "hero-bg-image")
-      ? (() => {
-          const saved = content.elementStyles?.["hero-bg-image"]
-          if (!saved || typeof saved !== "object") return {}
-          const styles = saved as Record<string, unknown>
-          return buildHeroBackgroundImageLayoutStyle({
-            x: typeof styles.x === "number" ? styles.x : 0,
-            y: typeof styles.y === "number" ? styles.y : 0,
-            scale: typeof styles.scale === "number" ? styles.scale : undefined,
-          })
-        })()
-      : {}
   const scrollLayoutSaved =
     scrollIndicatorHasLayout(content.elementStyles)
 
@@ -493,13 +479,11 @@ export function HeroSection({ data }: { data: HeroData }) {
             data-editor-media-kind="image"
             data-editor-node-label="Hero Background"
             className="absolute inset-0"
-            style={isEditing
-              ? getElementStyle(content.elementStyles, "hero-bg-image", {
-                includeGeometry:
-                    allowGeometryOverrides && !content.mediaGeometryDisabled && hasResponsiveHeroLayout(content.elementStyles, "hero-bg-image"),
-                  includeResponsiveTypography: allowGeometryOverrides,
-                })
-              : undefined}
+            style={getElementStyle(content.elementStyles, "hero-bg-image", {
+              includeGeometry:
+                allowGeometryOverrides && !content.mediaGeometryDisabled && hasResponsiveHeroLayout(content.elementStyles, "hero-bg-image"),
+              includeResponsiveTypography: allowGeometryOverrides,
+            })}
           >
             <Image
               src={resolvedHeroBgSrc}
@@ -509,7 +493,7 @@ export function HeroSection({ data }: { data: HeroData }) {
               unoptimized
               sizes="100vw"
               className="hidden object-cover min-[1025px]:block"
-              style={{ objectPosition: "center top", ...heroBackgroundImageLayoutStyle }}
+              style={{ objectPosition: "center top" }}
             />
 
             <div
