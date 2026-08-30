@@ -61,6 +61,12 @@ export default async function Home() {
       acc[node.nodeId] = node
       return acc
     }, {})
+  const contactNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("contact-") || node.nodeId.startsWith("contact-header-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
   const footerNodeOverrides = homeEditorNodes
     .filter((node) => node.nodeId.startsWith("footer-"))
     .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
@@ -124,7 +130,7 @@ export default async function Home() {
       <SectionDivider editorId="section-divider-live-contact" />
 
       <SceneSection id="contact">
-        <ContactSection />
+        <ContactSection overrides={contactNodeOverrides} />
       </SceneSection>
 
       <SectionDivider

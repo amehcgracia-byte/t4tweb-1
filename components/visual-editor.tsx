@@ -892,7 +892,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
       }
     }
   }
-  if (entry.type === "button") {
+  if (entry.type === "button" || (entry.type === "card" && (el.tagName === "A" || el.tagName === "BUTTON"))) {
     content.href = el.getAttribute("href") || ""
   }
   if (entry.type === "image" || entry.type === "background") {
@@ -1220,6 +1220,9 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
     }
     if (node.type === "card") {
       if (node.explicitContent && node.content.text !== undefined && !el.querySelector("[data-concert-field]")) el.textContent = node.content.text
+      if (node.explicitContent && node.content.href !== undefined && (el.tagName === "A" || el.tagName === "BUTTON")) {
+        el.setAttribute("href", node.content.href)
+      }
       if (node.explicitStyle && node.style.color) el.style.color = node.style.color
       if (node.explicitStyle && node.style.backgroundColor) el.style.backgroundColor = node.style.backgroundColor
       if (node.explicitStyle) {
@@ -3115,6 +3118,16 @@ export function VisualEditorOverlay() {
                   fallback="#000000"
                   onValueChange={(value) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { backgroundColor: value } })}
                 />
+                {selectedNode.content.href !== undefined && (
+                  <>
+                    <label className="text-[10px]">Link</label>
+                    <input
+                      className="w-full rounded border p-1 text-xs"
+                      value={selectedNode.content.href || ""}
+                      onChange={(e) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch: { href: e.target.value } })}
+                    />
+                  </>
+                )}
                 <DecorationToolControls node={selectedNode} label="Card decoration" onPatch={(patch) => dispatch({ type: "UPDATE_CARD", nodeId: selectedNode.id, patch })} />
               </>
             )}

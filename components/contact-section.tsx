@@ -1,14 +1,21 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, type CSSProperties } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campaign-content"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
+import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
+import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
+import { getHomeEditorPersistedMediaStyle, getHomeEditorPersistedProps } from "@/lib/home-editor-persisted-props"
 
-export function ContactSection() {
+interface ContactSectionProps {
+  overrides?: Record<string, HomeEditorNodeOverride>
+}
+
+export function ContactSection({ overrides = {} }: ContactSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
@@ -23,6 +30,20 @@ export function ContactSection() {
   const middleTextRef = useRef<HTMLParagraphElement>(null)
   const { opacity, y } = useScrollAnimation(sectionRef)
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
+  const resolvedContactBackgroundSrc = useHomeEditorImageSrc("contact-bg-image", "/images/sections/contact-bg.jpg")
+  const persistedProps = (nodeId: string) => getHomeEditorPersistedProps(overrides[nodeId], "desktop")
+  const persistedText = (nodeId: string, fallback: string) => {
+    const override = overrides[nodeId]
+    return override?.explicitContent && typeof override.content.text === "string" ? override.content.text : fallback
+  }
+  const persistedHref = (nodeId: string, fallback: string) => {
+    const override = overrides[nodeId]
+    return override?.explicitContent && typeof override.content.href === "string" ? override.content.href : fallback
+  }
+  const contactBackgroundMediaStyle: CSSProperties = {
+    objectPosition: "center center",
+    ...getHomeEditorPersistedMediaStyle(overrides["contact-bg-image"]),
+  }
 
   useEffect(() => {
     if (!isEditing) return
@@ -221,6 +242,7 @@ export function ContactSection() {
   return (
     <section
       ref={sectionRef}
+      {...persistedProps("contact-section")}
       data-campaign-touchpoint="contact-booking"
       data-editor-node-id="contact-section"
       data-editor-node-type="section"
@@ -229,6 +251,7 @@ export function ContactSection() {
     >
       <div 
         ref={bgRef}
+        {...persistedProps("contact-bg-image")}
         data-editor-node-id="contact-bg-image"
         data-editor-node-type="background"
         data-editor-media-kind="image"
@@ -236,12 +259,12 @@ export function ContactSection() {
         className="absolute inset-0 -z-10"
       >
         <Image
-          src="/images/sections/contact-bg.jpg"
+          src={resolvedContactBackgroundSrc}
           alt="Contact section background"
           fill
           className="object-cover"
           sizes="100vw"
-          style={{ objectPosition: "center center" }}
+          style={contactBackgroundMediaStyle}
         />
       </div>
       <div className="absolute inset-0 -z-10 bg-black/20" />
@@ -251,12 +274,13 @@ export function ContactSection() {
       <div className="relative z-10 mx-auto w-full max-w-5xl min-h-screen flex flex-col justify-end">
         <motion.div ref={headerRef} style={isEditing ? undefined : { opacity, y }} className="mb-10 md:mb-12">
           <SectionHeader
-            eyebrow="Contact"
-            title="Book the Band"
-            description="Get in touch for booking inquiries and event collaborations."
+            eyebrow={persistedText("contact-header-eyebrow", "Contact")}
+            title={persistedText("contact-header-title", "Book the Band")}
+            description={persistedText("contact-header-description", "Get in touch for booking inquiries and event collaborations.")}
             dataEditId="contact-header"
             dataEditType="text"
             dataEditLabel="Encabezado Contacto"
+            persistedOverrides={overrides}
           />
         </motion.div>
 
@@ -264,6 +288,7 @@ export function ContactSection() {
         <div className="flex flex-col items-stretch justify-center gap-4 md:flex-row md:items-center md:gap-8">
           <motion.a
             ref={emailCardRef}
+            {...persistedProps("contact-email")}
             data-editor-node-id="contact-email"
             data-editor-node-type="card"
             data-editor-node-label="Contacto Email"
@@ -272,7 +297,7 @@ export function ContactSection() {
             whileInView={isEditing ? undefined : { opacity: 1, x: 0 }}
             whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
             transition={isEditing ? undefined : { duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
-            href={contactMethods[0].href}
+            href={persistedHref("contact-email", contactMethods[0].href)}
             className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
               isEditing ? "" : "transition-all duration-300 hover:border-primary/45 hover:shadow-lg"
             }`}
@@ -282,44 +307,47 @@ export function ContactSection() {
             </div>
             <h3 
               ref={emailTitleRef}
+              {...persistedProps("contact-email-title")}
               data-editor-node-id="contact-email-title"
               data-editor-node-type="text"
               data-editor-node-label="Título Email"
               className="mb-2 font-serif text-base text-foreground md:text-xl"
             >
-              Email Us
+              {persistedText("contact-email-title", "Email Us")}
             </h3>
             <p 
               ref={emailDescRef}
+              {...persistedProps("contact-email-description")}
               data-editor-node-id="contact-email-description"
               data-editor-node-type="text"
               data-editor-node-label="Descripción Email"
               className="mb-3 text-sm text-muted-foreground md:mb-4 md:text-base"
             >
-              Momo Garcia - Management
+              {persistedText("contact-email-description", "Momo Garcia - Management")}
             </p>
             <span className={`inline-flex max-w-full items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium md:text-sm ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
               <span 
                 ref={emailAddrRef}
+                {...persistedProps("contact-email-address")}
                 data-editor-node-id="contact-email-address"
                 data-editor-node-type="text"
                 data-editor-node-label="Dirección Email"
                 className="truncate"
               >
-                talesforthetillerman@gmail.com
+                {persistedText("contact-email-address", "talesforthetillerman@gmail.com")}
               </span>
             </span>
           </motion.a>
 
           <div className="px-4 text-center">
-            <p ref={middleTextRef} data-editor-node-id="contact-middle-text" data-editor-node-type="text" data-editor-node-label="Contact Middle Text" className="text-xs text-muted-foreground md:text-base">
-              Choose your preferred<br />
-              way to reach us
+            <p ref={middleTextRef} {...persistedProps("contact-middle-text")} data-editor-node-id="contact-middle-text" data-editor-node-type="text" data-editor-node-label="Contact Middle Text" className="whitespace-pre-line text-xs text-muted-foreground md:text-base">
+              {persistedText("contact-middle-text", "Choose your preferred\nway to reach us")}
             </p>
           </div>
 
           <motion.a
             ref={telegramCardRef}
+            {...persistedProps("contact-telegram")}
             data-editor-node-id="contact-telegram"
             data-editor-node-type="card"
             data-editor-node-label="Contacto Telegram"
@@ -328,7 +356,7 @@ export function ContactSection() {
             whileInView={isEditing ? undefined : { opacity: 1, x: 0 }}
             whileHover={isEditing ? undefined : { y: -2, scale: 1.01 }}
             transition={isEditing ? undefined : { duration: 0.45, type: "spring", stiffness: 320, damping: 22 }}
-            href={contactMethods[1].href}
+            href={persistedHref("contact-telegram", contactMethods[1].href)}
             target="_blank"
             rel="noopener noreferrer"
             className={`group rounded-xl border border-border bg-card/90 p-4 md:p-5 lg:p-7 text-center shadow-md backdrop-blur-sm flex-1 max-w-xs ${
@@ -340,31 +368,34 @@ export function ContactSection() {
             </div>
             <h3 
               ref={telegramTitleRef}
+              {...persistedProps("contact-telegram-title")}
               data-editor-node-id="contact-telegram-title"
               data-editor-node-type="text"
               data-editor-node-label="Título Telegram"
               className="mb-2 font-serif text-base text-foreground md:text-xl"
             >
-              Telegram
+              {persistedText("contact-telegram-title", "Telegram")}
             </h3>
             <p 
               ref={telegramDescRef}
+              {...persistedProps("contact-telegram-description")}
               data-editor-node-id="contact-telegram-description"
               data-editor-node-type="text"
               data-editor-node-label="Descripción Telegram"
               className="mb-3 text-sm text-muted-foreground md:mb-4 md:text-base"
             >
-              Janosch Puhe - Quick response
+              {persistedText("contact-telegram-description", "Janosch Puhe - Quick response")}
             </p>
             <span className={`inline-flex max-w-full items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium md:text-sm ${CAMPAIGN_PRIMARY_CTA_CLASS}`}>
               <span 
                 ref={telegramHandleRef}
+                {...persistedProps("contact-telegram-handle")}
                 data-editor-node-id="contact-telegram-handle"
                 data-editor-node-type="text"
                 data-editor-node-label="Handle Telegram"
                 className="truncate"
               >
-                @Janoschpuhe
+                {persistedText("contact-telegram-handle", "@Janoschpuhe")}
               </span>
             </span>
           </motion.a>

@@ -3,6 +3,8 @@
 import type { ReactNode } from "react"
 import { motion } from "framer-motion"
 import { useVisualEditor } from "@/components/visual-editor"
+import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
+import { getHomeEditorPersistedProps } from "@/lib/home-editor-persisted-props"
 
 const view = { once: true, amount: 0.25 as const }
 
@@ -18,6 +20,7 @@ type SectionHeaderProps = {
   dataEditId?: string
   dataEditType?: string
   dataEditLabel?: string
+  persistedOverrides?: Record<string, HomeEditorNodeOverride>
 }
 
 /**
@@ -36,13 +39,19 @@ export function SectionHeader({
   dataEditId,
   dataEditType,
   dataEditLabel,
+  persistedOverrides = {},
 }: SectionHeaderProps) {
   const { isEditing } = useVisualEditor()
+  const resolveText = (nodeId: string, fallback: string) => {
+    const override = persistedOverrides[nodeId]
+    return override?.explicitContent && typeof override.content.text === "string" ? override.content.text : fallback
+  }
   return (
     <div className={`mx-auto max-w-3xl text-center ${className}`}>
       {prepend ? <div className="mb-[var(--spacing-md)]">{prepend}</div> : null}
 
       <motion.span
+        {...getHomeEditorPersistedProps(persistedOverrides[dataEditId ? `${dataEditId}-eyebrow` : ""], "desktop")}
         initial={isEditing ? false : { opacity: 0, y: 8 }}
         whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
         viewport={isEditing ? undefined : view}
@@ -52,10 +61,11 @@ export function SectionHeader({
         data-editor-node-type="text"
         data-editor-node-label={dataEditLabel ? `${dataEditLabel} Eyebrow` : undefined}
       >
-        {eyebrow}
+        {resolveText(dataEditId ? `${dataEditId}-eyebrow` : "", eyebrow)}
       </motion.span>
 
       <motion.h2
+        {...getHomeEditorPersistedProps(persistedOverrides[dataEditId ? `${dataEditId}-title` : ""], "desktop")}
         initial={isEditing ? false : { opacity: 0, y: 10 }}
         whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
         viewport={isEditing ? undefined : view}
@@ -65,11 +75,12 @@ export function SectionHeader({
         data-editor-node-type="text"
         data-editor-node-label={dataEditLabel ? `${dataEditLabel} Title` : undefined}
       >
-        {title}
+        {resolveText(dataEditId ? `${dataEditId}-title` : "", title)}
       </motion.h2>
 
       {description ? (
         <motion.p
+          {...getHomeEditorPersistedProps(persistedOverrides[dataEditId ? `${dataEditId}-description` : ""], "desktop")}
           initial={isEditing ? false : { opacity: 0, y: 10 }}
           whileInView={isEditing ? undefined : { opacity: 1, y: 0 }}
           viewport={isEditing ? undefined : view}
@@ -79,7 +90,7 @@ export function SectionHeader({
           data-editor-node-type="text"
           data-editor-node-label={dataEditLabel ? `${dataEditLabel} Description` : undefined}
         >
-          {description}
+          {resolveText(dataEditId ? `${dataEditId}-description` : "", description)}
         </motion.p>
       ) : null}
 

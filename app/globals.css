@@ -935,6 +935,21 @@ html:not([data-editor-active]) [data-editor-managed-size="true"] {
   }
 }
 
+/* Contact and other desktop-arranged editor nodes use the same server-first
+ * contract while preserving their responsive mobile flow. */
+@media (min-width: 1024px) {
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-transform="true"] {
+    transform: var(--editor-managed-transform) !important;
+    transform-origin: var(--editor-managed-transform-origin, top left) !important;
+  }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="desktop"][data-editor-persisted-size="true"] {
+    width: var(--editor-managed-width) !important;
+    height: var(--editor-managed-height) !important;
+    max-width: none !important;
+  }
+}
+
 /* ============================================================================
    ORANGE BUTTONS - Consistent naranja #FF8C21 theme
    ============================================================================ */

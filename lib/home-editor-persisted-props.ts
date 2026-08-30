@@ -13,7 +13,7 @@ export interface HomeEditorPersistedProps {
   "data-editor-geometry-y"?: string
   "data-editor-geometry-width"?: string
   "data-editor-geometry-height"?: string
-  "data-editor-persisted-layout"?: "footer"
+  "data-editor-persisted-layout"?: "footer" | "desktop"
   "data-editor-persisted-transform"?: "true"
   "data-editor-persisted-size"?: "true"
 }
@@ -22,6 +22,31 @@ function addStyleValue(style: PersistedStyle, key: keyof CSSProperties, value: u
   if (typeof value === "string" && value.trim()) {
     style[key] = value as never
   }
+}
+
+function getMediaFilter(override: HomeEditorNodeOverride): string | undefined {
+  const hasMediaAdjustments = override.style.contrast !== undefined ||
+    override.style.saturation !== undefined ||
+    override.style.brightness !== undefined ||
+    override.style.negative !== undefined
+  if (!hasMediaAdjustments) return undefined
+  const contrast = override.style.contrast ?? 100
+  const saturation = override.style.saturation ?? 100
+  const brightness = override.style.brightness ?? 100
+  return `contrast(${contrast}%) saturate(${saturation}%) brightness(${brightness}%)${override.style.negative ? " invert(1)" : ""}`
+}
+
+/** Styles that belong on an image/iframe rather than its editor wrapper. */
+export function getHomeEditorPersistedMediaStyle(
+  override: HomeEditorNodeOverride | undefined,
+): CSSProperties | undefined {
+  if (!override?.explicitStyle) return undefined
+  const style: CSSProperties = {}
+  if (override.style.objectFit) style.objectFit = override.style.objectFit
+  if (override.style.objectPosition) style.objectPosition = override.style.objectPosition
+  const filter = getMediaFilter(override)
+  if (filter) style.filter = filter
+  return Object.keys(style).length > 0 ? style : undefined
 }
 
 /**
@@ -33,7 +58,7 @@ function addStyleValue(style: PersistedStyle, key: keyof CSSProperties, value: u
  */
 export function getHomeEditorPersistedProps(
   override: HomeEditorNodeOverride | undefined,
-  layout: "footer" | undefined = undefined,
+  layout: "footer" | "desktop" | undefined = undefined,
 ): HomeEditorPersistedProps {
   if (!override) return {}
 
@@ -75,6 +100,10 @@ export function getHomeEditorPersistedProps(
     addStyleValue(style, "minHeight", override.style.minHeight)
     addStyleValue(style, "paddingTop", override.style.paddingTop)
     addStyleValue(style, "paddingBottom", override.style.paddingBottom)
+    addStyleValue(style, "objectFit", override.style.objectFit)
+    addStyleValue(style, "objectPosition", override.style.objectPosition)
+    const filter = getMediaFilter(override)
+    if (filter) style.filter = filter
   }
 
   return {
