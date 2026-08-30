@@ -83,15 +83,10 @@ function resolveMemberRoleOverride(node: HomeEditorNodeOverride | undefined, fal
   return text ? text : fallback
 }
 
-function resolveMemberNumberOverride(node: HomeEditorNodeOverride | undefined, fallback: string): string {
-  if (!node?.explicitContent) return fallback
-  const text = node.content.text?.trim()
-  return text ? text : fallback
-}
-
 function buildInlineTextStyleFromOverride(
   override: HomeEditorNodeOverride | undefined,
-  fallbackColor: string
+  fallbackColor: string,
+  includeGeometry = true
 ): CSSProperties | undefined {
   if (!override) return undefined
   const style: CSSProperties = {}
@@ -109,7 +104,7 @@ function buildInlineTextStyleFromOverride(
   }
 
   if (override.style.opacity !== undefined) style.opacity = override.style.opacity
-  if (override.style.fontSize) style.fontSize = override.style.fontSize
+  if (includeGeometry && override.style.fontSize) style.fontSize = override.style.fontSize
   if (override.style.fontFamily) style.fontFamily = override.style.fontFamily
   if (override.style.fontWeight) style.fontWeight = override.style.fontWeight as CSSProperties["fontWeight"]
   if (override.style.fontStyle) style.fontStyle = override.style.fontStyle as CSSProperties["fontStyle"]
@@ -198,10 +193,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
 
   const displayedMembers = members.map((member, index) => ({
     ...member,
-    number: resolveEditorMemberText(
-      `member-item-${index}-number`,
-      resolveMemberNumberOverride(overrides[`member-item-${index}-number`], String(member.id).padStart(2, "0"))
-    ),
     fullName: resolveEditorMemberText(
       `member-item-${index}-name`,
       resolveMemberNameOverride(
@@ -267,6 +258,11 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                     data-editor-node-type="text"
                     data-editor-node-label={`${member.fullName} name`}
                     data-member-name-index={index}
+                    style={buildInlineTextStyleFromOverride(
+                      overrides[`member-item-${index}-name`],
+                      activeIndex === index ? "#ffffff" : "rgba(255,255,255,0.8)",
+                      allowGeometryOverrides
+                    )}
                     className={`text-base md:text-xl font-medium transition-colors truncate ${
                       activeIndex === index ? "text-white" : "text-white/80 group-hover:text-white"
                     }`}
@@ -278,6 +274,11 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                     data-editor-node-type="text"
                     data-editor-node-label={`${member.fullName} role`}
                     data-member-role-index={index}
+                    style={buildInlineTextStyleFromOverride(
+                      overrides[`member-item-${index}-role`],
+                      activeIndex === index ? "#fb923c" : "rgba(255,255,255,0.5)",
+                      allowGeometryOverrides
+                    )}
                     className={`text-xs md:text-sm mt-0.5 md:mt-1 transition-colors ${
                       activeIndex === index ? "text-orange-400" : "text-white/50"
                     }`}
@@ -286,19 +287,6 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
                   </p>
                 </div>
 
-                <div
-                  data-editor-node-id={`member-item-${index}-number`}
-                  data-editor-node-type="text"
-                  data-editor-node-label={`${member.fullName} number`}
-                  data-member-number-index={index}
-                  className={`w-7 h-7 md:w-8 md:h-8 shrink-0 ml-3 rounded-full flex items-center justify-center text-xs font-mono border transition-all ${
-                    activeIndex === index
-                      ? "border-orange-500 text-orange-400 bg-orange-950"
-                      : "border-white/20 text-white/40 group-hover:border-white/40"
-                  }`}
-                >
-                  {member.number}
-                </div>
               </motion.div>
   )
 
@@ -310,7 +298,10 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
       data-editor-node-type="section"
       data-editor-node-label="Sección Miembros de la Banda"
       className="relative isolate min-h-screen w-full overflow-hidden bg-black"
-      style={buildInlineStyleFromOverride(overrides["band-members-section"], allowGeometryOverrides)}
+      style={buildInlineStyleFromOverride(
+        overrides["band-members-section"],
+        isEditing && allowGeometryOverrides
+      )}
     >
       {/* Fondo full width */}
       <div 
@@ -319,7 +310,10 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
         data-editor-media-kind="image"
         data-editor-node-label="Imagen de fondo banda"
         className="absolute inset-0 z-0"
-        style={buildInlineStyleFromOverride(overrides["band-members-bg"], allowGeometryOverrides)}
+        style={buildInlineStyleFromOverride(
+          overrides["band-members-bg"],
+          isEditing && allowGeometryOverrides
+        )}
       >
         <Image
           src={resolvedBandBackgroundSrc}
@@ -375,7 +369,11 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
               data-editor-node-type="text"
               data-editor-node-label="Collabs title"
               className="mb-6 text-center font-serif text-2xl text-foreground md:text-3xl"
-              style={buildInlineTextStyleFromOverride(overrides["band-members-collabs-title"], "#f4f4f5")}
+              style={buildInlineTextStyleFromOverride(
+                overrides["band-members-collabs-title"],
+                "#f4f4f5",
+                allowGeometryOverrides
+              )}
             >
               {resolveTextOverride(overrides["band-members-collabs-title"], "Collabs")}
             </h3>
@@ -429,7 +427,11 @@ export function BandMembersSection({ initialMembers, overrides = {} }: BandMembe
               data-editor-node-type="text"
               data-editor-node-label="Members title"
               className="mb-6 text-center font-serif text-2xl text-foreground md:text-3xl"
-              style={buildInlineTextStyleFromOverride(overrides["band-members-members-title"], "#f4f4f5")}
+              style={buildInlineTextStyleFromOverride(
+                overrides["band-members-members-title"],
+                "#f4f4f5",
+                allowGeometryOverrides
+              )}
             >
               {resolveTextOverride(overrides["band-members-members-title"], "Members")}
             </h3>

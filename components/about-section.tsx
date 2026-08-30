@@ -1,14 +1,21 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, type CSSProperties } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
 import { SectionHeader } from "@/components/section-header"
 import { useVisualEditor } from "@/components/visual-editor"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
+import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
+import { getHomeEditorPersistedMediaStyle, getHomeEditorPersistedProps } from "@/lib/home-editor-persisted-props"
 
-export function AboutSection({ className = "" }: { className?: string }) {
+interface AboutSectionProps {
+  className?: string
+  overrides?: Record<string, HomeEditorNodeOverride>
+}
+
+export function AboutSection({ className = "", overrides = {} }: AboutSectionProps) {
   const { isEditing, registerEditable, unregisterEditable, getElementById } = useVisualEditor()
   const sectionRef = useRef<HTMLElement>(null)
   const bgRef = useRef<HTMLDivElement>(null)
@@ -25,6 +32,20 @@ export function AboutSection({ className = "" }: { className?: string }) {
   const resolvedAboutBackgroundSrc = persistedAboutBackgroundSrc.endsWith("/images/about-bg-main.jpg")
     ? "/images/about-band-color.png"
     : persistedAboutBackgroundSrc
+  const persistedProps = (nodeId: string) => getHomeEditorPersistedProps(overrides[nodeId], "desktop")
+  const persistedText = (nodeId: string, fallback: string) => {
+    const override = overrides[nodeId]
+    return override?.explicitContent && typeof override.content.text === "string" ? override.content.text : fallback
+  }
+  const persistedAboutBackgroundMediaStyle = getHomeEditorPersistedMediaStyle(overrides["about-bg-image"])
+  const aboutDesktopBackgroundMediaStyle: CSSProperties = {
+    objectPosition: "center top",
+    ...persistedAboutBackgroundMediaStyle,
+  }
+  const aboutMobileBackgroundMediaStyle: CSSProperties = {
+    objectPosition: "center center",
+    ...persistedAboutBackgroundMediaStyle,
+  }
 
   // Register editable elements - only on isEditing change, not on callback changes
   useEffect(() => {
@@ -182,10 +203,12 @@ Their performances balance musical depth with danceable power, bringing together
       data-editor-node-id="about-section"
       data-editor-node-type="section"
       data-editor-node-label="Sección Sobre Nosotros"
+      {...persistedProps("about-section")}
       className={`relative isolate min-h-screen w-full overflow-hidden bg-black ${className}`}
     >
       <div 
         ref={bgRef}
+        {...persistedProps("about-bg-image")}
         data-editor-node-id="about-bg-image"
         data-editor-node-type="background"
         data-editor-media-kind="image"
@@ -197,7 +220,7 @@ Their performances balance musical depth with danceable power, bringing together
           alt="Band members background"
           fill
           className="hidden object-cover md:block"
-          style={{ objectPosition: "center top" }}
+          style={aboutDesktopBackgroundMediaStyle}
         />
         <div className="absolute inset-0 md:hidden" aria-hidden="true">
           <Image
@@ -205,14 +228,14 @@ Their performances balance musical depth with danceable power, bringing together
             alt=""
             fill
             className="object-cover opacity-25 blur-[3px]"
-            style={{ objectPosition: "center center", transform: "scale(1.06)" }}
+            style={{ ...aboutMobileBackgroundMediaStyle, transform: "scale(1.06)" }}
           />
           <Image
             src={resolvedAboutBackgroundSrc}
             alt=""
             fill
             className="object-contain"
-            style={{ objectPosition: "center center" }}
+            style={aboutMobileBackgroundMediaStyle}
           />
         </div>
       </div>
@@ -229,18 +252,21 @@ Their performances balance musical depth with danceable power, bringing together
         >
           <div ref={headerRef}>
             <SectionHeader
-              eyebrow="About the Band"
-              title="A Journey Through Sound"
+              eyebrow={persistedText("about-header-eyebrow", "About the Band")}
+              title={persistedText("about-header-title", "A Journey Through Sound")}
+              description={persistedText("about-header-description", "") || undefined}
               titleClassName="text-white"
               className="mb-10 max-w-4xl md:mb-12"
               dataEditId="about-header"
               dataEditLabel="Sección Sobre Nosotros"
+              persistedOverrides={overrides}
             />
           </div>
 
           {/* Box de texto reducido ~20% */}
           <motion.div
             ref={textCardRef}
+            {...persistedProps("about-text-card")}
             data-editor-node-id="about-text-card"
             data-editor-node-type="card"
             data-editor-node-label="About Text Card"
@@ -253,38 +279,35 @@ Their performances balance musical depth with danceable power, bringing together
             <div className="space-y-6 text-white md:space-y-8">
               <p 
                 ref={text1Ref}
+                {...persistedProps("about-text-1")}
                 data-editor-node-id="about-text-1"
                 data-editor-node-type="text"
                 data-editor-node-label="Descripción 1"
                 className="mb-0 max-w-none text-base leading-relaxed text-white/95 md:text-lg"
               >
-                Tales for the Tillerman is a Berlin-based collective blending world music, 
-                funk, soul, and reggae into a vibrant live experience. With roots spanning 
-                across continents, the band creates a sound that moves between groove, 
-                warmth, rhythm, and energy.
+                {persistedText("about-text-1", "Tales for the Tillerman is a Berlin-based collective blending world music, funk, soul, and reggae into a vibrant live experience. With roots spanning across continents, the band creates a sound that moves between groove, warmth, rhythm, and energy.")}
               </p>
 
               <p 
                 ref={text2Ref}
+                {...persistedProps("about-text-2")}
                 data-editor-node-id="about-text-2"
                 data-editor-node-type="text"
                 data-editor-node-label="Descripción 2"
                 className="mb-0 max-w-none text-base leading-relaxed text-white/90 md:text-lg"
               >
-                Their performances balance musical depth with danceable power, bringing 
-                together five musicians into one fluid, dynamic live act. Based in Berlin, 
-                the project brings together world music fusion, stage energy, and a strong 
-                collective identity.
+                {persistedText("about-text-2", "Their performances balance musical depth with danceable power, bringing together five musicians into one fluid, dynamic live act. Based in Berlin, the project brings together world music fusion, stage energy, and a strong collective identity.")}
               </p>
 
               <p 
                 ref={tagsRef}
+                {...persistedProps("about-tags")}
                 data-editor-node-id="about-tags"
                 data-editor-node-type="text"
                 data-editor-node-label="Etiquetas"
                 className="mb-0 max-w-none pt-2 text-sm leading-relaxed md:text-base text-[#FF8C21]"
               >
-                5 musicians • Berlin-based • World music fusion • Live experience
+                {persistedText("about-tags", "5 musicians • Berlin-based • World music fusion • Live experience")}
               </p>
             </div>
           </motion.div>
@@ -292,6 +315,7 @@ Their performances balance musical depth with danceable power, bringing together
           <div className="mt-12 flex justify-center">
             <motion.button
               ref={copyButtonRef}
+              {...persistedProps("about-copy-button")}
               type="button"
               onClick={copyBio}
               whileTap={isEditing ? undefined : { scale: 0.98 }}
@@ -308,7 +332,7 @@ Their performances balance musical depth with danceable power, bringing together
                     : "border-[#FF8C21]/70 bg-[#FF8C21]/90 text-white shadow-[#FF8C21]/30 transition-all hover:bg-[#FF8C21] hover:shadow-[#FF8C21]/40"
               }`}
             >
-              {copied ? "✓ Copied to clipboard" : "Copy band bio"}
+              {copied ? "✓ Copied to clipboard" : persistedText("about-copy-button", "Copy band bio")}
             </motion.button>
           </div>
         </motion.div>

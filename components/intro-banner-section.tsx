@@ -104,7 +104,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
       data-editor-node-type="section"
       data-editor-node-label="Intro Section"
         style={getElementLayoutStyle(es, "intro-section", {
-          includeGeometry: allowGeometryOverrides,
+          includeGeometry: isEditing && allowGeometryOverrides,
           includeResponsiveTypography: allowGeometryOverrides,
         })}
       className="relative flex min-h-[52vh] min-h-[52dvh] flex-col items-center justify-center gap-3 px-3 pb-10 pt-8 sm:min-h-[58vh] sm:min-h-[58dvh] sm:px-4 sm:pb-14 sm:pt-12"
@@ -115,7 +115,7 @@ export function IntroBannerSection({ data }: { data: IntroBannerData }) {
         data-editor-node-type="image"
         data-editor-node-label="Banner GIF"
         style={getElementLayoutStyle(es, "intro-banner-gif", {
-          includeGeometry: allowGeometryOverrides && !data.mediaGeometryDisabled,
+          includeGeometry: isEditing && allowGeometryOverrides,
           includeResponsiveTypography: allowGeometryOverrides,
         })}
         className="absolute left-0 top-0 z-0 h-full w-full overflow-hidden opacity-30"

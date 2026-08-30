@@ -42,6 +42,12 @@ export default async function Home() {
       acc[node.nodeId] = node
       return acc
     }, {})
+  const aboutNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("about-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
   const bandMembersNodeOverrides = homeEditorNodes
     .filter((node) => node.nodeId.startsWith("band-members-") || node.nodeId.startsWith("member-item-"))
     .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
@@ -106,7 +112,7 @@ export default async function Home() {
       <SectionDivider editorId="section-divider-release-about" />
 
       <SceneSection id="about">
-        <AboutSection />
+        <AboutSection overrides={aboutNodeOverrides} />
       </SceneSection>
 
       <SectionDivider editorId="section-divider-about-press" />

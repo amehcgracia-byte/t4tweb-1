@@ -267,7 +267,7 @@ function extractConcertCardId(nodeId: string | null | undefined): string | null 
 
 function extractBandMemberIndex(nodeId: string | null | undefined): number | null {
   if (!nodeId) return null
-  const match = /^member-item-(\d+)(?:-(name|role|number|image))?$/.exec(nodeId)
+  const match = /^member-item-(\d+)(?:-(name|role|image))?$/.exec(nodeId)
   if (!match) return null
   const index = Number(match[1])
   return Number.isFinite(index) ? index : null
@@ -1869,9 +1869,8 @@ export function VisualEditorOverlay() {
   }, [dispatch, setOpenPanel])
   const selectedConcertCardId = extractConcertCardId(selectedNode?.id)
 
-  const getBandMemberFieldValue = useCallback((index: number, field: "number" | "name" | "role" | "photo"): string => {
+  const getBandMemberFieldValue = useCallback((index: number, field: "name" | "role" | "photo"): string => {
     if (typeof document === "undefined") return ""
-    if (field === "number") return document.querySelector<HTMLElement>(`[data-member-number-index="${index}"]`)?.textContent?.trim() || ""
     if (field === "name") return document.querySelector<HTMLElement>(`[data-member-name-index="${index}"]`)?.textContent?.trim() || ""
     if (field === "role") return document.querySelector<HTMLElement>(`[data-member-role-index="${index}"]`)?.textContent?.trim() || ""
     return document.querySelector<HTMLImageElement>(`[data-member-photo-index="${index}"]`)?.src || ""
@@ -1898,14 +1897,8 @@ export function VisualEditorOverlay() {
     }
   }, [dispatch])
 
-  const updateBandMemberField = useCallback((index: number, field: "number" | "name" | "role" | "photo", value: string) => {
+  const updateBandMemberField = useCallback((index: number, field: "name" | "role" | "photo", value: string) => {
     if (typeof document === "undefined") return
-    if (field === "number") {
-      const el = document.querySelector<HTMLElement>(`[data-member-number-index="${index}"]`)
-      if (el) el.textContent = value
-      dispatch({ type: "UPDATE_TEXT", nodeId: `member-item-${index}-number`, patch: { text: value } })
-      return
-    }
     if (field === "name") {
       document.querySelectorAll<HTMLElement>(`[data-member-name-index="${index}"],[data-member-overlay-name-index="${index}"]`).forEach((el) => {
         el.textContent = value
@@ -2537,13 +2530,6 @@ export function VisualEditorOverlay() {
           <div className="max-h-[calc(100vh-8rem)] space-y-2 overflow-y-auto overscroll-contain p-3 text-slate-900">
             {selectedBandMemberIndex !== null && (
               <div className="space-y-2 rounded border border-slate-200 p-2">
-                <label className="text-[11px] font-semibold">Member Number</label>
-                <input
-                  key={`member-number-${selectedBandMemberIndex}`}
-                  className="w-full rounded border p-1 text-xs"
-                  defaultValue={getBandMemberFieldValue(selectedBandMemberIndex, "number")}
-                  onInput={(e) => updateBandMemberField(selectedBandMemberIndex, "number", (e.target as HTMLInputElement).value)}
-                />
                 <label className="text-[11px] font-semibold">Member Name</label>
                 <input
                   key={`member-name-${selectedBandMemberIndex}`}

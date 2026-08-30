@@ -9,11 +9,23 @@ export interface IntroBannerData {
   pressLabel: string
   pressHref: string
   elementStyles: Record<string, Record<string, unknown>>
-  mediaGeometryDisabled?: boolean
 }
 
-/** Default GIF path (matches previous hardcoded asset). */
-export const DEFAULT_INTRO_GIF_URL = "/images/t4tPics/banner-crop-ezgif.com-gif-maker.gif"
+/**
+ * The original banner was only 559px wide. Keep the animation, but serve a
+ * higher-resolution WebP export so the full-width banner does not enlarge a
+ * low-resolution 256-colour GIF on desktop screens.
+ */
+export const DEFAULT_INTRO_GIF_URL = "/images/t4tPics/banner-crop-upscaled.webp"
+
+const LEGACY_INTRO_GIF_URLS = new Set([
+  "/images/t4tPics/banner-crop-ezgif.com-gif-maker.gif",
+  "/images/t4tPics/banner-crop.gif",
+])
+
+function normalizeIntroGifUrl(value: string): string {
+  return LEGACY_INTRO_GIF_URLS.has(value.trim()) ? DEFAULT_INTRO_GIF_URL : value.trim()
+}
 
 const FALLBACK: IntroBannerData = {
   bannerText:
@@ -43,7 +55,6 @@ export async function loadIntroBannerData(): Promise<IntroBannerData> {
       bookHref,
       pressLabel,
       pressHref,
-      mediaGeometryDisabled,
       elementStyles
     }`
 
@@ -82,12 +93,13 @@ export async function loadIntroBannerData(): Promise<IntroBannerData> {
 
     return {
       bannerText: (typeof fetched.bannerText === "string" && fetched.bannerText.trim()) ? fetched.bannerText.trim() : FALLBACK.bannerText,
-      gifUrl: (typeof fetched.gifUrl === "string" && fetched.gifUrl.trim()) ? fetched.gifUrl.trim() : FALLBACK.gifUrl,
+      gifUrl: (typeof fetched.gifUrl === "string" && fetched.gifUrl.trim())
+        ? normalizeIntroGifUrl(fetched.gifUrl)
+        : FALLBACK.gifUrl,
       bookLabel: fetched.bookLabel?.trim() || FALLBACK.bookLabel,
       bookHref: fetched.bookHref?.trim() || FALLBACK.bookHref,
       pressLabel: fetched.pressLabel?.trim() || FALLBACK.pressLabel,
       pressHref: fetched.pressHref?.trim() || FALLBACK.pressHref,
-      mediaGeometryDisabled: fetched.mediaGeometryDisabled === true,
       elementStyles,
     }
   } catch (e) {

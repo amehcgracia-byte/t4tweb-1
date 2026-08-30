@@ -57,13 +57,6 @@ export default defineType({
       description: 'Set automatically when the visual editor changes the Hero background image.',
     }),
     defineField({
-      name: 'mediaGeometryDisabled',
-      title: 'Ignore legacy media geometry',
-      type: 'boolean',
-      readOnly: true,
-      description: 'Prevents monitor-specific image positions from affecting responsive layouts until the image is moved again in the editor.',
-    }),
-    defineField({
       name: 'ctaButtons',
       title: 'CTA Buttons',
       type: 'array',

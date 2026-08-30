@@ -94,6 +94,13 @@ function isResetHistoryCard(nodeId: string): boolean {
   return nodeId === "live-history-event-4"
 }
 
+function isPublicResponsiveCompositionNode(nodeId: string): boolean {
+  return nodeId === "band-members-section" ||
+    nodeId === "band-members-bg" ||
+    nodeId === "latest-release-section" ||
+    nodeId === "latest-release-bg"
+}
+
 export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverride[] }) {
   useEffect(() => {
     if (!Array.isArray(nodes) || nodes.length === 0) return
@@ -114,6 +121,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
     const applyOverrides = () => {
       const allowDesktopGeometryOverrides = window.matchMedia("(min-width: 1024px)").matches
       const allowTabletGeometryOverrides = window.matchMedia("(min-width: 768px)").matches
+      const isPublicPage = !document.documentElement.hasAttribute("data-editor-active")
       nodes.forEach((node) => {
       const selector = `[data-editor-node-id="${escapeEditorId(node.nodeId)}"]`
       const elements = Array.from(document.querySelectorAll<HTMLElement>(selector))
@@ -137,6 +145,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
 
         const applyNodeGeometry = !node.nodeId.startsWith("custom-") && (allowGeometryOverrides || RESPONSIVE_MEDIA_NODE_IDS.has(node.nodeId))
           && !RESPONSIVE_CONTAINER_NODE_IDS.has(node.nodeId)
+          && !(isPublicPage && isPublicResponsiveCompositionNode(node.nodeId))
           && shouldApplyMediaGeometry(node)
 
       if (applyNodeGeometry && (node.explicitPosition || (node.explicitStyle && scale !== 1))) {

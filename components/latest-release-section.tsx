@@ -6,6 +6,9 @@ import { CAMPAIGN_CONTENT, CAMPAIGN_PRIMARY_CTA_CLASS } from "@/components/campa
 import { useVisualEditor } from "@/components/visual-editor"
 import { useDesktopLayoutOverridesEnabled } from "@/hooks/use-desktop-layout-overrides"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
+import { getYouTubeVideoId, toYouTubeEmbedUrl } from "@/lib/youtube"
+
+const DEFAULT_RELEASE_VIDEO_URL = "https://www.youtube.com/watch?v=xofflmVqYGs"
 
 interface LatestReleaseSectionProps {
   overrides?: Record<string, HomeEditorNodeOverride>
@@ -84,6 +87,12 @@ export function LatestReleaseSection({ overrides = {} }: LatestReleaseSectionPro
   const subtitleOverride = overrides["latest-release-subtitle"]
   const watchButtonOverride = overrides["latest-release-watch-button"]
   const showsButtonOverride = overrides["latest-release-shows-button"]
+  const releaseVideoUrl = bgOverride?.content.videoUrl?.trim() || DEFAULT_RELEASE_VIDEO_URL
+  const releaseVideoEmbedUrl = toYouTubeEmbedUrl(releaseVideoUrl)
+  const releaseVideoId = getYouTubeVideoId(releaseVideoUrl)
+  const releaseVideoPosterUrl = releaseVideoId
+    ? `https://i.ytimg.com/vi/${releaseVideoId}/maxresdefault.jpg`
+    : undefined
 
   const releaseTitle = resolveTextOverride(titleOverride, CAMPAIGN_CONTENT.releaseTitle)
   const releaseSubtitle = resolveTextOverride(subtitleOverride, CAMPAIGN_CONTENT.releaseSubtitle)
@@ -94,16 +103,6 @@ export function LatestReleaseSection({ overrides = {} }: LatestReleaseSectionPro
   const renderStaticCard = isEditing || !!(
     cardOverride && (cardOverride.explicitPosition || cardOverride.explicitSize || cardOverride.explicitStyle)
   )
-
-  useEffect(() => {
-    const userAgent = navigator.userAgent || ""
-    const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches
-    const ios = /iPhone|iPad|iPod/i.test(userAgent) || ((navigator.platform === "MacIntel" || navigator.platform === "MacPPC") && navigator.maxTouchPoints > 1)
-    const android = /Android/i.test(userAgent)
-
-    setIsIosMobile(ios && hasCoarsePointer)
-    setIsAndroidMobile(android && hasCoarsePointer)
-  }, [])
 
   useEffect(() => {
     const userAgent = navigator.userAgent || ""
@@ -235,29 +234,29 @@ export function LatestReleaseSection({ overrides = {} }: LatestReleaseSectionPro
       data-editor-node-type="section"
       data-editor-node-label="Release Section"
       className="relative overflow-hidden bg-black"
-      style={buildInlineStyleFromOverride(sectionOverride, allowGeometryOverrides)}
+      style={buildInlineStyleFromOverride(sectionOverride, isEditing && allowGeometryOverrides)}
     >
       <div 
         ref={bgRef}
         data-editor-node-id="latest-release-bg"
         data-editor-node-type="background"
         data-editor-media-kind="video"
-        data-editor-video-url="https://www.youtube.com/embed/xofflmVqYGs?autoplay=1&mute=1&loop=1&playlist=xofflmVqYGs&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
+        data-editor-video-url={releaseVideoEmbedUrl}
         data-editor-node-label="Fondo Video YouTube"
         className="absolute left-0 top-0 z-0 h-full w-full"
-        style={buildInlineStyleFromOverride(bgOverride, allowGeometryOverrides)}
+        style={buildInlineStyleFromOverride(bgOverride, isEditing && allowGeometryOverrides)}
       >
         {isEditing || isIosMobile ? (
           <img
             data-editor-video-poster="true"
-            src="https://i.ytimg.com/vi/xofflmVqYGs/maxresdefault.jpg"
+            src={releaseVideoPosterUrl || "https://i.ytimg.com/vi/xofflmVqYGs/maxresdefault.jpg"}
             alt=""
             aria-hidden="true"
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
           <iframe
-            src="https://www.youtube.com/embed/xofflmVqYGs?autoplay=1&mute=1&loop=1&playlist=xofflmVqYGs&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
+            src={releaseVideoEmbedUrl}
             title=""
             aria-hidden="true"
             className={`pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 ${

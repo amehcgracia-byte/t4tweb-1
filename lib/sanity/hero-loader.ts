@@ -77,10 +77,10 @@ export async function loadHeroData(): Promise<HeroData> {
       },
       subtitle,
       description,
+      mediaGeometryDisabled,
       "logoUrl": logo.asset->url,
       "bgUrl": backgroundImage.asset->url,
       backgroundImageUrl,
-      mediaGeometryDisabled,
       elementStyles
     }`
 
