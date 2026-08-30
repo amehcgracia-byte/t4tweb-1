@@ -1219,7 +1219,10 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
       }
     }
     if (node.type === "card") {
-      if (node.explicitContent && node.content.text !== undefined && !el.querySelector("[data-concert-field]")) el.textContent = node.content.text
+      // Band member cards own separate editable name/role nodes. Do not let a
+      // legacy parent-card text override (especially an empty one) wipe them.
+      const isBandMemberCard = /^member-item-\d+$/.test(node.id)
+      if (node.explicitContent && !isBandMemberCard && node.content.text !== undefined && !el.querySelector("[data-concert-field]")) el.textContent = node.content.text
       if (node.explicitContent && node.content.href !== undefined && (el.tagName === "A" || el.tagName === "BUTTON")) {
         el.setAttribute("href", node.content.href)
       }
