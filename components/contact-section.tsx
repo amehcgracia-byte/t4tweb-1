@@ -247,7 +247,7 @@ export function ContactSection({ overrides = {} }: ContactSectionProps) {
       data-editor-node-id="contact-section"
       data-editor-node-type="section"
       data-editor-node-label="Sección de Contacto"
-      className="relative min-h-[82vh] min-h-[82dvh] overflow-hidden sm:min-h-screen sm:min-h-[100dvh]"
+      className="relative min-h-screen min-h-[100svh] min-h-[100dvh] overflow-hidden"
     >
       <div 
         ref={bgRef}
@@ -271,7 +271,7 @@ export function ContactSection({ overrides = {} }: ContactSectionProps) {
       <div className="section-photo-fade-top" />
       <div className="section-photo-fade-bottom" />
 
-      <div className="relative z-10 mx-auto w-full max-w-5xl min-h-screen flex flex-col justify-end">
+      <div className="relative z-10 mx-auto flex min-h-screen min-h-[100svh] min-h-[100dvh] w-full max-w-5xl flex-col justify-end">
         <motion.div ref={headerRef} style={isEditing ? undefined : { opacity, y }} className="mb-10 md:mb-12">
           <SectionHeader
             eyebrow={persistedText("contact-header-eyebrow", "Contact")}

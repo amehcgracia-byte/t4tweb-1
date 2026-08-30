@@ -950,6 +950,16 @@ html:not([data-editor-active]) [data-editor-managed-size="true"] {
   }
 }
 
+/* Contact is a viewport composition, not a fixed-height canvas. Older editor
+ * snapshots can contain pixel dimensions from another screen, so the public
+ * page must let the current viewport win while still respecting a larger
+ * saved height when the edited content needs it. */
+html:not([data-editor-active]) [data-editor-node-id="contact-section"] {
+  box-sizing: border-box !important;
+  height: auto !important;
+  min-height: max(100svh, 100dvh, var(--editor-managed-height, 0px)) !important;
+}
+
 /* ============================================================================
    ORANGE BUTTONS - Consistent naranja #FF8C21 theme
    ============================================================================ */
