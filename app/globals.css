@@ -849,9 +849,10 @@ section {
  * Published layout safety net:
  * saved editor geometry is useful while arranging a page, but it must not
  * become the layout contract for normal-flow sections on the public page.
- * Keep positioned compositions (Hero, navigation, intro, release) intact.
+ * Nodes carrying an editor-managed geometry marker are intentionally exempt;
+ * those are the values the public page must replay from the saved editor state.
  */
-html:not([data-editor-active]) [data-editor-node-type="section"]:not([data-editor-node-id="hero-section"]):not([data-editor-node-id="navigation"]):not([data-editor-node-id="intro-section"]):not([data-editor-node-id="latest-release-section"]) {
+html:not([data-editor-active]) [data-editor-node-type="section"]:not([data-editor-node-id="hero-section"]):not([data-editor-node-id="navigation"]):not([data-editor-node-id="intro-section"]):not([data-editor-node-id="latest-release-section"]):not([data-editor-managed-transform="true"]):not([data-editor-managed-size="true"]) {
   box-sizing: border-box !important;
   width: 100% !important;
   max-width: 100% !important;
@@ -860,8 +861,6 @@ html:not([data-editor-active]) [data-editor-node-type="section"]:not([data-edito
   margin-left: 0 !important;
   margin-right: 0 !important;
   margin-top: 0 !important;
-  transform: none !important;
-  transform-origin: initial !important;
 }
 
 /* Viewport-wide compositions must remain viewport-wide even if an older
@@ -877,14 +876,10 @@ html:not([data-editor-active]) [data-editor-node-id="latest-release-section"] {
   height: auto !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
-  transform: none !important;
-  transform-origin: initial !important;
 }
 
-/* Background media belongs to its viewport-wide composition. Older editor
- * snapshots may contain pixel dimensions from a different monitor; never let
- * those values leave empty space on an ultra-wide public display. The editor
- * remains free to position these backgrounds while arranging the page. */
+/* Background media belongs to its viewport-wide composition. The Hero
+ * component owns its responsive sizing and crop explicitly. */
 html:not([data-editor-active]) [data-editor-node-id="hero-bg-image"] {
   box-sizing: border-box !important;
   width: 100% !important;
@@ -894,46 +889,50 @@ html:not([data-editor-active]) [data-editor-node-id="hero-bg-image"] {
   margin: 0 !important;
 }
 
-html:not([data-editor-active]) [data-editor-node-id="intro-banner-gif"] {
+/* Press Kit is a normal-flow stack; its saved desktop measurements must not
+ * clip the header or push the card over the description on narrow screens. */
+html:not([data-editor-active]) [data-editor-node-id="press-kit-header"]:not([data-editor-managed-transform="true"]):not([data-editor-managed-size="true"]),
+html:not([data-editor-active]) [data-editor-node-id="press-kit-header-eyebrow"]:not([data-editor-managed-transform="true"]):not([data-editor-managed-size="true"]),
+html:not([data-editor-active]) [data-editor-node-id="press-kit-header-title"]:not([data-editor-managed-transform="true"]):not([data-editor-managed-size="true"]),
+html:not([data-editor-active]) [data-editor-node-id="press-kit-header-description"]:not([data-editor-managed-transform="true"]):not([data-editor-managed-size="true"]),
+html:not([data-editor-active]) [data-editor-node-id="press-kit-main-card"]:not([data-editor-managed-transform="true"]):not([data-editor-managed-size="true"]),
+html:not([data-editor-active]) [data-editor-node-id^="press-kit-resource-"]:not([data-editor-managed-transform="true"]):not([data-editor-managed-size="true"]),
+html:not([data-editor-active]) [data-editor-node-id="press-kit-manager"]:not([data-editor-managed-transform="true"]):not([data-editor-managed-size="true"]) {
   box-sizing: border-box !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: none !important;
+  width: auto !important;
+  max-width: 100% !important;
   min-width: 0 !important;
-  margin: 0 !important;
-  transform: none !important;
-  transform-origin: initial !important;
+  height: auto !important;
 }
 
-/* Runtime marker used by the editor when it writes temporary geometry. */
+/* The public page may animate these nodes after hydration. Replay the saved
+ * editor geometry from CSS variables so an animation cannot replace it with
+ * a stale transform or size. */
 html:not([data-editor-active]) [data-editor-managed-transform="true"] {
-  transform: none !important;
-  transform-origin: initial !important;
+  transform: var(--editor-managed-transform) !important;
+  transform-origin: var(--editor-managed-transform-origin, top left) !important;
 }
 
 html:not([data-editor-active]) [data-editor-managed-size="true"] {
-  width: auto !important;
-  height: auto !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
+  width: var(--editor-managed-width) !important;
+  height: var(--editor-managed-height) !important;
+  max-width: none !important;
 }
 
-/* Press Kit is a normal-flow stack; its saved desktop measurements must not
- * clip the header or push the card over the description on narrow screens. */
-html:not([data-editor-active]) [data-editor-node-id="press-kit-header"],
-html:not([data-editor-active]) [data-editor-node-id="press-kit-header-eyebrow"],
-html:not([data-editor-active]) [data-editor-node-id="press-kit-header-title"],
-html:not([data-editor-active]) [data-editor-node-id="press-kit-header-description"],
-html:not([data-editor-active]) [data-editor-node-id="press-kit-main-card"],
-html:not([data-editor-active]) [data-editor-node-id^="press-kit-resource-"],
-html:not([data-editor-active]) [data-editor-node-id="press-kit-manager"] {
-  box-sizing: border-box !important;
-  width: auto !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
-  height: auto !important;
-  transform: none !important;
-  transform-origin: initial !important;
+/* Footer geometry is rendered from the saved editor state on the server as
+ * well as replayed after hydration. This removes the visible base-layout
+ * flash and keeps the footer in sync even when Framer Motion owns transform. */
+@media (min-width: 768px) {
+  html:not([data-editor-active]) [data-editor-persisted-layout="footer"][data-editor-persisted-transform="true"] {
+    transform: var(--editor-managed-transform) !important;
+    transform-origin: var(--editor-managed-transform-origin, top left) !important;
+  }
+
+  html:not([data-editor-active]) [data-editor-persisted-layout="footer"][data-editor-persisted-size="true"] {
+    width: var(--editor-managed-width) !important;
+    height: var(--editor-managed-height) !important;
+    max-width: none !important;
+  }
 }
 
 /* ============================================================================

@@ -1,7 +1,7 @@
 "use client"
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { MotionConfig } from "framer-motion"
 import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
@@ -246,6 +246,10 @@ function readHydratedNodeOverride(nodeId: string): HomeEditorNodeOverride | null
   if (!bag || typeof bag !== "object") return null
   const value = bag[nodeId]
   return value && typeof value === "object" ? value : null
+}
+
+function isConcertLocationTrigger(el: HTMLElement): boolean {
+  return el.dataset.concertField === "locationUrl"
 }
 
 function extractConcertCardId(nodeId: string | null | undefined): string | null {
@@ -912,7 +916,7 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
   const customPosition = entry.id.startsWith("custom-")
     ? { x: el.offsetLeft, y: el.offsetTop }
     : savedTransform
-  return {
+  const baseNode: EditorNode = {
     id: entry.id,
     type: entry.type,
     sectionId: entry.sectionId,
@@ -957,6 +961,52 @@ function buildNodeFromEntry(entry: RuntimeEntry): EditorNode {
     explicitStyle: el.dataset.editorExplicitStyle === "true",
     explicitPosition: el.dataset.editorExplicitPosition === "true",
     explicitSize: el.dataset.editorExplicitSize === "true",
+  }
+
+  // The public concert card intentionally displays the stable “Map” trigger;
+  // its saved URL lives in content.text and is read when the details dialog
+  // opens. Merge the persisted bag back into the editor model so editing that
+  // field does not mistake the trigger label for the URL.
+  const hydratedOverride = readHydratedNodeOverride(entry.id)
+  if (!hydratedOverride) return baseNode
+  const hydratedContent: EditorNode["content"] = {
+    ...baseNode.content,
+    ...hydratedOverride.content,
+    textSegments: hydratedOverride.content.textSegments?.map((segment) => ({
+      text: segment.text,
+      color: segment.color || "#ffffff",
+      bold: Boolean(segment.bold),
+      italic: Boolean(segment.italic),
+      underline: Boolean(segment.underline),
+      opacity: segment.opacity ?? 1,
+      fontSize: segment.fontSize,
+      fontFamily: segment.fontFamily,
+      gradientEnabled: segment.gradientEnabled,
+      gradientStart: segment.gradientStart,
+      gradientEnd: segment.gradientEnd,
+    })),
+  }
+  return {
+    ...baseNode,
+    geometry: {
+      ...baseNode.geometry,
+      ...(hydratedOverride.explicitPosition ? {
+        x: hydratedOverride.geometry.x,
+        y: hydratedOverride.geometry.y,
+      } : {}),
+      ...(hydratedOverride.explicitSize ? {
+        width: hydratedOverride.geometry.width,
+        height: hydratedOverride.geometry.height,
+      } : {}),
+    },
+    style: hydratedOverride.explicitStyle
+      ? { ...baseNode.style, ...hydratedOverride.style }
+      : baseNode.style,
+    content: hydratedOverride.explicitContent ? hydratedContent : baseNode.content,
+    explicitContent: hydratedOverride.explicitContent,
+    explicitStyle: hydratedOverride.explicitStyle,
+    explicitPosition: hydratedOverride.explicitPosition,
+    explicitSize: hydratedOverride.explicitSize,
   }
 }
 
@@ -1018,14 +1068,20 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isEditing) return
-    const nextRegistry = scanRegistry()
-    setRegistry(nextRegistry)
-    const nextNodes = new Map<string, EditorNode>()
-    nextRegistry.forEach((entry, id) => {
-      nextNodes.set(id, buildNodeFromEntry(entry))
-    })
-    setNodes(nextNodes)
-    snapshot(nextNodes)
+    // HomeEditorStateApplier publishes the persisted override bag in its
+    // effect. Let that run before the initial scan, otherwise a location URL
+    // field is read from the visible “Map” label and gets lost in the editor.
+    const timer = window.setTimeout(() => {
+      const nextRegistry = scanRegistry()
+      setRegistry(nextRegistry)
+      const nextNodes = new Map<string, EditorNode>()
+      nextRegistry.forEach((entry, id) => {
+        nextNodes.set(id, buildNodeFromEntry(entry))
+      })
+      setNodes(nextNodes)
+      snapshot(nextNodes)
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [isEditing, snapshot])
 
   // Newly added editor nodes are rendered by the public custom-node canvas on
@@ -1114,7 +1170,7 @@ export function VisualEditorProvider({ children }: { children: ReactNode }) {
             span.style.marginRight = "0.25em"
             el.appendChild(span)
           })
-        } else if (node.content.text !== undefined) {
+        } else if (node.content.text !== undefined && !isConcertLocationTrigger(el)) {
           el.textContent = node.content.text
         }
       }
@@ -1703,6 +1759,7 @@ export function VisualEditorOverlay() {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle")
   const [assetUploadStatus, setAssetUploadStatus] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [marqueeRect, setMarqueeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
@@ -1716,6 +1773,45 @@ export function VisualEditorOverlay() {
   useEffect(() => {
     selectedIdsRef.current = selectedIds
   }, [selectedIds])
+
+  useLayoutEffect(() => {
+    if (!contextMenu) {
+      setContextMenuPosition(null)
+      return
+    }
+
+    let frame = 0
+    const reposition = () => {
+      const menu = contextMenuRef.current
+      if (!menu) return
+      const rect = menu.getBoundingClientRect()
+      const gutter = 8
+      const maxLeft = Math.max(gutter, window.innerWidth - rect.width - gutter)
+      const maxTop = Math.max(gutter, window.innerHeight - rect.height - gutter)
+      const x = Math.min(Math.max(gutter, contextMenu.x), maxLeft)
+      let y = contextMenu.y
+      if (y + rect.height > window.innerHeight - gutter) y = contextMenu.y - rect.height
+      y = Math.min(Math.max(gutter, y), maxTop)
+
+      setContextMenuPosition((previous) => (
+        previous?.x === x && previous.y === y ? previous : { x, y }
+      ))
+    }
+    const scheduleReposition = () => {
+      if (frame) window.cancelAnimationFrame(frame)
+      frame = window.requestAnimationFrame(reposition)
+    }
+
+    scheduleReposition()
+    window.addEventListener("resize", scheduleReposition)
+    // Keep the fixed menu inside the viewport while any page container scrolls.
+    window.addEventListener("scroll", scheduleReposition, true)
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame)
+      window.removeEventListener("resize", scheduleReposition)
+      window.removeEventListener("scroll", scheduleReposition, true)
+    }
+  }, [contextMenu])
 
   const selectedEntry = selectedId ? registry.get(selectedId) || null : null
   const selectedNode = selectedId ? nodes.get(selectedId) || null : null
@@ -2097,8 +2193,8 @@ export function VisualEditorOverlay() {
       e.stopImmediatePropagation()
       const nodeId = nodeIds[0]
       setContextMenu({
-        x: Math.min(e.clientX, Math.max(8, window.innerWidth - 292)),
-        y: Math.min(e.clientY, Math.max(8, window.innerHeight - 430)),
+        x: e.clientX,
+        y: e.clientY,
         nodeId,
         parentIds: getContextParentIds(nodeId),
         childIds: getContextChildIds(nodeId),
@@ -2343,7 +2439,10 @@ export function VisualEditorOverlay() {
             data-editor-context-menu
             ref={contextMenuRef}
             className="fixed z-[10001] w-72 overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
+            style={{
+              left: contextMenuPosition?.x ?? contextMenu.x,
+              top: contextMenuPosition?.y ?? contextMenu.y,
+            }}
             onContextMenu={(event) => event.preventDefault()}
           >
             <div className="flex items-start justify-between gap-2 bg-slate-900 px-3 py-2 text-white">

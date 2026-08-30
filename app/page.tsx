@@ -61,6 +61,12 @@ export default async function Home() {
       acc[node.nodeId] = node
       return acc
     }, {})
+  const footerNodeOverrides = homeEditorNodes
+    .filter((node) => node.nodeId.startsWith("footer-"))
+    .reduce<Record<string, HomeEditorNodeOverride>>((acc, node) => {
+      acc[node.nodeId] = node
+      return acc
+    }, {})
 
   if (process.env.NODE_ENV !== "production" && traceNodeId) {
     const tracedNode = homeEditorNodes.find((node) => node.nodeId === traceNodeId)
@@ -121,9 +127,12 @@ export default async function Home() {
         <ContactSection />
       </SceneSection>
 
-      <SectionDivider editorId="section-divider-contact-footer" />
+      <SectionDivider
+        editorId="section-divider-contact-footer"
+        persistedOverride={homeEditorNodes.find((node) => node.nodeId === "section-divider-contact-footer")}
+      />
 
-        <Footer />
+        <Footer overrides={footerNodeOverrides} />
         <HomeEditorCustomNodes persistedNodes={homeEditorNodes} />
       </HomeEditorOverridesProvider>
     </main>

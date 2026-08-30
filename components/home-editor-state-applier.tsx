@@ -222,7 +222,7 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
       }
 
       if (node.explicitContent) {
-        if ((node.nodeType === "text" || node.nodeType === "button") && node.content.text !== undefined) {
+        if ((node.nodeType === "text" || node.nodeType === "button") && node.content.text !== undefined && !el.matches('[data-concert-field="locationUrl"]')) {
           el.textContent = node.content.text
         }
         if (node.nodeType === "card" && node.content.text !== undefined && !el.querySelector("[data-concert-field]")) {

@@ -4,8 +4,14 @@ import { useRef, useEffect } from "react"
 import Image from "next/image"
 import { useVisualEditor } from "@/components/visual-editor"
 import { useHomeEditorImageSrc } from "@/components/home-editor-overrides-provider"
+import type { HomeEditorNodeOverride } from "@/lib/sanity/home-editor-state"
+import { getHomeEditorPersistedProps } from "@/lib/home-editor-persisted-props"
 
-export function Footer() {
+interface FooterProps {
+  overrides?: Record<string, HomeEditorNodeOverride>
+}
+
+export function Footer({ overrides = {} }: FooterProps) {
   const { isEditing, registerEditable, unregisterEditable } = useVisualEditor()
   const footerRef = useRef<HTMLElement>(null)
   const logoRef = useRef<HTMLDivElement>(null)
@@ -16,6 +22,15 @@ export function Footer() {
   const copyrightRef = useRef<HTMLParagraphElement>(null)
   const developedByRef = useRef<HTMLParagraphElement>(null)
   const resolvedFooterLogoSrc = useHomeEditorImageSrc("footer-logo", "/images/t4tPics/logo-white.png")
+  const persistedProps = (nodeId: string) => getHomeEditorPersistedProps(overrides[nodeId], "footer")
+  const footerText = (nodeId: string, fallback: string) => {
+    const override = overrides[nodeId]
+    return override?.explicitContent && typeof override.content.text === "string" ? override.content.text : fallback
+  }
+  const footerHref = (nodeId: string, fallback: string) => {
+    const override = overrides[nodeId]
+    return override?.explicitContent && typeof override.content.href === "string" ? override.content.href : fallback
+  }
 
   useEffect(() => {
     if (!isEditing) return
@@ -206,6 +221,7 @@ export function Footer() {
   return (
     <footer 
       ref={footerRef}
+      {...persistedProps("footer-section")}
       data-editor-node-id="footer-section"
       data-editor-node-type="section"
       data-editor-node-label="Footer Section"
@@ -217,6 +233,7 @@ export function Footer() {
         
         <div 
           ref={logoRef}
+          {...persistedProps("footer-logo")}
           data-editor-node-id="footer-logo"
           data-editor-node-type="image"
           data-editor-node-label="Footer Logo"
@@ -233,29 +250,32 @@ export function Footer() {
 
         <p 
           ref={descRef}
+          {...persistedProps("footer-description")}
           data-editor-node-id="footer-description"
           data-editor-node-type="text"
           data-editor-node-label="Footer Description"
           className="mx-auto mb-5 max-w-2xl px-2 text-sm text-white/70 sm:mb-6 sm:text-lg"
         >
-          Berlin-based world music collective blending funk, soul, and reggae.
+          {footerText("footer-description", "Berlin-based world music collective blending funk, soul, and reggae.")}
         </p>
 
         <div className="mb-7 px-2">
           <a
             ref={ctaRef}
+            {...persistedProps("footer-cta")}
             data-editor-node-id="footer-cta"
             data-editor-node-type="button"
             data-editor-node-label="Book the Band"
-            href="#contact"
+            href={footerHref("footer-cta", "#contact")}
             className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#FF8C21] to-[#FF6C00] px-7 py-2.5 text-sm font-bold text-white shadow-lg shadow-[#FF8C21]/30 transition-all hover:shadow-xl hover:shadow-[#FF8C21]/40 sm:w-auto sm:px-8 sm:py-3 sm:text-base"
           >
-            Book the Band
+            {footerText("footer-cta", "Book the Band")}
           </a>
         </div>
 
         <div 
           ref={socialGroupRef}
+          {...persistedProps("footer-social-group")}
           data-editor-node-id="footer-social-group"
           data-editor-node-type="card"
           data-editor-node-label="Footer Social Links"
@@ -266,12 +286,13 @@ export function Footer() {
           {socialLinks.map((link) => (
             <a
               key={link.id}
+              {...persistedProps(link.id)}
               data-editor-node-id={link.id}
               data-editor-node-type="button"
               data-editor-node-label={`Footer ${link.name}`}
               data-link-item="true"
               data-link-item-name={link.name}
-              href={link.href}
+              href={footerHref(link.id, link.href)}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={link.name}
@@ -284,6 +305,7 @@ export function Footer() {
 
         <div 
           ref={dividerRef}
+          {...persistedProps("footer-divider")}
           data-editor-node-id="footer-divider"
           data-editor-node-type="card"
           data-editor-node-label="Footer Divider"
@@ -291,21 +313,23 @@ export function Footer() {
         >
           <p 
             ref={copyrightRef}
+            {...persistedProps("footer-copyright")}
             data-editor-node-id="footer-copyright"
             data-editor-node-type="text"
             data-editor-node-label="Footer Copyright"
             className="text-white/40 text-sm text-center"
           >
-            &copy; {currentYear} Tales for the Tillerman
+            {footerText("footer-copyright", `© ${currentYear} Tales for the Tillerman`)}
           </p>
           <p
             ref={developedByRef}
+            {...persistedProps("footer-developed-by")}
             data-editor-node-id="footer-developed-by"
             data-editor-node-type="text"
             data-editor-node-label="Footer Developed By"
             className="mt-2 text-xs text-white/30"
           >
-            Developed by JM.G Jose Manuel Garcia
+            {footerText("footer-developed-by", "Developed by JM.G Jose Manuel Garcia")}
           </p>
         </div>
       </div>
