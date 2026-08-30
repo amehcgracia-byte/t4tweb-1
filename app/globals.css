@@ -927,6 +927,10 @@ html:not([data-editor-active]) [data-editor-managed-size="true"] {
     width: min(var(--editor-managed-width), 100%) !important;
     max-width: 100% !important;
   }
+
+  html:not([data-editor-active]) [data-editor-node-id^="member-item-"][data-editor-node-id$="-image"][data-editor-managed-size="true"] {
+    max-width: 100% !important;
+  }
 }
 
 /* Footer geometry is rendered from the saved editor state on the server as
