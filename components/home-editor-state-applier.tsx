@@ -95,10 +95,12 @@ function isResetHistoryCard(nodeId: string): boolean {
 }
 
 function isPublicResponsiveCompositionNode(nodeId: string): boolean {
-  return nodeId === "band-members-section" ||
-    nodeId === "band-members-bg" ||
-    nodeId === "latest-release-section" ||
+  return nodeId === "latest-release-section" ||
     nodeId === "latest-release-bg"
+}
+
+function isBandMemberCardNode(nodeId: string): boolean {
+  return /^member-item-\d+$/.test(nodeId)
 }
 
 export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverride[] }) {
@@ -234,7 +236,9 @@ export function HomeEditorStateApplier({ nodes }: { nodes: HomeEditorNodeOverrid
         if ((node.nodeType === "text" || node.nodeType === "button") && node.content.text !== undefined && !el.matches('[data-concert-field="locationUrl"]')) {
           el.textContent = node.content.text
         }
-        if (node.nodeType === "card" && node.content.text !== undefined && !el.querySelector("[data-concert-field]")) {
+        // Member cards contain separate editable name/role children. A legacy
+        // parent-card text override (often blank) must never replace them.
+        if (node.nodeType === "card" && !isBandMemberCardNode(node.nodeId) && node.content.text !== undefined && !el.querySelector("[data-concert-field]")) {
           el.textContent = node.content.text
         }
         if ((node.nodeType === "button" || node.nodeType === "card") && node.content.href && (el.tagName === "A" || el.tagName === "BUTTON")) {
