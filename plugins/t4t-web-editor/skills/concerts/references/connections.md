@@ -3,7 +3,7 @@
 - Web de producción: https://talesforthetillerman.website/
 - Repositorio: https://github.com/amehcgracia-byte/t4tweb-1
 - Vercel: proyecto `prj_LXyh0dDdK7gJT6bH0g9U9mFxOWzz`, equipo `team_0tER4zIWIG6JwQSZntVwDPao`.
-- Sanity: proyecto `qtpb6qpz`, dataset `production`, tipo `concert`.
+- Sanity: proyecto `qtpb6qpz`, dataset `production`, tipo `concert`, workspace de conciertos `t4t-concerts` (esquema local en `sanity/concert-sync`). Conserva `t4t-studio` para el editor visual existente.
 - Bandsintown: artista `15638928`; panel https://artists.bandsintown.com/artists/15638928/events/upcoming
 - Songkick: artista `10418553`; cuenta gestora `Tales4theTillerman`; panel https://tourbox.songkick.com/artists/10418553/calendar
 - Spotify artista oficial: `0FHjK3O0k8HQMrJsF7KQwF`.

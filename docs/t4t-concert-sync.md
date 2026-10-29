@@ -22,7 +22,7 @@ No web deployment, schema deployment, webhook or recurrent worker has been activ
 
 ## Activation requiring approval
 
-Deploy the additive Studio schema from this existing local Studio project; do not replace it with an MCP-managed schema. Deploy the reviewed branch to the existing Vercel project, not a new website. Reuse existing project/dataset configuration. Configure a new server-only random `T4T_SYNC_SECRET` (at least 32 characters) through Vercel secrets and give the authorized worker access through a secure mechanism. Existing Sanity token stays server-only. This adds a queue endpoint, not public access to a CMS token.
+Deploy the additive schema from `sanity/concert-sync` with `../../node_modules/.bin/sanity schema deploy --workspace t4t-concerts`. This local Studio imports the canonical concert definitions. The legacy `t4t-studio` schema cannot currently compile because pre-existing visual style fields contain hyphens; its deployment and stored keys are preserved. The separate `t4t-concerts` schema targets the same production dataset. Select that workspace explicitly for concert tools; do not replace either schema with an MCP-managed schema. Deploy the reviewed branch to the existing Vercel project, not a new website. Reuse existing project/dataset configuration. Configure a new server-only random `T4T_SYNC_SECRET` (at least 32 characters) through Vercel secrets and give the authorized worker access through a secure mechanism. Existing Sanity token stays server-only. This adds a queue endpoint, not public access to a CMS token.
 
 After the schema is live, patch the existing ART Stalker document (never recreate it):
 
