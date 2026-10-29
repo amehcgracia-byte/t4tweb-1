@@ -3,6 +3,8 @@ import heroSection from './heroSection'
 import aboutSection from './aboutSection'
 import bandMember from './bandMember'
 import concert from './concert'
+import concertSyncJob from './concertSyncJob'
+import concertIdentity from './concertIdentity'
 import pressKitSection from './pressKitSection'
 import contactSection from './contactSection'
 import latestRelease from './latestRelease'
@@ -16,6 +18,8 @@ export const schemas = [
   aboutSection,
   bandMember,
   concert,
+  concertSyncJob,
+  concertIdentity,
   pressKitSection,
   contactSection,
   latestRelease,

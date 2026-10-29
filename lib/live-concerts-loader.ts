@@ -12,6 +12,8 @@ export interface LiveConcert {
   capacity: string
   price: string
   locationUrl: string
+  eventUrl?: string
+  flyerUrl?: string
 }
 
 export interface LiveSectionData {
@@ -231,6 +233,8 @@ function normalizeConcert(
     ticketUrl?: string
     locationUrl?: string
     locationLink?: string
+    eventUrl?: string
+    flyerUrl?: string
   },
   fallbackId: number
 ): LiveConcert {
@@ -246,6 +250,8 @@ function normalizeConcert(
     capacity: concert.capacity || "",
     price: normalizePrice(concert.price ?? concert.priceText),
     locationUrl: concert.locationUrl || concert.ticketUrl || concert.locationLink || "",
+    eventUrl: concert.eventUrl || "",
+    flyerUrl: concert.flyerUrl || "",
   }
 }
 
@@ -289,6 +295,8 @@ export async function loadLiveSectionData(
           ticketUrl?: string
           locationUrl?: string
           locationLink?: string
+    eventUrl?: string
+    flyerUrl?: string
         }>
       >(
         `*[_type == "concert"] | order(date asc){
@@ -307,7 +315,9 @@ export async function loadLiveSectionData(
           priceText,
           ticketUrl,
           locationUrl,
-          locationLink
+          locationLink,
+          eventUrl,
+          "flyerUrl": image.asset->url
         }`
       ),
     ])

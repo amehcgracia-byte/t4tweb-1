@@ -1,0 +1,20 @@
+{
+  "name": "t4t-local",
+  "interface": {
+    "displayName": "T4T"
+  },
+  "plugins": [
+    {
+      "name": "t4t-web-editor",
+      "source": {
+        "source": "local",
+        "path": "./plugins/t4t-web-editor"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

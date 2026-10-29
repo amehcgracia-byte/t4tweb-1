@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "t4t-web-editor",
+  "version": "0.1.0",
+  "description": "Agente oficial de Tales for the Tillerman para gestionar y sincronizar conciertos entre Sanity, la web, Bandsintown y Songkick",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "T4T WEB EDITOR",
+        "shortDescription": "Gestiona conciertos de T4T en sus plataformas"
+      }
+    }
+  }
+}
