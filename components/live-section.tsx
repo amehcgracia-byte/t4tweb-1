@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
+import { createPortal } from "react-dom"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { useScrollAnimation } from "@/hooks/useScrollAnimation"
@@ -728,7 +729,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
       </div>
 
       <div className="section-photo-fade-bottom" />
-      {activeConcert && !isEditing && (
+      {activeConcert && !isEditing && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => setActiveConcert(null)}>
           <div
             className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-background p-6 text-foreground shadow-2xl"
@@ -777,7 +778,8 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
               <p className="mt-6 rounded-lg border border-border px-4 py-3 text-center text-sm text-muted-foreground">Google Maps link TBA</p>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </section>
   )

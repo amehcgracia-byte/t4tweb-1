@@ -12,19 +12,21 @@
 
 ## Current production status
 
-No web deployment, schema deployment, webhook or recurrent worker has been activated by these changes. On 29 October 2026 the actual connected tools/browser verified:
+The owner approved production schema/web deployment and the private queue credential on 29 October 2026. The additive concert schema is deployed in `t4t-concerts`; the existing visual editor schema remains intact. No webhook or recurrent worker is active. Actual connected tools/browser verified:
 
 - Sanity concert `46c354d1-300c-41ad-8138-72b19dd6b897` and the public web have 13 November 2026, 19:30, EUR 15.
 - Bandsintown event `109096773` is publicly published with the same information and flyer.
-- Songkick artist `10418553` is now linked to `Tales4theTillerman`. Event `43491265` is publicly published with the schedule, price, source link and flyer source in Additional details. Poster upload was accepted; rendering must be checked separately before claiming the image is visible.
+- Songkick artist `10418553` is now linked to `Tales4theTillerman`. Event `43491265` is publicly published with the schedule, price, source link and flyer source in Additional details. The original poster is now publicly rendered and visually verified (poster `39589109`).
 - A permanent Sanity image asset was uploaded: `image-aacca9b457d3ebee145c8bc6d16fede78115d441-1080x1440-jpg`.
-- The deployed schema rejects the new fields; the attempted concert metadata patch applied **no changes**. It must be reapplied only after the additive schema is deployed.
+- After deploying the additive schema, the existing concert was patched, explicitly validated, published with a revision guard and read back. Its flyer, official event/source URLs and external IDs are persisted; `editorId:16` is preserved.
+- The staged production queue accepted authenticated reads, reused identical jobs on repeated enqueue, and completed claim/finish with fresh actual browser observations for both existing platform IDs. It rejected unauthenticated access (401).
+- The queue secret is a production-only Vercel Secret. The local host copy is in macOS Keychain, service `T4T WEB EDITOR production queue`; it is absent from the repo and deliverables. The plugin client `scripts/queue-client.py` reads it securely and contacts only the official site without following redirects.
 
-## Activation requiring approval
+## Deployment and recovery
 
 Deploy the additive schema from `sanity/concert-sync` with `../../node_modules/.bin/sanity schema deploy --workspace t4t-concerts`. This local Studio imports the canonical concert definitions. The legacy `t4t-studio` schema cannot currently compile because pre-existing visual style fields contain hyphens; its deployment and stored keys are preserved. The separate `t4t-concerts` schema targets the same production dataset. Select that workspace explicitly for concert tools; do not replace either schema with an MCP-managed schema. Deploy the reviewed branch to the existing Vercel project, not a new website. Reuse existing project/dataset configuration. Configure a new server-only random `T4T_SYNC_SECRET` (at least 32 characters) through Vercel secrets and give the authorized worker access through a secure mechanism. Existing Sanity token stays server-only. This adds a queue endpoint, not public access to a CMS token.
 
-After the schema is live, patch the existing ART Stalker document (never recreate it):
+The following metadata was applied to the existing ART Stalker document (never recreate it):
 
 ```json
 {

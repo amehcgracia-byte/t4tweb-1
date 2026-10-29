@@ -19,7 +19,7 @@
 - Facebook evento oficial: https://www.facebook.com/events/1144183394632015/
 - Flyer original: https://www.facebook.com/photo/?fbid=10215891639800110&set=gm.1144183474632007
 - Venue Bandsintown `10017894`: ART Stalker - Kunst + Bar + Events, Berlin. Es un alias confirmado de ART Stalker.
-- Songkick evento publicado: `43491265`, https://www.songkick.com/concerts/43491265-tales-for-the-tillerman-at-art-stalker ; performance `81450496`. Cartel subido y aceptado; comprobar renderizado antes de afirmar que la imagen está visible. No duplicar ni volver a subir mientras se propaga.
+- Songkick evento publicado: `43491265`, https://www.songkick.com/concerts/43491265-tales-for-the-tillerman-at-art-stalker ; performance `81450496`. Cartel original publicado y visualmente verificado: poster `39589109`. No duplicar ni volver a subir.
 
 ## APIs consultadas el 29/10/2026
 
@@ -28,3 +28,7 @@ Bandsintown documenta lectura de artistas y eventos, no se ha establecido escrit
 Songkick documenta consultas mediante API y acceso sujeto a licencia; no se ha establecido escritura para esta cuenta: https://www.songkick.com/developer/
 
 Usa los paneles autenticados para escritura. No conviertas las sesiones del navegador de ChatGPT en credenciales de un servicio externo sin autorización y un mecanismo de autenticación soportado.
+
+## Cola privada
+
+Ejecuta `python3 scripts/queue-client.py` desde esta skill. Lee la clave del llavero de macOS (`T4T WEB EDITOR production queue`) o del secreto de entorno `T4T_SYNC_SECRET`; nunca la imprimas. Sin entrada lista estados; un objeto JSON por stdin ejecuta una operación de la cola. El destino está fijado a la web oficial y no sigue redirecciones. Para marcar un trabajo verificado, usa una observación nueva del navegador, no copies la ficha deseada ni actualices la fecha de una observación antigua. No hay ejecutor recurrente activo.
