@@ -24,6 +24,8 @@ interface Concert {
   capacity: string
   price: string
   locationUrl: string
+  eventUrl?: string
+  flyerUrl?: string
 }
 type ConcertEditableField = "date" | "venue" | "city" | "country" | "genre" | "price" | "status" | "time" | "capacity" | "locationUrl"
 
@@ -729,7 +731,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
       {activeConcert && !isEditing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={() => setActiveConcert(null)}>
           <div
-            className="w-full max-w-md rounded-2xl border border-border bg-background p-6 text-foreground shadow-2xl"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-border bg-background p-6 text-foreground shadow-2xl"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -750,12 +752,18 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                 Close
               </button>
             </div>
+            {activeConcert.flyerUrl && (
+              <Image src={activeConcert.flyerUrl} alt={`${activeConcert.venue} concert flyer`} width={1080} height={1440} className="mb-5 h-auto w-full rounded-lg object-contain" />
+            )}
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Date</dt><dd className="text-right font-medium">{formatDate(activeConcert.date)}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Time</dt><dd className="text-right font-medium">{activeConcert.time || "Time TBA"}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Genre</dt><dd className="text-right font-medium">{activeConcert.genre || "World Music"}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Price</dt><dd className="text-right font-medium">{formatPrice(activeConcert.price)}</dd></div>
             </dl>
+            {activeConcert.eventUrl && /^https:\/\//.test(activeConcert.eventUrl) && (
+              <a href={activeConcert.eventUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90">Official event</a>
+            )}
             {activeConcert.locationUrl ? (
               <a
                 href={activeConcert.locationUrl}

@@ -1,0 +1,86 @@
+{
+  "sanity": {
+    "observedAt": "2026-10-29T17:52:18.534213+00:00",
+    "listingComplete": true,
+    "records": [
+      {
+        "artist": "Tales for the Tillerman",
+        "venue": "ART Stalker",
+        "city": "Berlin",
+        "country": "Germany",
+        "date": "2026-11-13",
+        "time": "19:30",
+        "price": 15,
+        "id": "46c354d1-300c-41ad-8138-72b19dd6b897",
+        "timezone": "Europe/Berlin",
+        "currency": "EUR",
+        "flyerAttached": false
+      }
+    ]
+  },
+  "bandsintown": {
+    "observedAt": "2026-10-29T17:52:18.534213+00:00",
+    "listingComplete": true,
+    "records": [
+      {
+        "artist": "Tales for the Tillerman",
+        "venue": "ART Stalker - Kunst + Bar + Events",
+        "venueAliases": [
+          "ART Stalker - Kunst + Bar + Events",
+          "Art Stalker"
+        ],
+        "address": "Kaiser-Friedrich-Str. 67, 10627 Berlin",
+        "city": "Berlin",
+        "country": "Germany",
+        "date": "2026-11-13",
+        "time": "19:30",
+        "timezone": "Europe/Berlin",
+        "price": 15,
+        "currency": "EUR",
+        "eventUrl": "https://www.facebook.com/events/1144183394632015/",
+        "flyerSourceUrl": "https://www.facebook.com/photo/?fbid=10215891639800110&set=gm.1144183474632007",
+        "flyerAttached": true,
+        "flyerAssetId": "image-aacca9b457d3ebee145c8bc6d16fede78115d441-1080x1440-jpg",
+        "platformIds": {
+          "sanity": "46c354d1-300c-41ad-8138-72b19dd6b897",
+          "bandsintown": "109096773",
+          "songkick": "43491265"
+        },
+        "id": "109096773"
+      }
+    ]
+  },
+  "songkick": {
+    "observedAt": "2026-10-29T17:52:18.534213+00:00",
+    "listingComplete": true,
+    "records": [
+      {
+        "artist": "Tales for the Tillerman",
+        "venue": "Art Stalker",
+        "venueAliases": [
+          "ART Stalker - Kunst + Bar + Events",
+          "Art Stalker"
+        ],
+        "address": "Kaiser-Friedrich-Str. 67, 10627 Berlin",
+        "city": "Berlin",
+        "country": "Germany",
+        "date": "2026-11-13",
+        "time": "19:30",
+        "timezone": "Europe/Berlin",
+        "price": 15,
+        "currency": "EUR",
+        "eventUrl": "https://www.facebook.com/events/1144183394632015/",
+        "flyerSourceUrl": "https://www.facebook.com/photo/?fbid=10215891639800110&set=gm.1144183474632007",
+        "flyerAttached": false,
+        "flyerAssetId": "image-aacca9b457d3ebee145c8bc6d16fede78115d441-1080x1440-jpg",
+        "platformIds": {
+          "sanity": "46c354d1-300c-41ad-8138-72b19dd6b897",
+          "bandsintown": "109096773",
+          "songkick": "43491265"
+        },
+        "id": "43491265"
+      }
+    ],
+    "blocked": "Event published; poster upload accepted but not visible yet. Wait and inspect; do not upload again."
+  }
+}

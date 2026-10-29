@@ -1,0 +1,25 @@
+{
+  "artist": "Tales for the Tillerman",
+  "venue": "ART Stalker",
+  "venueAliases": [
+    "ART Stalker - Kunst + Bar + Events",
+    "Art Stalker"
+  ],
+  "address": "Kaiser-Friedrich-Str. 67, 10627 Berlin",
+  "city": "Berlin",
+  "country": "Germany",
+  "date": "2026-11-13",
+  "time": "19:30",
+  "timezone": "Europe/Berlin",
+  "price": 15,
+  "currency": "EUR",
+  "eventUrl": "https://www.facebook.com/events/1144183394632015/",
+  "flyerSourceUrl": "https://www.facebook.com/photo/?fbid=10215891639800110&set=gm.1144183474632007",
+  "flyerAttached": true,
+  "flyerAssetId": "image-aacca9b457d3ebee145c8bc6d16fede78115d441-1080x1440-jpg",
+  "platformIds": {
+    "sanity": "46c354d1-300c-41ad-8138-72b19dd6b897",
+    "bandsintown": "109096773",
+    "songkick": "43491265"
+  }
+}

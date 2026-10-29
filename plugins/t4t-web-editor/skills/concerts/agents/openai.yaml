@@ -1,0 +1,6 @@
+interface:
+  display_name: "T4T WEB EDITOR"
+  short_description: "Sincroniza conciertos de T4T sin duplicados"
+  default_prompt: "Usa $t4t-web-editor para añadir este concierto a nuestra web y sincronizarlo con Bandsintown y Songkick."
+policy:
+  allow_implicit_invocation: true
