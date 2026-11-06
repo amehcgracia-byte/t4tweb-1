@@ -543,7 +543,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-sm text-muted-foreground sm:ml-auto">
                           <span data-editor-node-id={`${cardId}-genre`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Genre`} data-concert-field="genre" className="px-3 py-1 bg-primary/10 rounded-full text-primary text-xs" style={getOverrideStyle(overrides[`${cardId}-genre`])}>{resolveConcertSimpleField(cardId, "genre", concert.genre)}</span>
-                          <span data-editor-node-id={`${cardId}-price`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Price`} data-concert-field="price" style={getOverrideStyle(overrides[`${cardId}-price`])}>{(() => { const price = resolveConcertSimpleField(cardId, "price", concert.price || "Free"); return price === "Free" ? "Free" : `€${price}` })()}</span>
+                          <span data-editor-node-id={`${cardId}-price`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Price`} data-concert-field="price" style={getOverrideStyle(overrides[`${cardId}-price`])}>{(() => { const price = resolveConcertSimpleField(cardId, "price", concert.price || "Price TBA"); return price === "Free" || price === "Price TBA" ? price : `€${price}` })()}</span>
                           <span data-editor-node-id={`${cardId}-time`} data-editor-node-type="text" data-editor-node-label={`Upcoming Event ${index + 1} Time`} data-concert-field="time" className="text-xs" style={getOverrideStyle(overrides[`${cardId}-time`])}>{resolveConcertSimpleField(cardId, "time", concert.time)}</span>
                           <button
                             type="button"
@@ -669,7 +669,7 @@ export function LiveSection({ initialConcerts, overrides = {} }: LiveSectionProp
                             data-concert-field="price"
                              style={getOverrideStyle(overrides[`${cardId}-price`])}
                            >
-                             {resolveConcertSimpleField(cardId, "price", concert.price || "Free")}
+                             {resolveConcertSimpleField(cardId, "price", concert.price || "Price TBA")}
                            </span>
                            <span
                              data-editor-node-id={`${cardId}-time`}
